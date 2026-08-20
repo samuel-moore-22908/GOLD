@@ -21,14 +21,20 @@ ISO3 = {
 }
 
 SOURCES = {
-    "import": (f"{RAW}/US_import.xlsx", "General Customs Value", "HTS Number", "General Customs Value"),
-    "export_domestic": (f"{RAW}/US_domestic_export.xlsx", "FAS Value", "Schedule B", "FAS Value"),
-    "export_reexport": (f"{RAW}/US_foreign_export.xlsx", "FAS Value", "Schedule B", "FAS Value"),
+    "import": (f"{RAW}/US_import.xlsx", "General Customs Value", "General Customs Value"),
+    "export_domestic": (f"{RAW}/US_domestic_export.xlsx", "FAS Value", "FAS Value"),
+    "export_reexport": (f"{RAW}/US_foreign_export.xlsx", "FAS Value", "FAS Value"),
 }
 
+# Census labels the commodity-code column "HTS Number" for imports and has
+# used both "HTS Number" and "Schedule B" for exports across different
+# pulls — detect whichever is present rather than hardcoding it per file.
+CODE_COL_CANDIDATES = ["HTS Number", "Schedule B"]
 
-def load_one(flow, path, sheet, code_col, value_col):
+
+def load_one(flow, path, sheet, value_col):
     d = pd.read_excel(path, sheet_name=sheet, header=0)
+    code_col = next(c for c in CODE_COL_CANDIDATES if c in d.columns)
     # Drop the "Total:" footer row (and any other summary row) — real
     # observations always have a country, year, month and commodity code.
     d = d.dropna(subset=["Country", "Year", "Month", code_col]).copy()
@@ -38,8 +44,13 @@ def load_one(flow, path, sheet, code_col, value_col):
     )
     d["country"] = d["Country"]
     d["country_iso3"] = d["country"].map(ISO3)
-    d["hs10"] = d[code_col].astype("int64").astype(str).str.zfill(10)
-    d["hs4"] = d["hs10"].str[:4]
+    # HTS/Schedule B codes are reported at varying granularity across pulls
+    # (6-digit here, 10-digit there) but are never left-zero-padded within
+    # chapter 71, so the first 4 characters of the code AS GIVEN are always
+    # the HS4 heading — do not zero-pad before slicing, or a short code like
+    # "710812" left-pads to "0000710812" and produces a bogus hs4 of "0000".
+    d["hs_code"] = d[code_col].astype("int64").astype(str)
+    d["hs4"] = d["hs_code"].str[:4].astype(int)
     d["value_usd"] = d[value_col].astype("int64")
     d["flow"] = flow
 
@@ -50,11 +61,13 @@ def main():
     parts = [load_one(flow, *args) for flow, args in SOURCES.items()]
     raw = pd.concat(parts, ignore_index=True)
 
-    # All observed codes fall under HS heading 7108 (non-monetary gold), so
-    # this aggregates the 6- and 10-digit subheading detail up to HS4 by
-    # summing within (date, country, flow). Source data is already at its
-    # finest reported level with no overlapping aggregate rows, so this sum
-    # does not double-count.
+    # Aggregates the 6- and 10-digit subheading detail up to HS4 by summing
+    # within (date, country, flow, hs4). Each source file reports at a
+    # single, consistent code granularity with no overlapping parent/child
+    # rows, so this sum does not double-count. Covers HS 7108 (non-monetary
+    # gold) and 7115.90 (other articles of precious metal) — the latter was
+    # added after most of the Nov 2024-Apr 2025 US-Switzerland tariff-episode
+    # flow turned out to be classified there rather than under 7108.
     hs4 = (
         raw.groupby(["date", "country", "country_iso3", "flow", "hs4"], as_index=False)
         ["value_usd"].sum()
