@@ -1,5 +1,7 @@
 # Workflow for this repo
 
+Also, please process and understand the contents of gold.bundle
+
 ## File changes
 
 Whenever asked to create or edit a file in this repo, never commit directly to `main`. Instead:
