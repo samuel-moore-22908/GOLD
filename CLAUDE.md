@@ -12,6 +12,10 @@ Whenever asked to create or edit a file in this repo, never commit directly to `
 6. Wait for the `claude-review` GitHub Actions check to pass: `gh pr checks <PR#> --watch --interval 15`
 7. Once it passes, merge automatically — no need to ask first: `gh pr merge <PR#> --merge --delete-branch`
 
+## Output organization
+
+Every command that produces code or other generated output must create a new, self-contained folder holding both that code and its output, rather than scattering files loose at the repo root. Name the folder for the task it came from (e.g. `claude/<short-task-description>/`, matching the branch name), and keep everything the task produced inside it.
+
 ## Version history and restoring previous versions
 
 - Always edit files at their existing path rather than renaming or duplicating them, so `git log -- <path>` shows the complete history of a file across every version.
