@@ -28,6 +28,8 @@ Every command that produces code or other generated output must create a new, se
 - Git for Windows lives at `C:\Program Files\Git\cmd` and the GitHub CLI at `C:\Program Files\GitHub CLI`. Both are on the permanent PATH, but a Claude Code session may need `$env:Path += ";C:\Program Files\Git\cmd;C:\Program Files\GitHub CLI"` added explicitly if a fresh terminal within the session doesn't pick it up.
 - `gh` is authenticated as `samuel-moore-22908`, and `gh auth setup-git` has already wired git's credential helper to it globally — this is what lets push/PR/merge run non-interactively.
 - Claude's GitHub MCP connector (the `mcp__plugin_github_github__*` tools) is enterprise-managed and may not have API access to this repo. Use the `git`/`gh` CLI workflow above instead of those tools for this repo.
+- **Python: use the 64-bit 3.12 install, never the 32-bit one.** This machine also has Python 3.10 installed as a 32-bit build (`py -0p` shows it as `-V:3.10-32`); pandas/numpy/matplotlib no longer ship 32-bit Windows wheels, so `pip install` on that interpreter falls back to a from-source build that fails without Visual Studio's build tools. Use `py -3.12` (64-bit, at `C:\Users\smoor\AppData\Local\Programs\Python\Python312\python.exe`) for everything in this repo.
+- The repo's virtualenv lives at `.venv/` (gitignored). Create it with `py -3.12 -m venv .venv`, then `.venv/Scripts/python.exe -m pip install -r requirements.txt`. Run scripts as `.venv/Scripts/python.exe <script>.py` rather than relying on whatever `python` resolves to on PATH.
 
 ---
 
