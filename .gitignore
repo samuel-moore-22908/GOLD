@@ -1,0 +1,44 @@
+# Data — not committed. See DATA_SOURCES.md for fetch procedures.
+data/*
+!data/.gitkeep
+!data/README.md
+*.csv
+*.xlsx
+*.xls
+*.parquet
+
+# Licensed / paid sources — never commit these
+**/metalsfocus/
+**/goldchartsrus/
+**/wgc_goldhub/
+
+# Credentials
+.env
+.env.*
+*_token
+*.key
+credentials.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+
+# Output artefacts — regenerate from source
+figures/*.png
+figures/*.pdf
+output/
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Exploratory scratch work is retained as a record
+!exploratory/*.csv
+!exploratory/*.png
