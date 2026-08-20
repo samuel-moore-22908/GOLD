@@ -79,6 +79,39 @@ Five countries — **US, UK, Switzerland** (the arbitrage triangle) plus
 **China, India** (absorption sinks). Monthly, 2019–2026. Turkey, UAE, Hong
 Kong, Singapore to a robustness appendix if time allows.
 
+### The bilateral coverage matrix
+
+Five countries × four partners each = **20 reporter-partner series** needed
+for a full bilateral map among USA, GBR, CHE, IND, CHN. Swiss-Impex already
+supplies the 4 reported from CHE's side (CHE↔USA, CHE↔GBR, CHE↔IND, CHE↔CHN).
+The other **16** — USA, GBR, IND and CHN each reporting their own trade with
+the other four — were researched separately; full detail and access notes
+are in `DATA_SOURCES.md` §A8. Summary:
+
+| Reporter | Source | Status |
+|---|---|---|
+| USA | US Census `intltrade` API, partner-filterable | confirmed — one API covers all 4 legs |
+| GBR | HMRC uktradeinfo API | confirmed to support partner filtering; a combined commodity+partner+monthly query has not been smoke-tested |
+| IND | DGCIS Foreign Trade Data Dissemination Portal | confirmed to cover **exports by destination**, not just imports by origin as previously documented — but the bullion (7108) vs jewellery (7113) HS-code split at India's 8-digit level is unverified |
+| CHN | GACC | still unreliable for partner-level gold detail. **Fix: source CHN's legs with USA/GBR/IND from those countries' own mirror reporting**, not from GACC or the Hong Kong mirror (Hong Kong is useful for CHN-mainland re-exports *via* HK, not for CHN's direct bilateral trade with the other three) |
+
+Practical consequence: the CHN row of the matrix effectively falls out of the
+USA/GBR/IND pulls for free, once those three are built with full partner
+detail — no separate China pull is needed for those three legs. Only
+CHN↔CHE (already covered by Swiss-Impex) and a decision about whether to
+attempt GACC/paid-aggregator data at all remain open.
+
+**Priority triage**, since not all 16 are worth equal effort: **USA↔GBR**,
+**USA↔CHN**, **USA↔IND** are materially important — UK is an independent
+bullion hub rather than a Swiss pass-through, and the US direct legs to
+China/India test whether metal moved US-bound outside the Swiss corridor
+during the tariff episode. **IND↔CHN** is likely near-zero and skippable —
+both are import-restricted demand sinks with little reason to trade bullion
+bilaterally. **GBR↔CHN** and **GBR↔IND** are secondary — worth a light pull,
+not a priority build. The four USA/GBR/IND/CHN legs with CHE are useful
+mirror checks on Swiss-Impex but rank below the CHE-side data already in
+hand.
+
 ---
 
 ## 3. What happened: the 2024–26 arc
@@ -302,8 +335,10 @@ $1.10, then negative as metal flew back. Cheap robustness section.
 | Series | Source | Cost |
 |---|---|---|
 | Swiss gold trade by partner, monthly, kg | Swiss-Impex (Federal Office for Customs) | free |
-| UK gold trade, HS 7108 | HMRC uktradeinfo | free |
-| US gold trade | US Census USA Trade Online; USGS monthly | free |
+| UK gold trade, HS 7108, by partner | HMRC uktradeinfo API | free |
+| US gold trade, HS 7108, by partner | US Census `intltrade` API; USGS monthly | free (API key) |
+| India gold trade, HS 7108, imports by origin and exports by destination | DGCIS FTDDP portal | free |
+| China gold trade by partner | not GACC — use USA/GBR/IND's own mirror reporting of their trade with China instead | free (piggybacks on the above) |
 | COMEX warehouse stocks, daily | CME (registered + eligible separately) | free |
 | London vault holdings, monthly 2016– | LBMA | free |
 | Country demand, quarterly 2010– | WGC Goldhub | free (registration) |
@@ -331,12 +366,24 @@ lives at monthly frequency; annual data erases it.
 ### Comtrade hazards (if used at all)
 
 - Mirror discrepancies are enormous — UNCTAD found South African gold export
-  gaps of $78.2bn, 67% of total.
+  gaps of $78.2bn, 67% of total, and more broadly put Africa's continent-wide
+  gold export gap at **106% of Africa's own reported exports (2011–18)** —
+  rest-of-world imports *from* Africa ran at roughly double what Africa
+  itself reported exporting. No HS-7108-specific discrepancy magnitude was
+  found for the six non-Swiss corridors in the bilateral matrix (USA↔GBR,
+  USA↔IND, USA↔CHN, GBR↔IND, GBR↔CHN, IND↔CHN specifically) — treat that as
+  unverified rather than assuming it's small.
 - Monetary gold excluded by BPM6 convention; CB flows must be added from IMF IFS.
 - Net weight fields incomplete; deriving tonnage from value ÷ price adds error.
 - HS 7108 excludes ores/concentrates (2616) and jewellery (7113).
 - Re-exports are included in exports — fatal for CH, UK, HK, UAE, SG, TR.
 - Prefer reconciled builds: BACI (CEPII) or Harvard Growth Lab.
+- **US export filings add a second unit trap.** Beyond the general
+  tonnes-vs-troy-oz discipline, the US requires gold reported by **net
+  weight in grams** at fine HS/Schedule B detail (bullion 7108.12.1010,
+  doré 7108.12.1020, concentrates 7108.12.5000, powder 7108.11.0000), and
+  Census's own exporter guidance flags gram↔kg↔troy-oz conversion errors as
+  a common mistake. Convert explicitly rather than trusting the reported unit.
 
 ---
 
@@ -356,6 +403,16 @@ lives at monthly frequency; annual data erases it.
 6. **ETF vaulting location.** US 2025 ETF demand was 437 t (holdings 2,019 t),
    but ETF metal is mostly vaulted in *London*, not COMEX. Verify before
    claiming it doesn't justify the COMEX build.
+7. **India's bullion/jewellery export split is unverified.** DGCIS confirms
+   exports-by-destination exist at 8-digit HS detail, but it's unconfirmed
+   whether that detail cleanly separates 7108 bullion from 7113 jewellery.
+   India's gold exports are overwhelmingly jewellery, so conflating the two
+   would misrepresent the relocation/absorption signal on the IND↔USA,
+   IND↔GBR and IND↔CHN legs. Check the portal directly before using it.
+8. **USA↔GBR, USA↔CHN and USA↔IND legs not yet pulled.** These are the
+   highest-priority of the 16 non-Swiss bilateral flows (§2) and the only
+   ones needed to test whether tariff-episode metal moved US-bound outside
+   the Swiss corridor. IND↔CHN can likely be skipped as immaterial.
 
 ---
 
