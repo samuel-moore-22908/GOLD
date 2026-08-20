@@ -1,0 +1,68 @@
+date,series,value,unit,quality,source,note
+2020-03-01,ch_exports_total,96.2,tonnes,reported,Swiss customs via Reuters/GulfNews 2020-05-26,COVID episode baseline
+2020-04-01,ch_exports_total,131.8,tonnes,reported,Swiss customs via Reuters/GulfNews 2020-05-26,
+2020-04-01,ch_exports_to_us,111.7,tonnes,reported,Swiss customs via Reuters/GulfNews 2020-05-26,US took 85% of Swiss total; normally <1t/month
+2020-04-01,ch_exports_to_india,0.5,tonnes,reported,Swiss customs via Reuters/GulfNews 2020-05-26,
+2020-04-01,ch_exports_to_china,0.0,tonnes,reported,Swiss customs via Reuters/GulfNews 2020-05-26,
+2020-04-01,ch_exports_to_hk,0.001,tonnes,reported,Swiss customs via Reuters/GulfNews 2020-05-26,1 kg
+2021-08-01,ch_exports_total,116.455,tonnes,reported,Swiss customs via Reuters 2022-09-21,
+2022-07-01,ch_exports_total,186.158,tonnes,reported,Swiss customs via Reuters 2022-09-21,
+2022-08-01,ch_exports_total,121.025,tonnes,reported,Swiss customs via Reuters 2022-09-21,
+2023-04-01,ch_exports_total,113.368,tonnes,reported,Swiss customs via Reuters 2024-06-04,
+2024-03-01,ch_exports_total,146.816,tonnes,reported,Swiss customs via Reuters 2024-06-04,
+2024-04-01,ch_exports_total,123.590,tonnes,reported,Swiss customs via Reuters 2024-06-04,
+2024-04-01,ch_exports_to_china,36.541,tonnes,reported,Swiss customs via Reuters 2024-06-04,
+2024-04-01,ch_exports_to_india,24.588,tonnes,reported,Swiss customs via Reuters 2024-06-04,
+2024-04-01,ch_exports_to_hk,7.710,tonnes,reported,Swiss customs via Reuters 2024-06-04,
+2024-04-01,ch_exports_to_turkey,9.952,tonnes,reported,Swiss customs via Reuters 2024-06-04,
+2024-03-01,ch_exports_to_china,71.405,tonnes,reported,Swiss customs via Reuters 2024-06-04,
+2024-03-01,ch_exports_to_india,6.595,tonnes,reported,Swiss customs via Reuters 2024-06-04,
+2024-11-01,ch_exports_to_us,5.84,tonnes,derived,Bloomberg/SWI 2025-01-30,Dec stated as 11x Nov; 64.2/11
+2024-11-01,ch_exports_to_uk,1.08,tonnes,derived,Bloomberg/SWI 2025-01-30,Dec stated as >13-fold rise; 14.0/13
+2024-12-01,ch_exports_to_us,64.2,tonnes,reported,Swiss customs via Bloomberg/SWI 2025-01-30,Highest since March 2022
+2024-12-01,ch_exports_to_uk,14.0,tonnes,reported,Swiss customs via Bloomberg/SWI 2025-01-30,
+2025-01-01,ch_exports_to_us,192.9,tonnes,reported,Swiss customs via Reuters 2025-02-20,Record in data back to 2012
+2025-02-01,ch_exports_to_us,152.8,tonnes,derived,Residual: Q1 449 less Jan 192.9 less Mar 103.3,Commerzbank cites Q1 total 449-450t
+2025-03-01,ch_exports_to_us,103.3,tonnes,reported,Swiss customs via Reuters 2025-05-27,
+2025-04-01,ch_exports_to_us,12.7,tonnes,reported,Swiss customs via Reuters/Kitco 2025-05-27,Total Swiss exports fell 31% m/m
+2025-05-01,ch_exports_to_us,14.0,tonnes,derived,Residual: H1 476 less Q1 449 less Apr 12.7 less Jun 0.3,SBA cites H1 total >476t / CHF39bn
+2025-06-01,ch_exports_to_us,0.3,tonnes,reported,Bloomberg 2025-08-21,Stated as "less than 0.3 tons"
+2025-07-01,ch_exports_to_us,51.0,tonnes,reported,Swiss customs via Bloomberg/Commerzbank 2025-08-21,"almost 51 tons"
+2025-08-01,ch_exports_to_us,0.3,tonnes,reported,Swiss customs via Kitco 2026-04-22,Fell >99% m/m after CBP tariff ruling
+2025-11-01,ch_exports_to_us,0.2,tonnes,reported,Swiss customs via Bloomberg/SWI 2026-01-29,
+2025-12-01,ch_exports_to_us,5.8,tonnes,reported,Swiss customs via Bloomberg/SWI 2026-01-29,Rose after Swiss tariff reduced
+2025-07-01,ch_exports_to_uk,30.5,tonnes,reported,Commerzbank via FXStreet 2025-08-22,"far lower than in June"
+2025-07-01,ch_exports_to_india,13.0,tonnes,reported,Commerzbank via FXStreet 2025-08-22,Highest of 2025 to that point
+2025-07-01,ch_exports_to_turkey,2.2,tonnes,reported,Commerzbank via FXStreet 2025-08-22,Lowest monthly in >2 years
+2026-02-01,ch_exports_to_uk,19.8,tonnes,reported,Swiss customs via Kitco 2026-04-22,
+2026-03-01,ch_exports_to_uk,57.6,tonnes,reported,Swiss customs via Kitco 2026-04-22,Highest since Dec 2025
+2026-02-01,ch_exports_to_india,11.6,tonnes,reported,Swiss customs via Kitco 2026-04-22,
+2026-03-01,ch_exports_to_india,3.1,tonnes,reported,Swiss customs via Kitco 2026-04-22,
+2025-02-01,ch_imports_from_us,12.1,tonnes,reported,Swiss customs via Reuters 2025-04-17,
+2025-03-01,ch_imports_from_us,25.5,tonnes,reported,Swiss customs via Reuters 2025-04-17,13-month high at the time
+2025-04-01,ch_imports_from_us,63.0,tonnes,reported,Swiss customs via Reuters/Kitco 2025-05-27,Highest in data back to 2012
+2024-11-01,comex_stock,17.1,Moz,reported,CME via TradingKey 2026-05,Around US election
+2025-01-29,comex_stock,29.8,Moz,reported,FT 2025-01-29,Stated as 926 tonnes; +393t since election
+2025-02-18,comex_stock,38.0,Moz,reported,Reuters 2025-02-20,+116% since late Nov; 636t delivered
+2025-03-31,comex_stock,43.3,Moz,reported,CME via TradingKey 2026-05,
+2025-04-04,comex_stock,45.1,Moz,reported,CME via Reuters 2025-04-17,All-time high
+2025-04-17,comex_stock,43.6,Moz,reported,CME via Reuters 2025-04-17,8 consecutive days of outflow
+2026-07-02,comex_stock,23.4,Moz,reported,CME via metalcharts.org,Registered plus eligible
+2024-12-01,lbma_london_change,-30.0,tonnes,reported,LBMA via Jensen 2025-02,Monthly drawdown
+2025-01-01,lbma_london_change,-151.0,tonnes,reported,LBMA release 2025-02,Monthly drawdown; 4.87 Moz
+2025-01-31,lbma_london_stock,8500.0,tonnes,reported,LBMA via WGC 2025-02,Approx 5200t of which at Bank of England
+2025-02-07,lbma_london_stock,8535.0,tonnes,reported,LBMA via BullionVault 2025-02,
+2025-01-02,lease_rate_1m,0.08,percent,reported,JBMA via BullionVault,
+2025-01-20,lease_rate_1m,3.25,percent,reported,JBMA/Ikemizu via BullionVault 2025-01-20,
+2025-01-31,lease_rate_1m,5.00,percent,reported,WGC calc 2025-02,Peak; overnight reported as high as 12% by Metals Focus/FT
+2025-02-28,lease_rate_1m,1.00,percent,reported,WGC 2025-02,"closer to 1%"
+2024-12-15,efp_spread,50.0,usd_per_oz,reported,Bloomberg/SWI 2025-01-30,"more than $50"
+2025-01-31,efp_spread,64.0,usd_per_oz,reported,BullionStar 2025-02,COMEX Apr 2862 vs London spot 2798
+2025-08-08,efp_spread,100.0,usd_per_oz,reported,Commerzbank via FXStreet 2025-08-08,"widened to more than $100"
+2025-01-31,gold_price,2798.0,usd_per_oz,reported,LBMA spot close 2025-01-31,
+2025-02-07,gold_price,2875.0,usd_per_oz,reported,LBMA PM 2025-02-07,
+2025-08-08,gold_price,3534.0,usd_per_oz,reported,COMEX record intraday 2025-08-08,COMEX not LBMA
+2025-10-20,gold_price,4380.0,usd_per_oz,reported,Record high Oct 2025,
+2026-01-15,gold_price,5580.0,usd_per_oz,reported,All-time high Jan 2026 via Minted Metal,Approximate
+2025-12-31,gold_price_avg_2025,3431.0,usd_per_oz,reported,LBMA PM annual average 2025 via WGC,Annual average
+2025-12-31,gold_price_avg_q4_2025,4135.0,usd_per_oz,reported,LBMA PM Q4 2025 average via WGC,Quarterly average
