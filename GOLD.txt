@@ -2,4 +2,6 @@ GOLD
 
 This is a test
 
-The quick brown fox jumps over the lazy dog. 
+The quick brown fox jumps over the lazy dog.
+
+Sphinx of black quartz, judge my vow.
