@@ -1,9 +1,8 @@
-GOLD 
+GOLD
 
 This is a test
 
-The quick brown fox jumps over the lazy dog.
-
-Sphinx of black quartz, judge my vow.
-
-Pack my box with five dozen liquor jugs.
+1. The quick brown fox jumps over the lazy dog.
+2. Sphinx of black quartz, judge my vow.
+3. Pack my box with five dozen liquor jugs.
+4. How vexingly quick daft zebras jump!
