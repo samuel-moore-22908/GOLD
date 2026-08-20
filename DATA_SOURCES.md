@@ -18,8 +18,9 @@ Do these in order. After #3 you have a working paper; the rest is depth.
 | 2 | **Swiss-Impex monthly by partner** | The core flow series; nothing else has this granularity | ~1 day |
 | 3 | **CME settlements + LBMA benchmark** | Builds the EFP proxy; makes the lead-lag testable | ~3 hrs |
 | 4 | **LBMA monthly vault holdings** | Closes the sourcing reconciliation (the 339 t residual) | ~2 hrs |
-| 5 | **US Census monthly HS 7108** | Export side directly, instead of inferring tonnage from dollar headlines | ~4 hrs |
+| 5 | **US Census monthly HS 7108, by partner** | Export side directly, and — via the partner filter — the USA↔GBR/IND/CHN legs of the bilateral matrix in one pull | ~4 hrs |
 | 6 | **WGC Goldhub country demand** | The absorption benchmark you test flows against | ~2 hrs |
+| 7 | **HMRC + DGCIS, by partner** | The GBR and IND legs of the bilateral matrix (§A8) — together with #5, this covers 12 of the 16 non-Swiss flows, since CHN's legs are read off these three rather than pulled separately | ~1 day |
 
 ---
 
@@ -38,15 +39,15 @@ handle re-exports better. Comtrade is a fallback, not a first choice.
 
 ### A2. United Kingdom — HMRC uktradeinfo ★ critical
 - **Gives:** monthly HS 7108 imports/exports by partner
-- **Access:** `uktradeinfo.com` — has a proper REST API (HMRC Trade Data API)
+- **Access:** `uktradeinfo.com` — has a proper REST API, documented at `uktradeinfo.com/api-documentation` (OData-style queries against a countries endpoint plus commodity-code filtering)
 - **Cost:** free
-- **Gotchas:** series break January 2021 (Brexit — EU trade collection method changed); confirm whether non-monetary gold is in the headline series or a separate annex
+- **Gotchas:** series break January 2021 (Brexit — EU trade collection method changed); confirm whether non-monetary gold is in the headline series or a separate annex; the docs confirm partner-country and commodity-code filtering separately but a single combined commodity+partner+monthly query has not been smoke-tested — verify with a real pull before relying on it structurally
 
 ### A3. United States — Census USA Trade Online ★ critical
 - **Gives:** monthly HS 7108 by partner, value and quantity
-- **Access:** `usatrade.census.gov` (interface) or `api.census.gov/data/timeseries/intltrade` (API)
-- **Cost:** free, registration required for the interface
-- **Gotchas:** quantity fields can be sparse; cross-check tonnage against value ÷ price; also see USGS monthly Mineral Industry Surveys for a gold-specific cut
+- **Access:** `usatrade.census.gov` (interface) or `api.census.gov/data/timeseries/intltrade/exports/hs` and `.../imports/hs` (API) — filter on `CTY_CODE`/`CTY_NAME` for partner and `SUMMARY_LVL=DET` to get individual-partner rows rather than an aggregate. One API call set covers all of US↔GBR, US↔IND, US↔CHN, US↔CHE
+- **Cost:** free; API key registration is free and lighter-weight than USA Trade Online's interface registration
+- **Gotchas:** quantity fields can be sparse; cross-check tonnage against value ÷ price; also see USGS monthly Mineral Industry Surveys for a gold-specific cut. **Unit trap distinct from the general tonnes-vs-oz rule:** US export filings (AES/Schedule B) require gold reported by **net weight in grams** at fine HS detail — bullion `7108.12.1010`, doré `7108.12.1020`, concentrates `7108.12.5000`, powder `7108.11.0000` — and Census's own exporter guidance flags gram↔kg↔troy-oz conversion errors as a common mistake. Convert explicitly per subheading rather than trusting a single reported unit
 
 ### A4. Hong Kong — Census & Statistics Department ★ high value
 - **Gives:** monthly gold trade with mainland China; **re-exports reported separately**
@@ -54,15 +55,17 @@ handle re-exports better. Comtrade is a fallback, not a first choice.
 - **Cost:** free
 - **Why it matters:** the standard workaround for China's opacity, and one of very few sources that splits re-exports out properly
 
-### A5. India — DGCIS / Ministry of Commerce
-- **Gives:** monthly gold imports by origin
-- **Access:** `commerce.gov.in` → Tradestat; also RBI bulletins
-- **Gotchas:** duty-change-driven spikes (the July 2024 cut from 15% to 6% is a natural experiment worth its own event dummy); large informal inflows via Nepal/Bangladesh/Myanmar are invisible here
+### A5. India — DGCIS / Ministry of Commerce ★ critical
+- **Gives:** monthly gold imports by origin **and exports by destination** — confirmed via the Foreign Trade Data Dissemination Portal (`ftddp.dgciskol.gov.in`), specifically its "Data Query By Principal Commodity" tool, which supports both import and export queries by commodity and partner country at 8-digit HS level, monthly. (Earlier notes here only documented the import side; the export side is what supplies India's leg of the bilateral matrix — IND→USA, IND→GBR, IND→CHN, IND→CHE.)
+- **Access:** `ftddp.dgciskol.gov.in`; also `commerce.gov.in` → Tradestat / Export Import Data Bank; RBI bulletins for cross-checks
+- **Cost:** free
+- **Gotchas:** duty-change-driven spikes (the July 2024 cut from 15% to 6% is a natural experiment worth its own event dummy); large informal inflows via Nepal/Bangladesh/Myanmar are invisible here. **Unverified and important:** whether DGCIS's 8-digit codes cleanly separate bullion (7108) from gold jewellery (7113) on the export side. India's gold exports are overwhelmingly jewellery, not bullion, so conflating the two would misread the relocation/absorption signal — check the portal's code list directly before using the export series
 
-### A6. China — GACC
-- **Gives:** customs headline data
+### A6. China — GACC ✗ not a usable direct source
+- **Gives:** customs headline data; detailed gold import totals only since ~2017 (1,270 t 2017, 1,506 t 2018), and even those years lack reliable **partner-country** breakdowns
 - **Access:** `customs.gov.cn`
-- **Gotchas:** gold import detail historically suppressed. Use the Hong Kong mirror plus Swiss-Impex plus SGE withdrawals instead of relying on this
+- **Cost:** free (for what little is usable)
+- **Gotchas:** China treated bullion trade data as close to a state secret for years, and partner-level HS 7108 detail remains unreliable even now. **Do not use Hong Kong Census (A4) as a substitute for CHN's direct bilateral legs with USA, GBR or IND** — Hong Kong is useful specifically for CHN-mainland re-exports routed *through* Hong Kong, not for China's own direct trade with those three countries. **The practical fix: source CHN's legs from the partner's own reporting** — US Census gives CHN↔USA, HMRC gives CHN↔GBR, DGCIS gives CHN↔IND — rather than from China at all. (CHN↔CHE is already covered by Swiss-Impex.) Paid aggregators (Trade Data Monitor, S&P Panjiva, CEIC) claim to offer GACC HS-code data with partner detail, but this hasn't been verified for accuracy or current cost, and the underlying GACC data is the weak link regardless of aggregator
 
 ### A7. Secondary hubs
 | Country | Agency | Note |
@@ -70,6 +73,38 @@ handle re-exports better. Comtrade is a fallback, not a first choice.
 | Singapore | SingStat / Enterprise Singapore | entrepôt, strip re-exports |
 | UAE | Federal Competitiveness and Statistics Centre | historically poor gold reporting; see §G2 |
 | Turkey | TÜİK, plus Borsa Istanbul import figures | dual role: consumer market *and* transit |
+
+### A8. The bilateral coverage matrix (USA, GBR, CHE, IND, CHN)
+
+Five countries × four partners each = 20 reporter-partner series. Swiss-Impex
+(A1) supplies the 4 reported from CHE's side. The other 16 come from A2, A3
+and A5 above — each already gives full partner detail for its own country's
+trade, so no separate pull is needed per corridor, just per reporting
+country:
+
+| Reporting country | Partner legs it covers | Source |
+|---|---|---|
+| CHE | ↔USA, ↔GBR, ↔IND, ↔CHN | A1 Swiss-Impex |
+| USA | ↔GBR, ↔IND, ↔CHN, ↔CHE | A3 US Census |
+| GBR | ↔USA, ↔IND, ↔CHN, ↔CHE | A2 HMRC uktradeinfo |
+| IND | ↔USA, ↔GBR, ↔CHN, ↔CHE | A5 DGCIS (imports **and** exports) |
+| CHN | ↔USA, ↔GBR, ↔IND, ↔CHE | *no direct CHN source* — read off the USA/GBR/IND rows above instead; CHN↔CHE from A1 |
+
+**Priority triage** — not all 16 are worth equal effort:
+- **High priority:** USA↔GBR, USA↔CHN, USA↔IND. UK is an independent bullion
+  hub, not just a Swiss pass-through; the US-China and US-India legs test
+  whether tariff-episode metal moved US-bound outside the Swiss corridor.
+- **Low priority / likely skippable:** IND↔CHN — both are import-restricted
+  demand sinks with little reason to trade bullion bilaterally, expect
+  near-zero values.
+- **Secondary:** GBR↔CHN, GBR↔IND — worth a light pull, not a priority build.
+- The four USA/GBR/IND/CHN legs with CHE are useful **mirror checks** on
+  Swiss-Impex (reporter vs. partner discrepancies are common — see §G2) but
+  rank below the CHE-side data already in hand.
+
+No HS-7108-specific reporter/partner discrepancy magnitude was found for any
+of these six non-Swiss pairs specifically — treat that as an open question,
+not as evidence the mirrors will agree.
 
 ---
 
@@ -232,8 +267,8 @@ rather than via press coverage.
 
 ### G2. Trade data quality / informal flows
 - **SWISSAID** reports on undeclared African gold — `swissaid.ch`. Documented 2,596 t into UAE from Africa 2012–22 with no matching export declaration
-- **UNCTAD** trade discrepancy work — South African gold export gaps of $78.2bn (67% of total)
-- Use these to bound how much of the residual is measurement failure vs. real relocation
+- **UNCTAD** trade discrepancy work — South African gold export gaps of $78.2bn (67% of total); more broadly, Africa-wide gold export gaps ran at **106% of Africa's own reported exports (2011–18)** — rest-of-world imports *from* Africa were roughly double what Africa itself reported exporting
+- Use these to bound how much of the residual is measurement failure vs. real relocation. No equivalent magnitude has been found for the USA↔GBR / USA↔CHN / USA↔IND / GBR↔IND / GBR↔CHN / IND↔CHN corridors in §A8 — don't assume those mirrors will agree just because they're all high-capacity reporters
 
 ### G3. The contested London-scarcity question
 Collect both sides so the framework can adjudicate rather than take a position:
@@ -250,11 +285,12 @@ Collect both sides so the framework can adjudicate rather than take a position:
 
 ## H. Practical notes
 
-**Registration required:** Swiss-Impex (bulk export), USA Trade Online, WGC
-Goldhub, Comtrade (API key).
+**Registration required:** Swiss-Impex (bulk export), USA Trade Online or a
+free Census API key, WGC Goldhub, Comtrade (API key).
 
-**Has a real API:** HMRC uktradeinfo, US Census, Comtrade, FRED. Everything
-else is download-and-parse.
+**Has a real API:** HMRC uktradeinfo, US Census, Comtrade, FRED. DGCIS's
+FTDDP portal is a query tool, not a REST API, but does support partner- and
+commodity-filtered exports. Everything else is download-and-parse.
 
 **Rate limits:** Comtrade free tier is restrictive enough to matter if you're
 pulling many country-years; budget for the paid key or use BACI instead.
