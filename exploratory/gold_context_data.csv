@@ -1,0 +1,37 @@
+period,series,value,unit,quality,source,note
+2024,above_ground_stock,216265,tonnes,reported,WGC Feb 2025 update,End-2024
+2025,above_ground_stock,220700,tonnes,reported,WGC Aug 2026 update,End-2025 estimate
+2025,stock_jewellery,99700,tonnes,reported,WGC market primer Aug 2026,45% of total
+2025,stock_bars_coins,47000,tonnes,reported,WGC market primer Aug 2026,21%
+2025,stock_official,38600,tonnes,reported,WGC market primer Aug 2026,17%
+2025,stock_etf,4000,tonnes,reported,WGC market primer Aug 2026,2%
+2025,stock_otc,10000,tonnes,reported,WGC market primer Aug 2026,~5%; stated as up to 10000t
+2025,stock_other_tech,21400,tonnes,reported,WGC market primer Aug 2026,10%
+2025,mine_production,3672,tonnes,reported,WGC GDT FY2025,Record
+2025,recycling,1404,tonnes,reported,WGC GDT FY2025,+3% y/y despite 67% price rise
+2025,total_supply,5002,tonnes,reported,WGC GDT FY2025,Record in series back to 1970
+2022,cb_net_purchases,1082,tonnes,reported,WGC,Highest in over five decades
+2023,cb_net_purchases,1037,tonnes,reported,WGC,
+2025,cb_net_purchases,863,tonnes,reported,WGC GDT FY2025,Below 1000t for first time in 4 years
+2025,us_gold_demand,679,tonnes,reported,WGC GDT FY2025,More than doubled; ETF-driven
+2025,us_etf_holdings,2019,tonnes,reported,WGC GDT FY2025,Record; US-listed added 437t
+2025,us_physical_coin_bar_demand_typical,115,tonnes,reported,Ross Norman via Reuters 2025-04,Typical annual US physical coin and bar consumption
+2025-Q4,global_demand,1303,tonnes,reported,WGC GDT Q4 2025,Highest ever Q4
+2025-Q3,global_demand,1313,tonnes,reported,WGC GDT Q3 2025,
+2026-Q1,global_demand,1231,tonnes,reported,WGC GDT Q1 2026,
+2026-Q1,cb_net_purchases,244,tonnes,reported,WGC GDT Q1 2026,Above 5yr quarterly average
+2026-05,cb_net_purchases,41,tonnes,reported,WGC CB stats Jul 2026,Monthly net
+2025-H1,ch_exports_to_us_value,39.0,chf_bn,reported,Swiss customs via SBA/Kitco,More than 476 tonnes
+2024-H1,ch_exports_to_us_value,1.7,chf_bn,reported,Swiss customs via AFP 2025-08-09,
+2025-Q1,ch_exports_to_us_value,37.6,chf_bn,reported,Swiss customs via AFP 2025-08-09,Of the 39.2bn H1 total
+2025-Q2,ch_exports_to_us_value,1.6,chf_bn,reported,Swiss customs via AFP 2025-08-09,
+2025,ch_exports_to_us_exgold,54.7,chf_bn,reported,Swiss customs via Bloomberg 2026-01-29,Excluding gold; +3.9% vs 2024
+2025,ch_us_goods_surplus,41.4,chf_bn,reported,Swiss customs via Bloomberg 2026-01-29,Biggest ever; basis unclear on gold treatment
+2026-02,us_gold_exports_value,17.88,usd_bn,reported,US Census via TradingKey 2026-05,Record monthly; top US export item
+2026-02,us_total_exports,314.8,usd_bn,reported,US Census via TradingKey 2026-05,All-time high
+2026-01,us_gold_export_contribution,4.6,usd_bn,reported,US Census via 247WallSt 2026-05,Contribution to export gains
+2026-02,us_gold_export_contribution,8.0,usd_bn,reported,US Census via 247WallSt 2026-05,Contribution to export gains
+2025,us_gold_exports_increase,50.0,usd_bn,reported,US Census via 247WallSt 2026-05,Full-year increase vs 2024
+2024,swissaid_undeclared_africa_asm,435,tonnes,reported,SWISSAID 2024,Undeclared African gold smuggled 2022
+2024,uae_gold_imports,1392,tonnes,reported,UN Comtrade via SWISSAID 2025-11,World second-largest importer
+2024,uae_imports_from_africa,748,tonnes,reported,UN Comtrade via SWISSAID 2025-11,+18% y/y

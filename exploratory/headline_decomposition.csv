@@ -1,0 +1,11 @@
+metric,value,unit,basis
+"Gross Swiss->US gold exports, Nov24-Dec25",603.34,t,reported+derived
+"COMEX inventory build, Nov24-Apr25",870.8986118498198,t,derived from CME
+"COMEX inventory drain, Apr25-Jul26",674.9464241836104,t,derived from CME
+Net retained in COMEX vs pre-episode,195.9521876662094,t,derived
+Plausible US absorption over build window,47.916666666666664,t,Norman 115t/yr
+-> RELOCATION share of the build,94.49802008928572,%,derived
+-> ABSORPTION share of the build,5.501979910714285,%,derived
+Recorded trade if build round-tripped x4 legs,3483.594447399279,t,derived
+2025 world total gold supply (for scale),5002.0,t,WGC
+Phantom trade as multiple of world supply,0.696440313354514,x,derived
