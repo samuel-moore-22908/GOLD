@@ -249,6 +249,71 @@ Near-zero months drag the mean down and compress CV. Max/min separates
 cleanly. Better still, untested: correlation with EFP spread vs correlation
 with local-currency gold price.
 
+### Building the bilateral panel: what didn't line up
+
+With all four reporter files pulled (`us_gold_trade_hs4_monthly.csv`,
+`gbr_gold_trade_hs4_monthly.csv`, `che_gold_trade_hs4_monthly.csv`,
+`ind_gold_trade_monthly.csv`), `src/build_bilateral_panel.py` combines them
+into `data/processed/bilateral_panel_2015_2026.csv` (9,695 rows) plus a
+reporter-vs-partner mirror comparison, `mirror_comparison.csv` (1,457
+corridor-months). Four schema mismatches had to be resolved before the
+four sources could even sit in one table, and the merge itself surfaced a
+fifth, more interesting problem:
+
+1. **Currency.** US, CHE and IND pulls were already in USD; GBR was
+   natively GBP. Converted using FRED's `DEXUSUK` monthly-average rate —
+   full coverage, no months dropped. Native-currency values are not kept
+   in the panel (GBP/INR-crore are in the source files if needed).
+2. **Flow granularity.** US distinguishes `export_domestic` and
+   `export_reexport`; GBR, CHE and IND only report a single blanket
+   `export`. Collapsed US down to its pre-computed `export_total` so all
+   four countries share one `import`/`export` vocabulary — the finer US
+   split still exists in the source file.
+3. **HS scope.** US/GBR/CHE carry real `hs4` values (7108, 7115). IND has
+   no HS breakdown at all — FTSPCC's only commodity axis is the "GOLD"
+   bucket, confirmed (by cross-referencing MEIDB's HS-code detail) to
+   exclude 7115 entirely. IND rows carry `hs4 = NaN` and an `hs_scope` flag
+   instead of a number. **IND's totals are not scope-comparable to the
+   other three's hs4-summed totals** — this is a real gap, not just a
+   labelling nuance, given how much of the US/UK/CHE tariff-episode flow
+   turned out to live in 7115.
+4. **Quantity.** Only GBR and CHE have `net_mass_kg`. US and IND are
+   value-only, so any tonnage-based analysis using this panel effectively
+   drops to a 2-of-4-country subset unless a price-based conversion is
+   applied (with the usual risk of laundering a units error into an
+   apparent volume).
+5. **No CHN-reported side, by design.** CHN's legs exist in the panel only
+   as the *partner* column in the other four countries' rows — there is no
+   `reporter_iso3 == "CHN"` row anywhere, per the §2 finding that GACC
+   itself is unusable. This means CHN-involving corridors have only one
+   side of the mirror, permanently — there's nothing to reconcile them
+   against.
+
+**The mirror comparison is the headline result of this exercise.** Where
+both sides of a corridor exist (the six pairs among US/GBR/CHE/IND), only
+**63.4%** of corridor-months land within a 0.5×–2× band between reporter and
+partner. The rest split into two distinct failure modes, not one:
+
+- **Rounding to zero, not a real discrepancy.** `IND→USA` shows a ratio of
+  exactly 0 for many early months — e.g. Feb 2015: India reports $0,
+  the US reports $5,275 of imports from India that month. FTSPCC's
+  US$-million column is rounded to 2 decimals, so anything under roughly
+  $5,000/month reports as literal `0.00`. This is a resolution artifact of
+  the source, not evidence the flow didn't happen — worth remembering
+  before treating any India-reported near-zero month as a true zero.
+- **A genuine, unexplained mismatch.** `GBR→CHE` (Switzerland's reported
+  imports from the UK vs. the UK's reported exports to Switzerland) has a
+  median ratio near 1 but individual months are wildly off — December 2023:
+  CHE reports importing **$27.99M** of gold from the UK; the UK reports
+  exporting only **$13,608** to Switzerland that month. A **2,057×** gap,
+  nowhere near a rounding artifact. Several other months in the same
+  corridor show 300–900× gaps. This isn't explained by anything already in
+  this dossier (re-exports, recasting, warehousing) and is a genuinely open
+  question — candidate explanations include country-of-origin vs.
+  country-of-consignment attribution differences, or transit through a
+  third country that each side's customs system credits differently. Flagged
+  in §7 as unresolved rather than guessed at.
+
 ---
 
 ## 5. The EFP spread — core methodology
@@ -443,21 +508,33 @@ lives at monthly frequency; annual data erases it.
 6. **ETF vaulting location.** US 2025 ETF demand was 437 t (holdings 2,019 t),
    but ETF metal is mostly vaulted in *London*, not COMEX. Verify before
    claiming it doesn't justify the COMEX build.
-7. **India's bullion/jewellery export split is unverified.** DGCIS confirms
-   exports-by-destination exist at 8-digit HS detail, but it's unconfirmed
-   whether that detail cleanly separates 7108 bullion from 7113 jewellery.
-   India's gold exports are overwhelmingly jewellery, so conflating the two
-   would misrepresent the relocation/absorption signal on the IND↔USA,
-   IND↔GBR and IND↔CHN legs. Check the portal directly before using it.
-8. **USA↔GBR, USA↔CHN and USA↔IND legs pulled but not yet analysed.**
-   USA↔CHE is now cleaned and cross-checked (§4) — HS 7108+7115.90 combined
-   matches Swiss-Impex within ~15%. The same US Census pull already covers
-   USA's trade with GBR, CHN and IND (`data/processed/`), but those legs
-   haven't been examined for the tariff-episode window yet, and it's
-   unconfirmed whether GBR/CHN/IND-bound flows carry the same 7115.90
-   classification pattern as the CHE leg or whether that's CHE-specific
-   (plausibly tied to Swiss recasting). IND↔CHN can likely be skipped as
-   immaterial.
+7. **Resolved: India's export data is clean of 7113 jewellery, but excludes
+   7115 entirely.** Originally worried this might be a bullion/jewellery
+   conflation problem — it isn't. Cross-checking FTSPCC's "GOLD" bucket
+   against MEIDB's HS-code breakdown (§4) shows it's composed of
+   7108.12/7108.13 plus incidental 7118.90 coin, with no 7113 in it. The
+   real gap is different: **no HS 7115 at all**, and no way to reach it
+   through this site's commodity classification. India's series in the
+   bilateral panel is therefore under-scoped relative to US/GBR/CHE the
+   same way the pre-fix US pull was — just with no fix available.
+8. **Resolved: all four reporter pulls exist and are merged.** USA, GBR,
+   CHE and IND are all cleaned and combined into
+   `data/processed/bilateral_panel_2015_2026.csv` (§4). It's still
+   unconfirmed whether GBR/IND-bound flows carry the same 7115.90
+   classification pattern the CHE leg does (plausibly Swiss-recasting-
+   specific) — GBR does have real 7115 data (unlike IND) so this is
+   checkable; hasn't been done yet.
+9. **The GBR↔CHE mirror mismatch is unexplained.** Some months show
+   Switzerland's reported gold imports from the UK at 300–2,000× the UK's
+   reported gold exports to Switzerland (§4) — far beyond anything a
+   rounding artifact or normal mirror noise would produce. Not resolved by
+   anything else in this dossier. Needs its own investigation before either
+   side's GBR↔CHE figures are used with confidence.
+10. **Only 63.4% of reporter/partner corridor-months land within 0.5×–2×**
+    across the six US/GBR/CHE/IND pairs with both sides pulled (§4,
+    `mirror_comparison.csv`). That's a headline number in its own right —
+    worth deciding whether the paper reports it as a general data-quality
+    baseline, separate from the GBR↔CHE outlier specifically.
 
 ---
 
@@ -490,3 +567,13 @@ lives at monthly frequency; annual data erases it.
 | `analysis2.py` | Sourcing reconciliation, lead-lag, charts |
 | `analysis3.py` | Honest-chart rewrite, revised classifier, headline table |
 | `gold_flows.png` | Two-panel chart (gaps visible, interpolation dotted) |
+
+Primary-source pulls (all in `src/`, output to `data/processed/`, gitignored per the "data isn't committed" policy in `README.md`):
+
+| File | Contents |
+|---|---|
+| `clean_us_trade_data.py` | Cleans US Census raw pulls → `us_gold_trade_hs4_monthly.csv` |
+| `pull_clean_gbr_trade.py` | Pulls + cleans HMRC uktradeinfo API → `gbr_gold_trade_hs4_monthly.csv` |
+| `pull_clean_che_trade.py` | Streams + filters BAZG bulk open data → `che_gold_trade_hs4_monthly.csv` |
+| `pull_clean_ind_trade.py` | Pulls + cleans TradeStat FTSPCC → `ind_gold_trade_monthly.csv` |
+| `build_bilateral_panel.py` | Combines all four into `bilateral_panel_2015_2026.csv` + `mirror_comparison.csv` (§4) |
