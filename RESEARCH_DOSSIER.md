@@ -158,6 +158,46 @@ quarterly/half-year totals.
 Absorption bound uses ~115 t/yr typical US physical coin and bar consumption
 (Norman). There is no consumption story that explains a 12-year inventory.
 
+### Cross-check: US Census confirms the flow — but only under HS 7115.90
+
+The bilateral-matrix work (§2) meant pulling US Census's own import data for
+Switzerland (USA↔CHE, a mirror check on Swiss-Impex). The first pull, scoped
+to HS 7108 (non-monetary gold) only, came back **5–180× lower** than the
+Swiss-Impex-derived tonnage would imply — e.g. January 2025 showed ~$575M of
+US imports from Switzerland against an expected ~$17.2B from 192.9 t at
+spot. UK and China import values for the same months were negligible too, so
+the missing value wasn't hiding under a neighboring partner country.
+
+The cause: most of the tariff-episode flow was classified under **HS
+7115.90 ("other articles of precious metal")**, not 7108. Re-pulling with
+7115.90 included brings every spot-checked month back within ~15% of the
+Swiss-Impex figures:
+
+| Month | Swiss-Impex tonnage | Expected value at spot | US Census actual (7108+7115) | Ratio |
+|---|---|---|---|---|
+| Dec 2024 | 64.2 t | $5.45B | $7.49B | 1.37× |
+| Jan 2025 | 192.9 t | $17.21B | $19.48B | 1.13× |
+| Feb 2025 | 152.8 t | $14.05B | $16.12B | 1.15× |
+| Mar 2025 | 103.3 t | $9.91B | $10.71B | 1.08× |
+| Apr 2025 | 12.7 t | $1.35B | $1.20B | 0.89× |
+| Jul 2025 | 51.0 t | $5.49B | $6.08B | 1.11× |
+
+This is worth more than a data-cleaning footnote: it's an independent,
+primary-source confirmation of the headline decomposition above, from a
+completely different reporting country and agency than the Swiss-Impex
+figures the rest of this dossier leans on. It's also a concrete instance of
+the "form" layer in the EFP model (§5) — bars recast or re-marked for COMEX
+delivery evidently get classified differently in US customs data than
+standard unwrought bullion, which is exactly the kind of transformation this
+project's taxonomy (§1) is built to catch. **Any future US-side pull for
+this project must include HS 7115.90 alongside 7108, or it will
+systematically undercount the relocation-heavy months.**
+
+Source data: `data/raw/us_census/US_import.xlsx` (+ domestic/foreign export
+equivalents), cleaned by `src/clean_us_trade_data.py` into
+`data/processed/us_gold_trade_hs4_monthly.csv` (gitignored, reproducible
+from the script).
+
 ### The unexpected finding: a sourcing gap
 
 Switzerland and London together do **not** account for the COMEX build.
@@ -336,7 +376,7 @@ $1.10, then negative as metal flew back. Cheap robustness section.
 |---|---|---|
 | Swiss gold trade by partner, monthly, kg | Swiss-Impex (Federal Office for Customs) | free |
 | UK gold trade, HS 7108, by partner | HMRC uktradeinfo API | free |
-| US gold trade, HS 7108, by partner | US Census `intltrade` API; USGS monthly | free (API key) |
+| US gold trade, HS 7108 **and 7115.90**, by partner | US Census `intltrade` API; USGS monthly | free (API key) |
 | India gold trade, HS 7108, imports by origin and exports by destination | DGCIS FTDDP portal | free |
 | China gold trade by partner | not GACC — use USA/GBR/IND's own mirror reporting of their trade with China instead | free (piggybacks on the above) |
 | COMEX warehouse stocks, daily | CME (registered + eligible separately) | free |
@@ -409,10 +449,15 @@ lives at monthly frequency; annual data erases it.
    India's gold exports are overwhelmingly jewellery, so conflating the two
    would misrepresent the relocation/absorption signal on the IND↔USA,
    IND↔GBR and IND↔CHN legs. Check the portal directly before using it.
-8. **USA↔GBR, USA↔CHN and USA↔IND legs not yet pulled.** These are the
-   highest-priority of the 16 non-Swiss bilateral flows (§2) and the only
-   ones needed to test whether tariff-episode metal moved US-bound outside
-   the Swiss corridor. IND↔CHN can likely be skipped as immaterial.
+8. **USA↔GBR, USA↔CHN and USA↔IND legs pulled but not yet analysed.**
+   USA↔CHE is now cleaned and cross-checked (§4) — HS 7108+7115.90 combined
+   matches Swiss-Impex within ~15%. The same US Census pull already covers
+   USA's trade with GBR, CHN and IND (`data/processed/`), but those legs
+   haven't been examined for the tariff-episode window yet, and it's
+   unconfirmed whether GBR/CHN/IND-bound flows carry the same 7115.90
+   classification pattern as the CHE leg or whether that's CHE-specific
+   (plausibly tied to Swiss recasting). IND↔CHN can likely be skipped as
+   immaterial.
 
 ---
 
