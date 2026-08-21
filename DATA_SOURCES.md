@@ -264,14 +264,30 @@ Get exact dates from primary sources, not news summaries.
 |---|---|---|
 | US election | 5 Nov 2024 | — |
 | EFP spread opens >$50 | mid-Dec 2024 | your own constructed series |
-| Tariff exemption for gold | Apr 2025 | Federal Register; USTR |
-| CBP ruling: 1kg/100oz bars tariffable | 31 Jul / 8 Aug 2025 | **CBP rulings database (CROSS)** |
-| White House clarification / EO | Aug 2025 | Federal Register; whitehouse.gov |
+| Tariff exemption for gold | 7 Apr 2025 | **Confirmed**: Federal Register doc `2025-06063`, EO 14257, "Regulating Imports With a Reciprocal Tariff..." — gold's exemption is in Annex II, which isn't full-text searchable (see below) |
+| CBP ruling: 1kg/100oz bars tariffable | 31 Jul 2025 | **Confirmed**: CBP CROSS ruling `N351466`, "The tariff classification of cast gold bars from Switzerland" |
+| White House clarification / EO | Aug 2025 | Federal Register; whitehouse.gov — not yet pinned to a specific document |
 | India import duty cut 15%→6% | Jul 2024 | CBIC notification |
 
-**CBP CROSS** (`rulings.cbp.gov`) is the authoritative source for the bar
-classification ruling and is free-text searchable. Worth citing directly
-rather than via press coverage.
+**CBP CROSS** (`rulings.cbp.gov/api/search`) has a real, free, no-key JSON
+search API — confirmed working, `src/pull_event_dates.py` pulls it.
+Searching "gold bar" surfaces the full classification history (50 rulings,
+1989–2025): the same bar category has swung between HS 7108.13 and
+7115.90.05xx multiple times over 26 years, with "cast" vs. "minted"
+manufacturing-process language as the deciding factor, not bar size or
+purity — see `RESEARCH_DOSSIER.md` §4 for the full writeup, since this
+turns out to explain part of the 7108/7115 split found in the US/UK/CHE
+pulls.
+
+**Federal Register API** (`federalregister.gov/api/v1`) is also free/no-key
+and confirmed working, but **generic term search doesn't find this event**:
+searching "gold", "gold bullion", "non-monetary gold", and the literal HTS
+code `7108.12` all return zero or irrelevant results, because the actual
+exemption is a line in an EO's Annex II product-exclusion table, not body
+text. What worked: searching the phrase "reciprocal tariffs" and picking
+the master EO out by date. `src/pull_event_dates.py` fetches full metadata
+for the specific document numbers found this way rather than re-deriving
+them by search each time.
 
 ---
 
