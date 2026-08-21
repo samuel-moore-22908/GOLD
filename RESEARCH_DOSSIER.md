@@ -314,6 +314,71 @@ partner. The rest split into two distinct failure modes, not one:
   third country that each side's customs system credits differently. Flagged
   in §7 as unresolved rather than guessed at.
 
+  **Correction to the above:** the mismatch is *not* one-directional. An
+  earlier pass through this data checked only the worst outliers sorted one
+  way and concluded CHE's figure was always the larger one — false. Checking
+  both tails of `mirror_comparison.csv` for GBR↔CHE finds **42 months where
+  GBR's figure is far bigger than CHE's, and 22 where the reverse holds** —
+  it swings both directions month to month, which looks more like a
+  reporting-timing mismatch (the same shipment landing in different customs
+  months on each side) than a one-sided under-declaration.
+
+### BACI reconciliation and the balanced panel
+
+CEPII's BACI database (`data/raw/baci/BACI_HS17_V202501.zip`, ~691MB, no
+auth) publishes one *reconciled* value per exporter–importer–product–year,
+built from both sides' raw declarations. It only covers 2017–2023 (HS17
+vintage) — missing 2015–16 and, critically, the whole 2024–26 tariff episode
+— so it can't validate the dossier's headline numbers directly. But
+comparing BACI's reconciled GBR↔CHE gold tonnage against each side's own
+annual totals for the years it does cover shows a consistent pattern:
+
+| Year | GBR→CHE: GBR's own | CHE's own | **BACI** | CHE→GBR: CHE's own | GBR's own | **BACI** |
+|---|---|---|---|---|---|---|
+| 2017 | 302.6 | 318.7 | **318.0** | 106.9 | 101.5 | **101.8** |
+| 2018 | 447.5 | 447.7 | **447.2** | 12.8 | 12.2 | **18.3** |
+| 2019 | 131.0 | 141.5 | **271.1** ⚠️ | 385.7 | 393.7 | **80.5** ⚠️ |
+| 2020 | 197.0 | 189.6 | **386.0** ⚠️ | 132.6 | 128.9 | **129.0** |
+| 2021 | 556.5 | 534.8 | **534.7** | 78.7 | 70.8 | **69.8** |
+| 2022 | 483.2 | 48.6 | **48.5** | 55.0 | 55.4 | **51.9** |
+| 2023 | 470.2 | 41.9 | **41.9** | 74.5 | 59.2 | **54.3** |
+
+BACI's reconciled figure lands close to whichever country is the
+**importer** in that direction in 5 of 7 years each way — CHE's figure for
+GBR→CHE (CHE imports), GBR's figure for CHE→GBR (GBR imports). This matches
+the standard trade-statistics convention that import declarations are
+generally more reliable than export declarations (duty/scrutiny incentives
+exports don't carry). **2019 is the exception in both directions** — BACI
+diverges sharply from *both* raw reporters that year, so it's flagged, not
+trusted as a tiebreaker there.
+
+**`src/build_balanced_panel.py`** turns this into a general rule applied to
+the whole panel, producing `data/processed/bilateral_panel_balanced.csv`
+(5,427 rows, down from 9,695 — each two-sided corridor-month collapses from
+two disagreeing rows to one). The heuristics, in order of how much evidence
+backs them:
+
+1. **Trust the importer.** Where both sides of a corridor-month exist, keep
+   the importer's row, drop the exporter's. *Validated* only on GBR↔CHE,
+   2017–2023 (277 rows) — everywhere else this rule is applied it's an
+   **extrapolation** from a single corridor, not a second confirmed result
+   (3,255 rows tagged `extrapolated-importer-rule`).
+2. **Flag, don't trust, 2019 for GBR↔CHE** (45 rows tagged
+   `baci-anomalous-year`) — the one case where BACI itself disagreed with
+   both raw reporters.
+3. **No balancing where no mirror exists.** Every CHN-involving row (1,850
+   rows, `unbalanced-single-source`) is the only data available for that
+   physical direction, since CHN never reports — kept as-is, trust
+   unavoidably lower, unchanged by this exercise.
+4. **India's scope caveat survives balancing.** Rule 1 doesn't fix IND's
+   missing-7115 gap (§2) — a "balanced" IND corridor-month is still
+   under-scoped relative to a balanced USA/GBR/CHE one.
+
+**This is a best-available-default panel, not a verified one.** The
+importer-trust rule rests on one corridor's seven years of evidence: use
+`balance_method` to see exactly how much confidence backs any given row
+before leaning on it.
+
 ---
 
 ## 5. The EFP spread — core methodology
@@ -596,3 +661,5 @@ Primary-source pulls (all in `src/`, output to `data/processed/`, gitignored per
 | `pull_clean_che_trade.py` | Streams + filters BAZG bulk open data → `che_gold_trade_hs4_monthly.csv` |
 | `pull_clean_ind_trade.py` | Pulls + cleans TradeStat FTSPCC → `ind_gold_trade_monthly.csv` |
 | `build_bilateral_panel.py` | Combines all four into `bilateral_panel_2015_2026.csv` + `mirror_comparison.csv` (§4) |
+| `build_balanced_panel.py` | Applies BACI-derived importer-trust heuristics → `bilateral_panel_balanced.csv` (§4) |
+| `pull_build_efp_series.py` | Pulls LBMA/GC=F/SOFR-DFF, computes the §5 implied-rate EFP proxy → `efp_dislocation_daily.csv` |
