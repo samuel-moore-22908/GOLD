@@ -695,3 +695,4 @@ Primary-source pulls (all in `src/`, output to `data/processed/`, gitignored per
 | `pull_event_dates.py` | Pulls the reciprocal-tariff EO + CBP gold-bar ruling history → `federal_register_events.csv`, `cbp_gold_bar_rulings.csv` |
 | `pull_usgs_gold_series.py` | Pulls USGS Monthly Mineral Industry Surveys → `usgs_gold_monthly.csv` (production, price, import/export totals) |
 | `pull_usgs_historical.py` | Pulls USGS Data Series 140 (1900–2022) and Minerals Yearbook world production by country (2002–2022) |
+| `extend_usgs_production_series.py` | Splices Mineral Commodity Summaries onto the Minerals Yearbook series → country production through ~2025 for CHN/USA (not IND/GBR/CHE — too small to be named in MCS) |
