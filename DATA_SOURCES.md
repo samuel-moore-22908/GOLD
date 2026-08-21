@@ -130,6 +130,16 @@ hazards listed in `RESEARCH_DOSSIER.md` §6.
 **Prefer BACI or Growth Lab over raw Comtrade.** Raw mirror gaps for gold run
 to two-thirds of the flow in some corridors.
 
+**BACI access, confirmed working:** direct zip download, no auth —
+`www.cepii.fr/DATA_DOWNLOAD/baci/data/BACI_HS17_V202501.zip` (~691MB; one
+zip per HS revision — HS17 covers 2017–2023 only, so it won't reach
+2015–16 or 2024–26). Inside: one CSV per year (`t,i,j,k,v,q` — year,
+exporter code, importer code, HS6 product, **value in thousand USD**,
+**quantity in metric tons**), plus `country_codes` and `product_codes`
+lookups. Used in `src/build_balanced_panel.py` to derive an
+importer-trust reconciliation heuristic for the bilateral panel — see
+`RESEARCH_DOSSIER.md` §4.
+
 ### HS code reference
 
 | Code | Covers | Include? |
