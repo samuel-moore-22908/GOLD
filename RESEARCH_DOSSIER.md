@@ -524,12 +524,31 @@ lives at monthly frequency; annual data erases it.
    classification pattern the CHE leg does (plausibly Swiss-recasting-
    specific) — GBR does have real 7115 data (unlike IND) so this is
    checkable; hasn't been done yet.
-9. **The GBR↔CHE mirror mismatch is unexplained.** Some months show
-   Switzerland's reported gold imports from the UK at 300–2,000× the UK's
-   reported gold exports to Switzerland (§4) — far beyond anything a
-   rounding artifact or normal mirror noise would produce. Not resolved by
-   anything else in this dossier. Needs its own investigation before either
-   side's GBR↔CHE figures are used with confidence.
+9. **The GBR↔CHE mirror mismatch is a genuine mass discrepancy, concentrated
+   in one CN8 code, currency/units ruled out.** Traced to HS 7108.13
+   (semi-manufactured bars): GBR reports importing 2,028,308 kg from
+   Switzerland over the sample; CHE reports exporting only 81,575 kg to the
+   UK for the matching code — a **25× gap in claimed mass**, not just
+   value. Confirmed this isn't a currency or scaling bug: computing implied
+   $/oz independently on each side gives a plausible gold price for both
+   (~£1,728/oz GBR-implied, ~$824/oz CHE-implied — low but explicable as a
+   2002–2026-weighted average skewed toward cheaper early years). Both
+   sides are internally self-consistent; they disagree on the underlying
+   quantity itself. 46% of GBR→CHE corridor-months fall outside a 0.5×–2×
+   band, one-directionally (CHE's claimed import is always the larger
+   figure, never the reverse), spanning 2016–2023 — a persistent pattern,
+   not a one-off. Leading hypothesis, unconfirmed: this parallels the
+   re-warranting mechanism in §4 — London↔Zurich vault-to-vault or
+   unallocated-account gold transfers may not always trigger a full UK
+   export declaration the way Switzerland's import-side capture does.
+   **Not something a data-cleaning fix can resolve** — it's a discrepancy
+   between two governments' published statistics, not a pipeline bug.
+   Two concrete next steps that could narrow it down (neither attempted
+   yet): (a) pull GBR's exports of 7108.13 to *all* countries, not just
+   the four in this project, to test whether the "missing" mass shows up
+   misattributed to a different partner country; (b) check whether BACI
+   (CEPII)'s reconciled build already has a resolved figure for this
+   corridor that could serve as a tiebreaker.
 10. **Only 63.4% of reporter/partner corridor-months land within 0.5×–2×**
     across the six US/GBR/CHE/IND pairs with both sides pulled (§4,
     `mirror_comparison.csv`). That's a headline number in its own right —
