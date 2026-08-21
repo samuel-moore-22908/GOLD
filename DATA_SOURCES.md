@@ -29,13 +29,15 @@ Do these in order. After #3 you have a working paper; the rest is depth.
 **Use these over Comtrade.** They're monthly, they're in mass units, and they
 handle re-exports better. Comtrade is a fallback, not a first choice.
 
-### A1. Switzerland — Swiss-Impex ★ critical
-- **Gives:** monthly gold trade by partner country, in kg and CHF
-- **Coverage:** country-level gold detail from 2012
-- **Access:** `gate.bazg.admin.ch/swissimpex/` — Federal Office for Customs and Border Security (BAZG/OFDF)
-- **Cost:** free; registration for bulk export
-- **Why it matters:** most of the world's gold passes through Swiss refineries, so this is the single best gold flow dataset in existence
-- **Gotchas:** clunky query interface, easier to script than to click; no country-level gold detail before 2012; watch the HS 7108 subheading split
+### A1. Switzerland — BAZG open data ★ critical — confirmed working, better than the interactive portal
+- **Gives:** monthly gold trade by partner country, in kg and CHF/EUR/USD
+- **Coverage:** confirmed live back to 2002 for the general bulk files (see below); the interactive Swiss-Impex tool's own country-level gold detail starts 2012
+- **Access, confirmed working, no auth:** `opendata.swiss` → search "Aussenhandelsstatistik" for BAZG's own products. Two tiers:
+  - A gold-only **import** CSV, 2021–, small (`waren-aussenhandel-goldimporte-nach-landern`) — good for a quick check, but import-only.
+  - The **general bulk files** — `waren-aussenhandel-nach-tarifnummer-land` — one ~580–690MB zipped CSV each for imports and exports, every tariff code, every country, monthly since 2002. No standalone gold-only *export* product exists, so this is the only way to get Switzerland's export side (the CH→US series this whole project centers on) from open data. `src/pull_clean_che_trade.py` streams both zips directly (never extracts the ~8.5GB CSVs to disk) and filters to HS 7108/7115 for the four bilateral-matrix partners.
+- **Cost:** free, no registration, no rate limit encountered (static S3/CloudFront files)
+- **The old "clunky query interface" note (Swiss-Impex proper, at `www.swiss-impex.admin.ch`) still applies if you need it** — it's a CloudFront-fronted AWS QuickSight-embedded SPA that 403s a bare `curl` (needs a browser User-Agent to even load), and the actual query/export mechanism wasn't reverse-engineered since the open-data bulk files made it unnecessary.
+- **Gotchas:** the domain `gate.bazg.admin.ch` referenced in earlier notes here does not resolve — use `www.swiss-impex.admin.ch` (interactive) or `opendata.swiss` (bulk, recommended) instead. Watch the HS 7108 subheading split; BAZG's own USD conversion is provided directly (`Value_USD` field), no FX math needed.
 
 ### A2. United Kingdom — HMRC uktradeinfo ★ critical
 - **Gives:** monthly HS 7108 imports/exports by partner
@@ -55,11 +57,13 @@ handle re-exports better. Comtrade is a fallback, not a first choice.
 - **Cost:** free
 - **Why it matters:** the standard workaround for China's opacity, and one of very few sources that splits re-exports out properly
 
-### A5. India — DGCIS / Ministry of Commerce ★ critical
-- **Gives:** monthly gold imports by origin **and exports by destination** — confirmed via the Foreign Trade Data Dissemination Portal (`ftddp.dgciskol.gov.in`), specifically its "Data Query By Principal Commodity" tool, which supports both import and export queries by commodity and partner country at 8-digit HS level, monthly. (Earlier notes here only documented the import side; the export side is what supplies India's leg of the bilateral matrix — IND→USA, IND→GBR, IND→CHN, IND→CHE.)
-- **Access:** `ftddp.dgciskol.gov.in`; also `commerce.gov.in` → Tradestat / Export Import Data Bank; RBI bulletins for cross-checks
-- **Cost:** free
-- **Gotchas:** duty-change-driven spikes (the July 2024 cut from 15% to 6% is a natural experiment worth its own event dummy); large informal inflows via Nepal/Bangladesh/Myanmar are invisible here. **Unverified and important:** whether DGCIS's 8-digit codes cleanly separate bullion (7108) from gold jewellery (7113) on the export side. India's gold exports are overwhelmingly jewellery, not bullion, so conflating the two would misread the relocation/absorption signal — check the portal's code list directly before using the export series
+### A5. India — TradeStat FTSPCC (Ministry of Commerce) ★ critical — confirmed working, but scope-limited
+- **Gives:** monthly gold exports/imports by partner country — but only via a predefined **"GOLD" commodity bucket** (code `G6`), not a raw HS code. Confirmed by cross-referencing MEIDB's HS-code-level breakdown (§ below) that this bucket = HS 7108.12/7108.13 plus incidental HS 7118.90 (coin) — **it excludes HS 7115 entirely**, with no way to reach it through this site's classification. Not scope-comparable to the US/UK/CHE pulls, which do include 7115.90.
+- **Access, confirmed working:** `tradestat.commerce.gov.in/ftspcc/{export,import}_commodity_xcountry_wise_monthly` — "Commodity x Country wise (Monthly)". Despite `wire:model` attributes suggesting a Laravel Livewire app, the form submits as an ordinary POST and returns a server-rendered HTML results table; `src/pull_clean_ind_trade.py` automates this directly (session cookie + CSRF token refreshed per request, one request per country×flow covers the *entire* date range in one shot — no pagination needed).
+  - `ftddp.dgciskol.gov.in` (the FTDDP portal referenced in earlier notes here) requires a login (`ng-app="dgcisLogin"`) — not pursued.
+  - The site has three other products (**EIDB** = annual, **MEIDB** = monthly but no clean commodity×country cross-tab in one query, **FTPA** = annual rankings/analytics only) — FTSPCC is the only one with both a monthly date range *and* a combined commodity+country filter. MEIDB's "Country-wise Principal commodity wise all HSCode" report is the one place true 8-digit HS detail is reachable, but it only returns a single target month + same-month-prior-year per query, no date range — useful as a one-off cross-check (which is how the 7115 exclusion was confirmed), impractical for a full time series.
+- **Cost:** free, no registration, no rate limit encountered
+- **Gotchas:** duty-change-driven spikes (the July 2024 cut from 15% to 6% is a natural experiment worth its own event dummy); large informal inflows via Nepal/Bangladesh/Myanmar are invisible here. No quantity/mass field despite the results page labelling itself "UNIT: KGS" — value only (US$ Million and Rs. Crore).
 
 ### A6. China — GACC ✗ not a usable direct source
 - **Gives:** customs headline data; detailed gold import totals only since ~2017 (1,270 t 2017, 1,506 t 2018), and even those years lack reliable **partner-country** breakdowns
@@ -74,37 +78,41 @@ handle re-exports better. Comtrade is a fallback, not a first choice.
 | UAE | Federal Competitiveness and Statistics Centre | historically poor gold reporting; see §G2 |
 | Turkey | TÜİK, plus Borsa Istanbul import figures | dual role: consumer market *and* transit |
 
-### A8. The bilateral coverage matrix (USA, GBR, CHE, IND, CHN)
+### A8. The bilateral coverage matrix (USA, GBR, CHE, IND, CHN) — build complete
 
-Five countries × four partners each = 20 reporter-partner series. Swiss-Impex
-(A1) supplies the 4 reported from CHE's side. The other 16 come from A2, A3
-and A5 above — each already gives full partner detail for its own country's
-trade, so no separate pull is needed per corridor, just per reporting
-country:
+Five countries × four partners each = 20 reporter-partner series. All four
+pullable sides (USA, GBR, CHE, IND) are done — `src/clean_us_trade_data.py`,
+`src/pull_clean_gbr_trade.py`, `src/pull_clean_che_trade.py`,
+`src/pull_clean_ind_trade.py` — and `src/build_bilateral_panel.py` combines
+them into `data/processed/bilateral_panel_2015_2026.csv`. CHN has no
+reported side by design (GACC unusable — see A6); its legs exist only as
+the *partner* column in the other four countries' rows.
 
 | Reporting country | Partner legs it covers | Source |
 |---|---|---|
-| CHE | ↔USA, ↔GBR, ↔IND, ↔CHN | A1 Swiss-Impex |
+| CHE | ↔USA, ↔GBR, ↔IND, ↔CHN | A1 BAZG open data |
 | USA | ↔GBR, ↔IND, ↔CHN, ↔CHE | A3 US Census |
 | GBR | ↔USA, ↔IND, ↔CHN, ↔CHE | A2 HMRC uktradeinfo |
-| IND | ↔USA, ↔GBR, ↔CHN, ↔CHE | A5 DGCIS (imports **and** exports) |
-| CHN | ↔USA, ↔GBR, ↔IND, ↔CHE | *no direct CHN source* — read off the USA/GBR/IND rows above instead; CHN↔CHE from A1 |
+| IND | ↔USA, ↔GBR, ↔CHN, ↔CHE | A5 TradeStat FTSPCC — **scope caveat: excludes HS 7115** |
+| CHN | ↔USA, ↔GBR, ↔IND, ↔CHE | *no direct CHN source* — read off the USA/GBR/IND/CHE rows instead |
 
-**Priority triage** — not all 16 are worth equal effort:
-- **High priority:** USA↔GBR, USA↔CHN, USA↔IND. UK is an independent bullion
-  hub, not just a Swiss pass-through; the US-China and US-India legs test
-  whether tariff-episode metal moved US-bound outside the Swiss corridor.
-- **Low priority / likely skippable:** IND↔CHN — both are import-restricted
-  demand sinks with little reason to trade bullion bilaterally, expect
-  near-zero values.
-- **Secondary:** GBR↔CHN, GBR↔IND — worth a light pull, not a priority build.
-- The four USA/GBR/IND/CHN legs with CHE are useful **mirror checks** on
-  Swiss-Impex (reporter vs. partner discrepancies are common — see §G2) but
-  rank below the CHE-side data already in hand.
+**Building the panel required harmonizing four mismatched schemas** —
+currency (GBR is natively GBP, converted via FRED's `DEXUSUK`), flow
+granularity (US splits domestic/re-export, the other three don't), HS scope
+(IND has none at all), and quantity availability (only GBR/CHE have
+`net_mass_kg`). Full writeup in `RESEARCH_DOSSIER.md` §4, "Building the
+bilateral panel: what didn't line up."
 
-No HS-7108-specific reporter/partner discrepancy magnitude was found for any
-of these six non-Swiss pairs specifically — treat that as an open question,
-not as evidence the mirrors will agree.
+**The mirror-discrepancy question now has a real answer**, in
+`data/processed/mirror_comparison.csv`: across the six pairs where both
+reporter and partner data exist, only **63.4%** of corridor-months land
+within a 0.5×–2× band. Two distinct causes, not one — India rounds small
+values to literal `$0` (FTSPCC's US$-million column is 2-decimal, so
+anything under ~$5,000/month reports as zero, not evidence of no flow), and
+a separate, unexplained mismatch on GBR↔CHE specifically, where individual
+months show Switzerland's reported imports from the UK at 300–2,000× the
+UK's reported exports to Switzerland. That second one is a genuinely open
+question — see `RESEARCH_DOSSIER.md` §7.
 
 ---
 
@@ -175,6 +183,7 @@ you extend the country set.
 | COMEX daily settlements | `cmegroup.com` | all contract months |
 | **CME Spot Spreads** | `cmegroup.com` | exchange-listed futures-vs-OTC basis — check open interest before relying on it |
 | SOFR | FRED (`fred.stlouisfed.org`, series `SOFR`) | for the carry calculation |
+| GBP/USD | FRED, series `DEXUSUK` — CSV pull confirmed working, no key | used to convert the GBR trade pull to USD in `build_bilateral_panel.py`; full daily coverage 2015–2026, aggregated to monthly average |
 | USD rates, storage proxies | FRED | |
 
 ### D2. Bloomberg
