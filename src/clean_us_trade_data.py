@@ -42,6 +42,7 @@ def load_one(flow, path, sheet, value_col):
     d["date"] = pd.to_datetime(
         dict(year=d["Year"].astype(int), month=d["Month"].astype(int), day=1)
     )
+    d["reporter_iso3"] = "USA"
     d["country"] = d["Country"]
     d["country_iso3"] = d["country"].map(ISO3)
     # HTS/Schedule B codes are reported at varying granularity across pulls
@@ -54,7 +55,7 @@ def load_one(flow, path, sheet, value_col):
     d["value_usd"] = d[value_col].astype("int64")
     d["flow"] = flow
 
-    return d[["date", "country", "country_iso3", "flow", "hs4", "value_usd"]]
+    return d[["date", "reporter_iso3", "country", "country_iso3", "flow", "hs4", "value_usd"]]
 
 
 def main():
@@ -69,7 +70,7 @@ def main():
     # added after most of the Nov 2024-Apr 2025 US-Switzerland tariff-episode
     # flow turned out to be classified there rather than under 7108.
     hs4 = (
-        raw.groupby(["date", "country", "country_iso3", "flow", "hs4"], as_index=False)
+        raw.groupby(["date", "reporter_iso3", "country", "country_iso3", "flow", "hs4"], as_index=False)
         ["value_usd"].sum()
     )
     hs4["quality"] = "reported"
@@ -79,7 +80,7 @@ def main():
     # convention in exploratory/gold_raw_data.csv.
     exports = hs4[hs4["flow"].isin(["export_domestic", "export_reexport"])]
     total = (
-        exports.groupby(["date", "country", "country_iso3", "hs4"], as_index=False)
+        exports.groupby(["date", "reporter_iso3", "country", "country_iso3", "hs4"], as_index=False)
         ["value_usd"].sum()
     )
     total["flow"] = "export_total"
@@ -95,7 +96,7 @@ def main():
     )
 
     out = out.sort_values(["country", "flow", "date"]).reset_index(drop=True)
-    out = out[["date", "country", "country_iso3", "flow", "hs4", "value_usd", "unit", "quality", "source", "note"]]
+    out = out[["date", "reporter_iso3", "country", "country_iso3", "flow", "hs4", "value_usd", "unit", "quality", "source", "note"]]
     out.to_csv(OUT, index=False)
     print(f"Wrote {len(out)} rows to {OUT}")
     print(out.groupby(["country", "flow"])["value_usd"].agg(["count", "sum"]))
