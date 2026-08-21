@@ -198,6 +198,34 @@ equivalents), cleaned by `src/clean_us_trade_data.py` into
 `data/processed/us_gold_trade_hs4_monthly.csv` (gitignored, reproducible
 from the script).
 
+**Why bars split across 7108/7115 now has a legal basis, not just an
+empirical pattern.** `src/pull_event_dates.py` pulls CBP's CROSS rulings
+database (`rulings.cbp.gov`, free, real JSON API — `data/processed/
+cbp_gold_bar_rulings.csv`, 50 rulings back to 1989). The classification of
+investment-grade gold bars has swung between headings for decades, and the
+deciding factor is manufacturing process language, not physical form:
+
+- **1999** (`D89806`): "minted gold bars" from Switzerland → **7108.13**
+- **2002** (`965535`): that ruling **revoked**, reclassified → **7115.90.05**
+- **2012–2017**: consistent run of "minted"/"gold and silver bars" rulings
+  → **7115.90.05xx**
+- **2025-07-31** (`N351466`, the ruling `DATA_SOURCES.md` §F already cites):
+  PAMP's "Gold Kilo Bullion Bar" and "100 Oz Bullion Bar" — the actual
+  COMEX-delivery standard bars — ruled into **7108.13.5500**, specifically
+  because Chapter 71 Additional U.S. Note 1(a) excludes **cast** bars that
+  have been stamped/lasered with identifying marks (logo, weight, fineness,
+  QR code, serial number — i.e. essentially every branded bar) from the
+  "unwrought" 7108.12 heading. The importer argued for 7108.12; CBP said no.
+
+**"Cast" vs. "minted" is the operative distinction**, not gold content or
+bar size — the same physical product category has been classified three
+different ways across 26 years depending on how the manufacturing process
+was described in the ruling request. This is a real, CBP-documented reason
+the 2024–25 tariff-episode flow concentrated in 7115.90 in the US/UK/CHE
+pulls: it's consistent with the classification regime that held from 2002
+through at least 2017, before the July 2025 ruling's "cast" language moved
+(at least PAMP's) standard bars back to 7108.13.
+
 ### The unexpected finding: a sourcing gap
 
 Switzerland and London together do **not** account for the COMEX build.
@@ -663,3 +691,5 @@ Primary-source pulls (all in `src/`, output to `data/processed/`, gitignored per
 | `build_bilateral_panel.py` | Combines all four into `bilateral_panel_2015_2026.csv` + `mirror_comparison.csv` (§4) |
 | `build_balanced_panel.py` | Applies BACI-derived importer-trust heuristics → `bilateral_panel_balanced.csv` (§4) |
 | `pull_build_efp_series.py` | Pulls LBMA/GC=F/SOFR-DFF, computes the §5 implied-rate EFP proxy → `efp_dislocation_daily.csv` |
+| `pull_comex_warehouse_stocks.py` | Reconstructs the COMEX stocks series from Wayback Machine snapshots (§7 #1) → `comex_gold_stocks_daily.csv` |
+| `pull_event_dates.py` | Pulls the reciprocal-tariff EO + CBP gold-bar ruling history → `federal_register_events.csv`, `cbp_gold_bar_rulings.csv` |
