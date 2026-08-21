@@ -693,3 +693,4 @@ Primary-source pulls (all in `src/`, output to `data/processed/`, gitignored per
 | `pull_build_efp_series.py` | Pulls LBMA/GC=F/SOFR-DFF, computes the §5 implied-rate EFP proxy → `efp_dislocation_daily.csv` |
 | `pull_comex_warehouse_stocks.py` | Reconstructs the COMEX stocks series from Wayback Machine snapshots (§7 #1) → `comex_gold_stocks_daily.csv` |
 | `pull_event_dates.py` | Pulls the reciprocal-tariff EO + CBP gold-bar ruling history → `federal_register_events.csv`, `cbp_gold_bar_rulings.csv` |
+| `pull_usgs_gold_series.py` | Pulls USGS Monthly Mineral Industry Surveys → `usgs_gold_monthly.csv` (production, price, import/export totals) |

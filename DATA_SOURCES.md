@@ -231,12 +231,13 @@ Excel/Python for the paper, so you control roll convention and timestamps.
 - **Access:** `data.imf.org`
 - **Note:** use this for the monetary gold term that trade data omits by construction
 
-### E3. USGS ★ free and deep
+### E3. USGS ★ free and deep — confirmed working
 - **Minerals Yearbook** — annual gold production and refinery data by country
 - **Data Series 140** (historical statistics for mineral commodities) — production by country back to ~1900
-- **Mineral Commodity Summaries** — annual headline
-- **Monthly Mineral Industry Surveys** — gold-specific US detail
-- **Access:** `usgs.gov` → National Minerals Information Center
+- **Mineral Commodity Summaries** — annual headline; confirmed live PDF archive back to 1996 at predictable URLs (`.../mineral-pubs/gold/mcs-2025-gold.pdf`, naming varies slightly pre-2008)
+- **Monthly Mineral Industry Surveys (MIS)** — gold-specific US detail: mine production by state, gold price (Engelhard/S&P Global Platts Metals Week — an independent cross-check on the LBMA fix), and US imports/exports (USGS's own restatement of Census data, but with **quantity in kg**, which the direct US Census pull lacks). `src/pull_usgs_gold_series.py` pulls and parses this into `data/processed/usgs_gold_monthly.csv`.
+- **Access:** `usgs.gov/centers/national-minerals-information-center/gold-statistics-and-information` needs a browser User-Agent (403 without one, same pattern as BAZG's CloudFront check) — but the actual files sit on an unprotected public S3 bucket at a predictable path: `d9-wret.s3.us-west-2.amazonaws.com/assets/palladium/production/s3fs-public/media/files/mis-{YYYYMM}-gold.xlsx` ("palladium" is just USGS's S3 bucket naming, not a commodity filter — same path serves gold fine)
+- **Gotchas:** MIS xlsx confirmed live back to 2022-01 at this path (each month's file also restates the full prior calendar year, so pulling from 2022-01 onward gives 2021+ coverage); 2021 and earlier 403 at this exact path, not investigated further. USGS's per-country import/export breakdown is only published for the most-recent month in each file — the pull script extracts monthly totals only, not the full category/country detail.
 
 ### E4. British Geological Survey
 - **World Mineral Statistics** — production back to 1913
