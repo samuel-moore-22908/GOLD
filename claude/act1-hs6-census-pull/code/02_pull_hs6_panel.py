@@ -55,8 +55,8 @@ MANIFEST = OUT / "manifest.csv"
 API = "https://api.census.gov/data/timeseries/intltrade/{flow}/hs"
 KEY = os.environ.get("CENSUS_API_KEY", "")
 
-START, END = "2022-01", "2026-05"
-CHAPTERS = [f"{c:02d}" for c in range(1, 100)]
+# The window and the chapter list live in 01b_build_worklist.py, which is the
+# single source of truth for the plan. This script only executes it.
 
 # Set from the probe report. One of:
 #   "explicit_list"    I_COMMODITY=<comma-separated HS6 codes for the chapter>
@@ -85,25 +85,14 @@ GOLD_EXPORT = UNIVERSE_EXPORT + [
 CODE_VAR = {"imports": "I_COMMODITY", "exports": "E_COMMODITY"}
 
 
-def months(start=START, end=END):
-    return [str(p) for p in pd.period_range(start, end, freq="M")]
-
-
-def hs6_universe():
-    """The valid HS6 code list, derived offline from the Census concordance
-    files rather than discovered against the API."""
-    codes = {}
-    for name in ("impconcord26.xlsx", "expconcord26.xlsx"):
-        path = OUT / name
-        if not path.exists():
-            raise SystemExit(
-                "Missing {}. Download from\n  https://www.census.gov/foreign-trade/"
-                "reference/codes/concordance/\nand place it in {}".format(name, OUT))
-        d = pd.read_excel(path, dtype={"commodity": str})
-        c = d["commodity"].astype(str).str.strip().str.zfill(10).str[:6]
-        for code in c.unique():
-            codes.setdefault(code[:2], set()).add(code)
-    return {ch: sorted(v) for ch, v in codes.items()}
+def load_worklist(tier):
+    """The iteration plan, built once by 01b_build_worklist.py. Keeping it in a
+    file rather than regenerating it here means the plan that was validated is
+    the plan that runs, and a resumed job cannot silently re-plan itself."""
+    path = OUT / "worklist_{}.csv".format(tier)
+    if not path.exists():
+        raise SystemExit("Missing {}. Run 01b_build_worklist.py first.".format(path))
+    return pd.read_csv(path, dtype={"chapter": str, "codes": str, "month": str})
 
 
 # ------------------------------------------------------------------ manifest
@@ -199,48 +188,47 @@ def validate(df, flow, chapter):
 def run(tier):
     if not KEY:
         raise SystemExit("No CENSUS_API_KEY set.")
-    universe = hs6_universe()
-    chapters = ["71"] if tier == "gold" else CHAPTERS
+    work = load_worklist(tier)
     fields = {"imports": GOLD_IMPORT if tier == "gold" else UNIVERSE_IMPORT,
               "exports": GOLD_EXPORT if tier == "gold" else UNIVERSE_EXPORT}
 
     done = load_manifest()
-    todo = [(f, m, c) for f in ("imports", "exports")
-            for m in months() for c in chapters if c in universe]
-    print("{} chunks in tier '{}', {} already done".format(len(todo), tier, len(done)))
+    settled = {k for k, v in done.items() if v["status"] in ("ok", "empty")}
+    pending = work[~work.chunk_id.isin(settled)]
+    print("tier '{}': {:,} chunks planned, {:,} already settled, {:,} to do"
+          .format(tier, len(work), len(work) - len(pending), len(pending)))
 
     t0 = time.time()
-    for n, (flow, month, chapter) in enumerate(todo, 1):
-        chunk_id = "{}|{}|{}|{}".format(tier, flow, month, chapter)
-        if chunk_id in done and done[chunk_id]["status"] in ("ok", "empty"):
-            continue
-
-        params = build_params(flow, month, fields[flow], chapter, universe[chapter])
-        df, status = fetch(flow, params)
-        rec = {"chunk_id": chunk_id, "tier": tier, "flow": flow, "month": month,
-               "chapter": chapter, "status": status, "n_rows": 0,
+    for n, row in enumerate(pending.itertuples(index=False), 1):
+        codes = row.codes.split(",") if isinstance(row.codes, str) else []
+        params = build_params(row.flow, row.month, fields[row.flow],
+                              row.chapter, codes)
+        df, status = fetch(row.flow, params)
+        rec = {"chunk_id": row.chunk_id, "tier": tier, "flow": row.flow,
+               "month": row.month, "chapter": row.chapter, "batch": row.batch,
+               "status": status, "n_rows": 0,
                "fetched_at": time.strftime("%Y-%m-%dT%H:%M:%S"), "problems": ""}
 
         if df is not None:
-            problems = validate(df, flow, chapter)
+            problems = validate(df, row.flow, row.chapter)
             rec["problems"] = ";".join(problems)
             rec["n_rows"] = len(df)
-            path = RAW / tier / flow / month[:4]
+            path = RAW / tier / row.flow / row.month[:4]
             path.mkdir(parents=True, exist_ok=True)
-            df.to_parquet(path / "{}_{}_{}.parquet".format(flow, month, chapter),
-                          index=False)
+            df.to_parquet(path / "{}_{}_{}_b{}.parquet".format(
+                row.flow, row.month, row.chapter, row.batch), index=False)
             if problems:
-                print("  ! {} :: {}".format(chunk_id, rec["problems"]))
+                print("  ! {} :: {}".format(row.chunk_id, rec["problems"]))
         elif status.startswith(("failed", "http", "non_json")):
-            print("  x {} :: {}".format(chunk_id, status))
+            print("  x {} :: {}".format(row.chunk_id, status))
 
         append_manifest(rec)
         time.sleep(PAUSE + random.random() * JITTER)
 
         if n % 200 == 0:
             rate = n / (time.time() - t0)
-            print("  {}/{}  {:.1f} chunks/s  eta {:.1f} min".format(
-                n, len(todo), rate, (len(todo) - n) / rate / 60))
+            print("  {:,}/{:,}  {:.1f} chunks/s  eta {:.0f} min".format(
+                n, len(pending), rate, (len(pending) - n) / rate / 60))
 
     print("done in {:.1f} min".format((time.time() - t0) / 60))
 
@@ -262,7 +250,7 @@ def consolidate():
             d = pd.read_parquet(fp)
             flow = fp.parent.parent.name
             d["flow"] = flow
-            d["date"] = pd.to_datetime(fp.stem.split("_")[1] + "-01")
+            d["date"] = pd.to_datetime(fp.stem.split("_")[1] + "-01")  # flow_YYYY-MM_ch_bN
             d = d.rename(columns={"I_COMMODITY": "hs6", "E_COMMODITY": "hs6"})
             frames.append(d)
         out = pd.concat(frames, ignore_index=True)

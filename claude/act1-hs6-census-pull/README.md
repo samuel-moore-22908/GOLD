@@ -5,7 +5,19 @@ Pulls the US bilateral trade panel at HS6 that the Grubel–Lloyd analysis runs 
 | File | What it does |
 |---|---|
 | `code/01_probe_census_api.py` | Settles the three things you can't learn from docs, before the bulk loop |
-| `code/02_pull_hs6_panel.py` | The resumable bulk pull, two tiers, plus consolidation |
+| `code/01b_build_worklist.py` | Builds and validates the iteration plan — variables, commodities, countries |
+| `code/02_pull_hs6_panel.py` | Executes the plan: resumable bulk pull, two tiers, plus consolidation |
+
+## Countries are not an iteration dimension
+
+The most expensive mistake available here. `SUMMARY_LVL=DET` returns **every partner in a
+single response**, so looping over countries multiplies the call count by ~230 and returns
+exactly the same data. The chunk key is `(flow, month, chapter)` and nothing else.
+
+The Schedule C country list is still pulled, for two jobs that happen *after* the data
+arrives: validating that nothing but individual countries came back (a grouping leaking
+past `SUMMARY_LVL` would double-count everything, silently), and joining names on without
+carrying `CTY_NAME` through sixteen million rows.
 
 **Untested against the live API** — `api.census.gov` rejects unkeyed requests and I had no
 key. Field names, however, are *not* guesses: they were read from the endpoints' own
@@ -24,12 +36,16 @@ export CENSUS_API_KEY=...
 # 3. probe. read the report before going further.
 python claude/act1-hs6-census-pull/code/01_probe_census_api.py
 
-# 4. set CHUNK_MODE in 02_pull_hs6_panel.py from what the probe found
+# 4. build and validate the iteration plan. Every field name is checked against
+#    the live variables.json, so a typo fails here instead of on request 4,000.
+python claude/act1-hs6-census-pull/code/01b_build_worklist.py --probe-chunk-mode
 
-# 5. gold tier first — 106 chunks, ~3 minutes, and it proves the whole path works
+# 5. set CHUNK_MODE in 02_pull_hs6_panel.py from what the probe reported
+
+# 6. gold tier first — 106 chunks, ~3 minutes, and it proves the whole path works
 python claude/act1-hs6-census-pull/code/02_pull_hs6_panel.py --tier gold
 
-# 6. universe tier — 10,494 chunks, ~4.5 hours. Resumable; rerun after any failure.
+# 7. universe tier — 11,342 chunks, ~4.5 hours. Resumable; rerun after any failure.
 python claude/act1-hs6-census-pull/code/02_pull_hs6_panel.py --tier universe
 
 # 7. fold per-chunk parquet into one table per tier
