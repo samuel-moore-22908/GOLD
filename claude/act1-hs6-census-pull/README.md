@@ -4,9 +4,53 @@ Pulls the US bilateral trade panel at HS6 that the Grubel–Lloyd analysis runs 
 
 | File | What it does |
 |---|---|
+| `code/00_bootstrap.py` | **Standard library only.** Rebuilds every reference list from four public URLs |
 | `code/01_probe_census_api.py` | Settles the three things you can't learn from docs, before the bulk loop |
-| `code/01b_build_worklist.py` | Builds and validates the iteration plan — variables, commodities, countries |
+| `code/01b_build_worklist.py` | Same plan via the concordance spreadsheets, plus the chunk-mode probe |
 | `code/02_pull_hs6_panel.py` | Executes the plan: resumable bulk pull, two tiers, plus consolidation |
+
+## Starting from nothing, on a machine with no repository
+
+`00_bootstrap.py` is the whole starting point. **No pandas, no requests, no openpyxl, no
+repo** — if you can run Python and reach `census.gov`, it reproduces all four reference
+files. Nothing is transcribed by hand, which matters because the commodity universe is
+5,630 codes.
+
+Four public URLs, none needing a key:
+
+```
+https://api.census.gov/data/timeseries/intltrade/imports/hs/variables.json
+https://api.census.gov/data/timeseries/intltrade/exports/hs/variables.json
+https://www.census.gov/foreign-trade/schedules/b/2026/imp-code.txt
+https://www.census.gov/foreign-trade/schedules/b/2026/exp-code.txt
+https://www.census.gov/foreign-trade/schedules/c/country.txt
+```
+
+Expected output — check these, and stop if yours differ, because it means a source layout
+changed:
+
+```
+variables  70 valid on imports, 41 on exports; all 42 chosen fields resolve
+commodities  5,630 HS6 across 98 chapters
+countries    241 individual codes
+worklist_gold.csv          106 requests, longest predicate   377 chars
+worklist_universe.csv   11,342 requests, longest predicate 1,049 chars
+```
+
+`01b_build_worklist.py` builds the identical worklist from the concordance spreadsheets
+instead — verified to agree exactly at 5,630 / 98 / 241. Use it when pandas is available
+and you want the chunk-mode probe, and note that the concordance files carry the end-use,
+SITC and NAICS mappings that Act V needs later. `00_bootstrap.py` is the dependency-free
+path to the same plan.
+
+## Why the code files are plain text, not the spreadsheets
+
+`imp-code.txt` and `exp-code.txt` are the fixed-width editions of HTSUS and Schedule B.
+That they disagree at **ten** digits — 20,393 import lines against 9,779 export lines — is
+not a defect to reconcile. HTSUS subdivides wherever a duty rate differs, and the United
+States constitutionally cannot tax exports, so Schedule B never had a reason to. That 2:1
+ratio is the reason bilateral Grubel–Lloyd has to be computed at **HS6**: it is the finest
+level at which both systems describe the same object.
 
 ## Countries are not an iteration dimension
 
@@ -29,15 +73,13 @@ key. Field names, however, are *not* guesses: they were read from the endpoints'
 # 1. get a key: api.census.gov/data/key_signup.html  (usually instant)
 export CENSUS_API_KEY=...
 
-# 2. drop the concordance files into output/ — they supply the HS6 code universe offline
-#    https://www.census.gov/foreign-trade/reference/codes/concordance/
-#      impconcord26.xlsx, expconcord26.xlsx
+# 2. build every reference list. Standard library only; needs no key.
+python claude/act1-hs6-census-pull/code/00_bootstrap.py
 
 # 3. probe. read the report before going further.
 python claude/act1-hs6-census-pull/code/01_probe_census_api.py
 
-# 4. build and validate the iteration plan. Every field name is checked against
-#    the live variables.json, so a typo fails here instead of on request 4,000.
+# 4. optional: same plan via the concordance route, plus the chunk-mode probe
 python claude/act1-hs6-census-pull/code/01b_build_worklist.py --probe-chunk-mode
 
 # 5. set CHUNK_MODE in 02_pull_hs6_panel.py from what the probe reported
