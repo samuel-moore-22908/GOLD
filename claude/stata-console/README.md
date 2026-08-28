@@ -115,6 +115,23 @@ the session survives**; batch errors stop the do-file. `pystata` surfaces a Stat
 error as a Python `SystemError` carrying the `r(nnn)` message, which the console
 catches so a typo does not end your session.
 
+## Do-file conventions for this repo
+
+**Directory paths go in globals, never locals.**
+
+```stata
+global proj "claude/some-task"
+global out  "$proj/output"
+use "$out/panel.dta", clear
+```
+
+A local dies with the do-file, the program, or the `quietly { }` block that
+created it, so a path held in one silently becomes an empty string as soon as the
+code is split into subroutines, run interactively line by line, or called from
+another do-file. Nothing errors — Stata just resolves `use "/panel.dta"` and
+fails somewhere less obvious. Locals stay for scalars, counters, and loop
+indices, which is what they are for.
+
 ## Optional
 
 `pip install pyreadline3` gives arrow-key history and line editing at the prompt.
