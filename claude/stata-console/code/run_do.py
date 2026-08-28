@@ -24,6 +24,7 @@ Usage:
     python claude/stata-console/code/run_do.py analysis.do
     python claude/stata-console/code/run_do.py analysis.do --args 2024 CHE
     python claude/stata-console/code/run_do.py analysis.do --log out/run.log
+    python claude/stata-console/code/run_do.py analysis.do --cwd some/other/dir
 """
 import argparse
 import re
@@ -51,10 +52,15 @@ def strip_bom(path):
     return tmp, True
 
 
-def run(do_path, do_args=(), log_path=None, echo=True):
+def run(do_path, do_args=(), log_path=None, echo=True, cwd=None):
     """Execute a do-file. Returns (returncode, log_text).
 
     returncode is 0 only if Stata logged no error.
+
+    `cwd` defaults to the caller's working directory, NOT the do-file's own
+    directory. Relative paths inside a do-file therefore mean the same thing
+    they mean on the command line, which is what anyone running
+    `run_do.py claude/thing/code/x.do` from the repo root expects.
     """
     do_path = Path(do_path).resolve()
     if not do_path.exists():
@@ -68,14 +74,15 @@ def run(do_path, do_args=(), log_path=None, echo=True):
               "         as UTF-8 without BOM to fix it permanently."
               .format(do_path.name), file=sys.stderr)
 
-    # Stata writes <stem>.log beside the do-file it ran. Clear it first, so a
+    # Stata writes <stem>.log into the working directory. Clear it first, so a
     # stale log from an earlier run can never be mistaken for this one's.
-    produced = target.with_suffix(".log")
+    workdir = Path(cwd).resolve() if cwd else Path.cwd()
+    produced = workdir / (target.stem + ".log")
     if produced.exists():
         produced.unlink()
 
     cmd = [str(exe), "/e", "do", str(target), *[str(a) for a in do_args]]
-    subprocess.run(cmd, cwd=str(target.parent), check=False)
+    subprocess.run(cmd, cwd=str(workdir), check=False)
 
     if not produced.exists():
         print("Stata produced no log at {}. It may not have started."
@@ -90,6 +97,10 @@ def run(do_path, do_args=(), log_path=None, echo=True):
     dest.parent.mkdir(parents=True, exist_ok=True)
     if produced.resolve() != dest.resolve():
         shutil.copyfile(produced, dest)
+        # Stata writes its log into the working directory, which since the cwd
+        # change is usually the repo root. Move it rather than copy, so a run
+        # does not litter the root with one .log per do-file.
+        produced.unlink()
 
     codes = [int(m) for m in RC_RE.findall(text)]
     if codes:
@@ -105,10 +116,11 @@ def main():
     ap.add_argument("--args", nargs="*", default=[],
                     help="arguments passed through to the do-file as `1, `2, ...")
     ap.add_argument("--log", help="where to keep the log (default: beside the do-file)")
+    ap.add_argument("--cwd", help="working directory for the run (default: here)")
     ap.add_argument("--quiet", action="store_true", help="do not echo the log to stdout")
     a = ap.parse_args()
 
-    rc, _ = run(a.do_file, a.args, a.log, echo=not a.quiet)
+    rc, _ = run(a.do_file, a.args, a.log, echo=not a.quiet, cwd=a.cwd)
     sys.exit(rc)
 
 
