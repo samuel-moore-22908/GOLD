@@ -2,31 +2,56 @@
 """
 Author: Sam Moore
 Purpose: Pull HS6 Trade Data
-Date: 8/27/2026
+Date: 8/28/2026
 
-CHUNK KEY IS (flow, country, year). One request returns every HS6 code that
-partner traded in that year -- no commodity predicate needed at all. Measured
-28 Aug 2026: Switzerland 27,843 rows in 8.9s, Canada 50,970 in 17.1s, China
-53,187 in 13.5s. That is 2,400 requests for the whole panel, against 12,200 if
-you chunk on the commodity dimension instead.
+Two tiers, deliberately different in shape:
 
-Findings from live testing that shape the rest of this script:
+  UNIVERSE -- overall by-commodity flows, no country dimension. Grain is
+  (flow, time, commodity). Chapter 71 is in it with the basic variables, so the
+  gold codes sit on the same footing as every other commodity for the
+  Grubel-Lloyd comparison.
+
+  GOLD -- chapter 71 with the wide field set, by country. Grain is
+  (flow, time, commodity, country).
+
+The universe tier does not need a country loop because Census returns a
+CTY_CODE="-" row, "TOTAL FOR ALL COUNTRIES", and that row can be REQUESTED
+directly with CTY_CODE=-. One request then returns every HS6 code the US traded
+that year against the world: 65,122 import rows in 11.1s, 189,234 export rows
+in 49.3s (exports are larger because DF splits domestic from re-export).
+
+The gold tier does not need a country loop either. A "71*" wildcard with no
+country filter already returns every partner -- 54 codes across 186 partners
+with all 27 fields. Restricting to the top gold partners is therefore a filter
+applied to data already in hand, not a reason to issue 500 requests. The
+shortlist is still written out, ranked on chapter 71 trade rather than total
+trade, because a bullion hub can be trivial in overall trade.
+
+Total: 20 requests, roughly ten minutes.
+
+Findings from live testing that shape this script:
 
   1. get= MUST NOT contain spaces after commas. "I_COMMODITY, CTY_CODE" returns
      400 "unknown variable ''".
-  2. If you DO filter commodities, only a wildcard works. A comma-separated
-     list and a bare prefix both return 204 with an empty body -- a SILENT
-     failure that reads as "no data". "7108*" works, "7108" does not. This is
-     why the gold tier below uses a wildcard and the main pull uses none.
+  2. If you filter commodities, only a wildcard works. A comma-separated list
+     and a bare prefix both return 204 with an empty body -- a SILENT failure
+     that reads as "no data". "7108*" works, "7108" does not.
   3. time= accepts a whole year. Verified exact against twelve monthly pulls
      for HS 710812 in 2025: same 594 rows, same $51,791,089,686.
-  4. Responses carry a CTY_CODE="-" row, "TOTAL FOR ALL COUNTRIES", despite
-     SUMMARY_LVL=DET. When you are NOT filtering by country it equals the sum
-     of the individual rows and is a free completeness audit; either way it
-     must be dropped or it doubles every total.
-  5. The response header repeats the commodity column, once from get= and once
+  4. The CTY_CODE="-" row equals the sum of the individual country rows. In the
+     gold tier that is a free completeness audit; in the universe tier it IS
+     the payload.
+  5. EXPORTS carry the same trap on a second dimension. DF has THREE values --
+     "1" domestic, "2" re-exports, and "-" their total -- so summing the raw
+     response double-counts every export figure. Verified 2025: 1,759.1 + 420.8
+     = 2,179.9bn, which is also what the "-" rows alone come to, and what
+     Census publishes.
+  6. The response header repeats the commodity column, once from get= and once
      as the echoed predicate. Duplicate names make df["col"] a DataFrame, which
      breaks every cast and .str accessor. Only the first occurrence is kept.
+
+Reconciles exactly: the HS6 pull for Switzerland 2025 sums to $106.21bn against
+the $106.21bn Census publishes on its country balance page.
 """
 
 import os
@@ -76,6 +101,17 @@ OUTDIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raw")
 WORKERS = 3        # modest on purpose; Census publishes no rate limit
 PAUSE = 0.8        # per worker
 
+TOP_GOLD = 50      # partners kept in the gold panel, ranked on chapter 71 trade
+
+# parquet needs pyarrow or fastparquet. Fall back to gzipped CSV so a missing
+# optional dependency does not block the pull -- but CSV loses dtypes, so the
+# reader must force identifier columns back to str or leading zeros die.
+try:
+    import pyarrow  # noqa: F401
+    FMT = "parquet"
+except ImportError:
+    FMT = "csv.gz"
+
 ## make the session
 
 def make_session(key):
@@ -104,7 +140,7 @@ def _frame(data):
     return pd.DataFrame([[r[i] for i in keep] for r in data[1:]],
                         columns=[header[i] for i in keep])
 
-## make a commodities list  (reference only -- the pull does not filter on it)
+## make a commodities list  (reference only -- neither tier filters on a list)
 
 def fetch_import_categories(year):
     text = requests.get(CODES.format(year=year, side="imp"), timeout=180).text
@@ -128,12 +164,13 @@ def fetch_countries():
 ## the pull
 
 def _pull(session, url, code_var, variables, year, country=None, commodity=None,
-          timeout=600):
+          timeout=900):
     """One request. Returns (DataFrame | None, status).
 
-    country    a 4-digit Schedule C code. This is the chunk key.
-    commodity  a WILDCARD like "71*", or None for every code that partner
-               traded. A comma list or bare prefix silently returns 204.
+    country    "-" for the world total only, a 4-digit Schedule C code for one
+               partner, or None for every partner
+    commodity  a WILDCARD like "71*", or None for every code. A comma list or a
+               bare prefix silently returns 204.
     """
     params = {
         "get": variables,
@@ -162,19 +199,41 @@ def _pull(session, url, code_var, variables, year, country=None, commodity=None,
         return None, "empty"
 
     df = _frame(data)
-
-    # The "-" row is TOTAL FOR ALL COUNTRIES. When no country filter is set it
-    # equals the sum of the country rows, so use it as a completeness audit
-    # before dropping it. Keeping it would double every total.
     is_country = df["CTY_CODE"].str.fullmatch(r"\d{4}")
     status = "ok"
-    if not country and (~is_country).any():
-        val = [c for c in ("GEN_VAL_MO", "ALL_VAL_MO") if c in df.columns][0]
-        tot = pd.to_numeric(df.loc[~is_country, val], errors="coerce").sum()
-        parts = pd.to_numeric(df.loc[is_country, val], errors="coerce").sum()
-        if int(tot) != int(parts):
-            status = "truncated"
-    df = df[is_country].copy()
+
+    if country == "-":
+        # The "-" rows ARE the payload here: totals against the world, by
+        # commodity. Keep them and drop nothing.
+        df = df[~is_country].copy()
+    else:
+        # Otherwise the "-" row is an aggregate that would double every total.
+        # With no country filter it must equal the sum of the country rows, so
+        # audit against it before dropping it.
+        if not country and (~is_country).any():
+            val = [c for c in ("GEN_VAL_MO", "ALL_VAL_MO") if c in df.columns][0]
+            tot = pd.to_numeric(df.loc[~is_country, val], errors="coerce").sum()
+            parts = pd.to_numeric(df.loc[is_country, val], errors="coerce").sum()
+            if int(tot) != int(parts):
+                status = "truncated"
+        df = df[is_country].copy()
+
+    # Exports carry the SAME trap on a second dimension. DF comes back with
+    # three values, not two: "1" domestic, "2" foreign (re-exports), and "-"
+    # which is their TOTAL. Verified for 2025: 1,759.1 + 420.8 = 2,179.9bn, and
+    # the "-" rows alone are 2,179.9bn -- exactly the published figure. Keeping
+    # all three doubles every export total, silently and plausibly. The split is
+    # what makes re-exports visible, so "1" and "2" are kept and "-" is used as
+    # an audit and then dropped.
+    if "DF" in df.columns:
+        is_split = df["DF"].isin(["1", "2"])
+        if (~is_split).any() and is_split.any():
+            tot = pd.to_numeric(df.loc[~is_split, "ALL_VAL_MO"], errors="coerce").sum()
+            parts = pd.to_numeric(df.loc[is_split, "ALL_VAL_MO"], errors="coerce").sum()
+            if int(tot) != int(parts):
+                status = "df_mismatch"
+        df = df[is_split].copy()
+
     if df.empty:
         return None, "empty"
 
@@ -189,16 +248,6 @@ def export_pull(session, variables, year, country=None, commodity=None):
 def import_pull(session, variables, year, country=None, commodity=None):
     return _pull(session, IMPORT_URL, "I_COMMODITY", variables, year, country, commodity)
 
-# parquet needs pyarrow or fastparquet. If neither is installed, fall back to
-# gzipped CSV so the pull is not blocked by a missing optional dependency --
-# but note that CSV loses dtypes, so the reader must force identifier columns
-# back to str or leading zeros in CTY_CODE are destroyed on the way back in.
-try:
-    import pyarrow  # noqa: F401
-    FMT = "parquet"
-except ImportError:
-    FMT = "csv.gz"
-
 def save(df, tag):
     path = os.path.join(OUTDIR, tag + "." + FMT)
     if FMT == "parquet":
@@ -208,6 +257,13 @@ def save(df, tag):
 
 def cached(tag):
     return os.path.exists(os.path.join(OUTDIR, tag + "." + FMT))
+
+def load(tag):
+    path = os.path.join(OUTDIR, tag + "." + FMT)
+    if FMT == "parquet":
+        return pd.read_parquet(path)
+    return pd.read_csv(path, dtype={"CTY_CODE": str, "I_COMMODITY": str,
+                                    "E_COMMODITY": str})
 
 def _job(session, spec):
     """One unit of work: (tag, flow, variables, year, country, commodity)."""
@@ -221,6 +277,44 @@ def _job(session, spec):
     time.sleep(PAUSE)
     return tag, status, 0 if df is None else len(df)
 
+def run(session, jobs, label):
+    """Work a job list through the pool. Returns manifest rows."""
+    manifest, done, t0 = [], 0, time.time()
+    print("%s: %d jobs" % (label, len(jobs)))
+    with ThreadPoolExecutor(max_workers=WORKERS) as ex:
+        futures = {ex.submit(_job, session, j): j[0] for j in jobs}
+        for f in as_completed(futures):
+            tag, status, rows = f.result()
+            manifest.append({"tag": tag, "status": status, "rows": rows})
+            done += 1
+            print("  %-26s %-10s %s rows" % (tag, status, format(rows, ",")))
+    print("  %s done in %.1f min" % (label, (time.time() - t0) / 60))
+    return manifest
+
+## rank the gold partners
+#
+# Ranked on chapter 71 trade, both directions, pooled over YEARS -- not on total
+# goods trade. A bullion hub can be trivial in overall trade, and ranking on the
+# wrong quantity would drop exactly the partners this project is about.
+
+def gold_partners(tags):
+    frames = [load(t) for t in tags if cached(t)]
+    if not frames:
+        raise SystemExit("Gold tier not pulled yet.")
+    d = pd.concat(frames, ignore_index=True)
+    v = d["GEN_VAL_MO"].fillna(0) if "GEN_VAL_MO" in d.columns else 0
+    if "ALL_VAL_MO" in d.columns:
+        v = v + d["ALL_VAL_MO"].fillna(0)
+    g = (d.assign(v=v).groupby("CTY_CODE", as_index=False)["v"].sum()
+          .rename(columns={"CTY_CODE": "cty_code", "v": "ch71_usd"})
+          .sort_values("ch71_usd", ascending=False).reset_index(drop=True))
+    g["rank_ch71"] = g.index + 1
+    g["share_ch71"] = 100 * g.ch71_usd / g.ch71_usd.sum()
+    names = {c["cty_code"]: c["cty_name"] for c in fetch_countries()}
+    g["cty_name"] = g.cty_code.map(names)
+    g["selected"] = g.rank_ch71 <= TOP_GOLD
+    return g
+
 
 if __name__ == "__main__":
 
@@ -230,57 +324,53 @@ if __name__ == "__main__":
 
     # make session
     session = make_session(API_KEY)
+    manifest = []
 
-    ## make a list of countries in the pull
-    # select_partners.py writes the shortlist: top 50 by pooled 2022-2026 total
-    # goods trade, unioned with the top 25 by chapter 71 trade. 51 partners,
-    # 95.5% of total goods trade and 97.8% of chapter 71 trade. Delete the file
-    # to fall back to all 240.
-    shortlist = os.path.join(OUTDIR, "partners_selected.csv")
-    if os.path.exists(shortlist):
-        sel = pd.read_csv(shortlist, dtype={"cty_code": str})
-        countries = sel[["cty_code", "cty_name"]].to_dict("records")
-        print("countries: %d (shortlist)" % len(countries))
-    else:
-        countries = fetch_countries()
-        print("countries: %d (all)" % len(countries))
-
-    jobs = []
-
-    # main panel: one request per (flow, country, year), no commodity filter
+    # tier 1: universe. Overall by-commodity flows against the world, basic
+    # variables, chapter 71 included on the same footing as everything else.
+    universe_jobs = []
     for year in YEARS:
-        for c in countries:
-            code = c["cty_code"]
-            jobs.append(("imports_all_%s_%s" % (year, code),
-                         "imports", IMPORTS_ALL, year, code, None))
-            jobs.append(("exports_all_%s_%s" % (year, code),
-                         "exports", EXPORTS_ALL, year, code, None))
+        universe_jobs.append(("universe_imports_%s" % year,
+                              "imports", IMPORTS_ALL, year, "-", None))
+        universe_jobs.append(("universe_exports_%s" % year,
+                              "exports", EXPORTS_ALL, year, "-", None))
+    manifest += run(session, universe_jobs, "tier 1 universe (by commodity)")
 
-    # gold tier: the wide field set. Small enough to take every country at once,
-    # so it needs a commodity wildcard rather than a country loop.
+    # tier 2: gold. Chapter 71, wide fields, every partner.
+    gold_jobs, gold_tags = [], []
     for year in YEARS:
-        jobs.append(("imports_71_%s" % year, "imports", IMPORTS_71, year, None, "71*"))
-        jobs.append(("exports_71_%s" % year, "exports", EXPORTS_71, year, None, "71*"))
+        for flow, var in (("imports", IMPORTS_71), ("exports", EXPORTS_71)):
+            tag = "gold_%s_%s" % (flow, year)
+            gold_jobs.append((tag, flow, var, year, None, "71*"))
+            gold_tags.append(tag)
+    manifest += run(session, gold_jobs, "tier 2 gold (by country)")
 
-    print("jobs: %d" % len(jobs))
+    # rank the gold partners and write the shortlist
+    g = gold_partners(gold_tags)
+    g.to_csv(os.path.join(OUTDIR, "gold_partners_ranked.csv"), index=False)
+    sel = g[g.selected]
+    sel.to_csv(os.path.join(OUTDIR, "gold_partners_top%d.csv" % TOP_GOLD), index=False)
+    print("\ngold partners: top %d of %d cover %.2f%% of chapter 71 trade"
+          % (TOP_GOLD, len(g), sel.share_ch71.sum()))
 
-    manifest, done = [], 0
-    t0 = time.time()
-    with ThreadPoolExecutor(max_workers=WORKERS) as ex:
-        futures = {ex.submit(_job, session, j): j[0] for j in jobs}
-        for f in as_completed(futures):
-            tag, status, rows = f.result()
-            manifest.append({"tag": tag, "status": status, "rows": rows})
-            done += 1
-            if status not in ("ok", "cached", "empty"):
-                print("  ! %-32s %s" % (tag, status))
-            if done % 100 == 0:
-                el = time.time() - t0
-                print("  %d/%d  %.1f min elapsed, ~%.0f min left"
-                      % (done, len(jobs), el / 60, (len(jobs) - done) * el / done / 60))
+    # write the gold panel restricted to those partners
+    keep = set(sel.cty_code)
+    gold = pd.concat([load(t) for t in gold_tags if cached(t)], ignore_index=True)
+    gold = gold[gold.CTY_CODE.isin(keep)]
+    save(gold, "gold_panel_top%d" % TOP_GOLD)
+    print("gold panel: %s rows, %d partners, %d codes"
+          % (format(len(gold), ","), gold.CTY_CODE.nunique(),
+             gold.filter(regex="COMMODITY").iloc[:, 0].nunique()))
+
+    # write the universe panel
+    uni = pd.concat([load(t) for t in
+                     ["universe_%s_%s" % (f, y) for y in YEARS
+                      for f in ("imports", "exports")] if cached(t)],
+                    ignore_index=True)
+    save(uni, "universe_panel")
+    print("universe panel: %s rows, %d codes"
+          % (format(len(uni), ","), uni.filter(regex="COMMODITY").iloc[:, 0].nunique()))
 
     pd.DataFrame(manifest).to_csv(os.path.join(OUTDIR, "manifest.csv"), index=False)
     ok = sum(1 for m in manifest if m["status"] in ("ok", "cached"))
-    print("done in %.1f min. %d/%d ok, %s rows"
-          % ((time.time() - t0) / 60, ok, len(manifest),
-             format(sum(m["rows"] for m in manifest), ",")))
+    print("\ndone. %d/%d jobs ok" % (ok, len(manifest)))
