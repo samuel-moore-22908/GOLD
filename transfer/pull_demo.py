@@ -232,8 +232,18 @@ if __name__ == "__main__":
     session = make_session(API_KEY)
 
     ## make a list of countries in the pull
-    countries = fetch_countries()
-    print("countries: %d" % len(countries))
+    # select_partners.py writes the shortlist: top 50 by pooled 2022-2026 total
+    # goods trade, unioned with the top 25 by chapter 71 trade. 51 partners,
+    # 95.5% of total goods trade and 97.8% of chapter 71 trade. Delete the file
+    # to fall back to all 240.
+    shortlist = os.path.join(OUTDIR, "partners_selected.csv")
+    if os.path.exists(shortlist):
+        sel = pd.read_csv(shortlist, dtype={"cty_code": str})
+        countries = sel[["cty_code", "cty_name"]].to_dict("records")
+        print("countries: %d (shortlist)" % len(countries))
+    else:
+        countries = fetch_countries()
+        print("countries: %d (all)" % len(countries))
 
     jobs = []
 
