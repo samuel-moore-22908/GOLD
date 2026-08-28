@@ -4,40 +4,42 @@ Author: Sam Moore
 Purpose: Pull HS6 Trade Data
 Date: 8/27/2026
 
-Findings from live testing that shape this script (all verified 28 Aug 2026):
+CHUNK KEY IS (flow, country, year). One request returns every HS6 code that
+partner traded in that year -- no commodity predicate needed at all. Measured
+28 Aug 2026: Switzerland 27,843 rows in 8.9s, Canada 50,970 in 17.1s, China
+53,187 in 13.5s. That is 2,400 requests for the whole panel, against 12,200 if
+you chunk on the commodity dimension instead.
+
+Findings from live testing that shape the rest of this script:
 
   1. get= MUST NOT contain spaces after commas. "I_COMMODITY, CTY_CODE" returns
-     400 "unknown variable ''". Strings below are stripped before use.
-  2. The commodity predicate does NOT accept a comma-separated list. Any list
-     returns 204 with an empty body -- a SILENT failure that looks like "no
-     data". Only an exact code or a WILDCARD PREFIX works: "7108*" is fine,
-     "7108" and "710811,710812" are not.
+     400 "unknown variable ''".
+  2. If you DO filter commodities, only a wildcard works. A comma-separated
+     list and a bare prefix both return 204 with an empty body -- a SILENT
+     failure that reads as "no data". "7108*" works, "7108" does not. This is
+     why the gold tier below uses a wildcard and the main pull uses none.
   3. time= accepts a whole year. Verified exact against twelve monthly pulls
-     for HS 710812 in 2025: same 594 rows, same $51,791,089,686. Twelve times
-     fewer requests for identical data.
-  4. Every response carries a CTY_CODE="-" row, "TOTAL FOR ALL COUNTRIES",
-     DESPITE SUMMARY_LVL=DET. It equals the sum of the individual countries, so
-     keeping it doubles every total. It is filtered out below.
-  5. The response header repeats the commodity column (once from get=, once as
-     the echoed predicate). pd.DataFrame with duplicate names makes df["col"]
-     return a DataFrame, which breaks _cast and every .str accessor. Only the
-     first occurrence of each name is kept.
-  6. Chapter-wide wildcards are slow and fail on big chapters: "71*" took 64s
-     for one month, "84*" returned a 500 after 150s. So the chunk key is the
-     HS4 prefix, which is small and reliable.
+     for HS 710812 in 2025: same 594 rows, same $51,791,089,686.
+  4. Responses carry a CTY_CODE="-" row, "TOTAL FOR ALL COUNTRIES", despite
+     SUMMARY_LVL=DET. When you are NOT filtering by country it equals the sum
+     of the individual rows and is a free completeness audit; either way it
+     must be dropped or it doubles every total.
+  5. The response header repeats the commodity column, once from get= and once
+     as the echoed predicate. Duplicate names make df["col"] a DataFrame, which
+     breaks every cast and .str accessor. Only the first occurrence is kept.
 """
 
 import os
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pandas as pd
 import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 
-# Key comes from the environment. Do not hardcode it -- transfer/ is not
-# gitignored, so a stray `git add .` would publish it.
+# Key comes from the environment. transfer/ is not gitignored.
 API_KEY = os.environ.get("CENSUS_API_KEY", "")
 CODES = "https://www.census.gov/foreign-trade/schedules/b/{year}/{side}-code.txt"
 COUNTRIES = "https://www.census.gov/foreign-trade/schedules/c/country.txt"
@@ -61,8 +63,7 @@ EXPORTS_71 = ("E_COMMODITY,CTY_CODE,ALL_VAL_MO,QTY_1_MO,UNIT_QY1,DF,"
               "CNT_VAL_MO,CNT_WGT_MO,QTY_1_MO_FLAG"
               )
 
-# Identifiers stay text. Coerce these and CTY_CODE "0304" becomes 304, silently,
-# and that corridor stops matching for the rest of the project.
+# Identifiers stay text. Coerce CTY_CODE and "0304" becomes 304, silently.
 KEEP_STR = {"I_COMMODITY", "E_COMMODITY", "CTY_CODE", "CTY_NAME", "UNIT_QY1",
             "UNIT_QY2", "DF", "time", "YEAR", "MONTH", "COMM_LVL", "SUMMARY_LVL",
             "DISTRICT", "DIST_NAME", "RP", "CTY_SUBCODE"}
@@ -70,17 +71,20 @@ KEEP_STR = {"I_COMMODITY", "E_COMMODITY", "CTY_CODE", "CTY_NAME", "UNIT_QY1",
 IMPORT_URL = "https://api.census.gov/data/timeseries/intltrade/imports/hs"
 EXPORT_URL = "https://api.census.gov/data/timeseries/intltrade/exports/hs"
 
+YEARS = range(2022, 2027)
 OUTDIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "raw")
-PAUSE = 1.2
+WORKERS = 3        # modest on purpose; Census publishes no rate limit
+PAUSE = 0.8        # per worker
 
 ## make the session
 
 def make_session(key):
     s = requests.Session()
-    s.mount("https://", HTTPAdapter(max_retries=Retry(
-        total=5, backoff_factor=1.5,
-        status_forcelist=[429, 500, 502, 503, 504],
-        allowed_methods=["GET"])))
+    s.mount("https://", HTTPAdapter(
+        max_retries=Retry(total=5, backoff_factor=1.5,
+                          status_forcelist=[429, 500, 502, 503, 504],
+                          allowed_methods=["GET"]),
+        pool_connections=WORKERS, pool_maxsize=WORKERS))
     s.params = {"key": key}
     return s
 
@@ -93,30 +97,24 @@ def _cast(df):
     return df
 
 def _frame(data):
-    """Build a DataFrame from the API's list-of-lists, keeping only the first
-    occurrence of each column name (the header repeats the commodity column)."""
+    """Keep only the first occurrence of each column name -- the header repeats
+    the commodity column."""
     header = data[0]
     keep = [i for i, c in enumerate(header) if not header[:i].count(c)]
-    rows = [[r[i] for i in keep] for r in data[1:]]
-    return pd.DataFrame(rows, columns=[header[i] for i in keep])
+    return pd.DataFrame([[r[i] for i in keep] for r in data[1:]],
+                        columns=[header[i] for i in keep])
 
-## make a commodities list
+## make a commodities list  (reference only -- the pull does not filter on it)
 
 def fetch_import_categories(year):
-    hs6 = set()
-    text = requests.get(CODES.format(year=year, side="imp"),
-                        timeout=180).text
-    hs6 |= {m.group(1)[:6] for m in re.finditer(r"^(\d{10})\s", text, re.M)}
-    hs6 = {c for c in hs6 if c[:2] not in ("98", "99")}
-    return sorted(hs6)
+    text = requests.get(CODES.format(year=year, side="imp"), timeout=180).text
+    hs6 = {m.group(1)[:6] for m in re.finditer(r"^(\d{10})\s", text, re.M)}
+    return sorted(c for c in hs6 if c[:2] not in ("98", "99"))
 
 def fetch_export_categories(year):
-    hs6 = set()
-    text = requests.get(CODES.format(year=year, side="exp"),
-                        timeout=180).text
-    hs6 |= {m.group(1)[:6] for m in re.finditer(r"^(\d{10})\s", text, re.M)}
-    hs6 = {c for c in hs6 if c[:2] not in ("98", "99")}
-    return sorted(hs6)
+    text = requests.get(CODES.format(year=year, side="exp"), timeout=180).text
+    hs6 = {m.group(1)[:6] for m in re.finditer(r"^(\d{10})\s", text, re.M)}
+    return sorted(c for c in hs6 if c[:2] not in ("98", "99"))
 
 # make a countries list
 
@@ -127,28 +125,26 @@ def fetch_countries():
     out = [c for c in out if c["cty_code"] != "1000"] # drops USA
     return out
 
-def prefixes(hs6_list, n=4):
-    """The chunk keys: distinct HS4 prefixes, queried as wildcards."""
-    return sorted({c[:n] for c in hs6_list})
+## the pull
 
-def _pull(session, url, code_var, variables, time_period, prefix, country=None,
-          timeout=300):
+def _pull(session, url, code_var, variables, year, country=None, commodity=None,
+          timeout=600):
     """One request. Returns (DataFrame | None, status).
 
-    prefix is a wildcard like "7108*". A comma-separated list of codes silently
-    returns 204, so it is not an option. country=None means every partner comes
-    back in one response -- iterating countries would multiply requests by ~240
-    for identical data.
+    country    a 4-digit Schedule C code. This is the chunk key.
+    commodity  a WILDCARD like "71*", or None for every code that partner
+               traded. A comma list or bare prefix silently returns 204.
     """
     params = {
         "get": variables,
-        "time": time_period,
+        "time": str(year),
         "COMM_LVL": "HS6",
         "SUMMARY_LVL": "DET",
-        code_var: prefix,
         }
     if country:
         params["CTY_CODE"] = country
+    if commodity:
+        params[code_var] = commodity
 
     try:
         r = session.get(url, params=params, timeout=timeout)
@@ -160,44 +156,77 @@ def _pull(session, url, code_var, variables, time_period, prefix, country=None,
     if r.status_code != 200:
         return None, str(r.status_code)
     if "json" not in r.headers.get("content-type", ""):
-        return None, "non-json"          # missing/invalid key returns HTML with a 200
+        return None, "non-json"          # bad key returns HTML with a 200
     data = r.json()
     if len(data) < 2:
         return None, "empty"
 
     df = _frame(data)
 
-    # Drop the "TOTAL FOR ALL COUNTRIES" row. It survives SUMMARY_LVL=DET and
-    # equals the sum of the individual countries, so keeping it doubles totals.
-    df = df[df["CTY_CODE"].str.fullmatch(r"\d{4}")].copy()
+    # The "-" row is TOTAL FOR ALL COUNTRIES. When no country filter is set it
+    # equals the sum of the country rows, so use it as a completeness audit
+    # before dropping it. Keeping it would double every total.
+    is_country = df["CTY_CODE"].str.fullmatch(r"\d{4}")
+    status = "ok"
+    if not country and (~is_country).any():
+        val = [c for c in ("GEN_VAL_MO", "ALL_VAL_MO") if c in df.columns][0]
+        tot = pd.to_numeric(df.loc[~is_country, val], errors="coerce").sum()
+        parts = pd.to_numeric(df.loc[is_country, val], errors="coerce").sum()
+        if int(tot) != int(parts):
+            status = "truncated"
+    df = df[is_country].copy()
     if df.empty:
         return None, "empty"
 
     df = _cast(df)
-    returned = set(df[code_var].dropna())
-    if not all(c.startswith(prefix.rstrip("*")) for c in returned):
-        return df, "leaked commodities"
     df["flow"] = "imports" if code_var == "I_COMMODITY" else "exports"
-    df["period"] = time_period
-    return df, "ok"
+    df["period"] = str(year)
+    return df, status
 
-def export_pull(session, variables, time_period, prefix, country=None):
-    return _pull(session, EXPORT_URL, "E_COMMODITY", variables, time_period,
-                 prefix, country)
+def export_pull(session, variables, year, country=None, commodity=None):
+    return _pull(session, EXPORT_URL, "E_COMMODITY", variables, year, country, commodity)
 
-def import_pull(session, variables, time_period, prefix, country=None):
-    return _pull(session, IMPORT_URL, "I_COMMODITY", variables, time_period,
-                 prefix, country)
+def import_pull(session, variables, year, country=None, commodity=None):
+    return _pull(session, IMPORT_URL, "I_COMMODITY", variables, year, country, commodity)
+
+# parquet needs pyarrow or fastparquet. If neither is installed, fall back to
+# gzipped CSV so the pull is not blocked by a missing optional dependency --
+# but note that CSV loses dtypes, so the reader must force identifier columns
+# back to str or leading zeros in CTY_CODE are destroyed on the way back in.
+try:
+    import pyarrow  # noqa: F401
+    FMT = "parquet"
+except ImportError:
+    FMT = "csv.gz"
 
 def save(df, tag):
-    os.makedirs(OUTDIR, exist_ok=True)
-    df.to_parquet(os.path.join(OUTDIR, tag + ".parquet"), index=False)
+    path = os.path.join(OUTDIR, tag + "." + FMT)
+    if FMT == "parquet":
+        df.to_parquet(path, index=False)
+    else:
+        df.to_csv(path, index=False, compression="gzip")
+
+def cached(tag):
+    return os.path.exists(os.path.join(OUTDIR, tag + "." + FMT))
+
+def _job(session, spec):
+    """One unit of work: (tag, flow, variables, year, country, commodity)."""
+    tag, flow, variables, year, country, commodity = spec
+    if cached(tag):
+        return tag, "cached", 0
+    fn = import_pull if flow == "imports" else export_pull
+    df, status = fn(session, variables, year, country, commodity)
+    if df is not None:
+        save(df, tag)
+    time.sleep(PAUSE)
+    return tag, status, 0 if df is None else len(df)
 
 
 if __name__ == "__main__":
 
     if not API_KEY:
         raise SystemExit("Set CENSUS_API_KEY in the environment first.")
+    os.makedirs(OUTDIR, exist_ok=True)
 
     # make session
     session = make_session(API_KEY)
@@ -206,54 +235,42 @@ if __name__ == "__main__":
     countries = fetch_countries()
     print("countries: %d" % len(countries))
 
-    manifest = []
+    jobs = []
 
-    for year in range(2022, 2027):
+    # main panel: one request per (flow, country, year), no commodity filter
+    for year in YEARS:
+        for c in countries:
+            code = c["cty_code"]
+            jobs.append(("imports_all_%s_%s" % (year, code),
+                         "imports", IMPORTS_ALL, year, code, None))
+            jobs.append(("exports_all_%s_%s" % (year, code),
+                         "exports", EXPORTS_ALL, year, code, None))
 
-        #make a list of HS6 commodity codes for each year (imports and exports)
-        # should be the same, but need to be safe
-        hs6_imports = fetch_import_categories(year)
-        hs6_exports = fetch_export_categories(year)
+    # gold tier: the wide field set. Small enough to take every country at once,
+    # so it needs a commodity wildcard rather than a country loop.
+    for year in YEARS:
+        jobs.append(("imports_71_%s" % year, "imports", IMPORTS_71, year, None, "71*"))
+        jobs.append(("exports_71_%s" % year, "exports", EXPORTS_71, year, None, "71*"))
 
-        # makes batches excluding gold
-        hs6_imports_nGold = [c for c in hs6_imports if not c.startswith("71")]
-        hs6_imports_Gold  = [c for c in hs6_imports if c.startswith("71")]
-        hs6_exports_nGold = [c for c in hs6_exports if not c.startswith("71")]
-        hs6_exports_Gold  = [c for c in hs6_exports if c.startswith("71")]
+    print("jobs: %d" % len(jobs))
 
-        # chunk keys are HS4 wildcard prefixes, not code lists
-        import_batches = prefixes(hs6_imports_nGold)
-        export_batches = prefixes(hs6_exports_nGold)
+    manifest, done = [], 0
+    t0 = time.time()
+    with ThreadPoolExecutor(max_workers=WORKERS) as ex:
+        futures = {ex.submit(_job, session, j): j[0] for j in jobs}
+        for f in as_completed(futures):
+            tag, status, rows = f.result()
+            manifest.append({"tag": tag, "status": status, "rows": rows})
+            done += 1
+            if status not in ("ok", "cached", "empty"):
+                print("  ! %-32s %s" % (tag, status))
+            if done % 100 == 0:
+                el = time.time() - t0
+                print("  %d/%d  %.1f min elapsed, ~%.0f min left"
+                      % (done, len(jobs), el / 60, (len(jobs) - done) * el / done / 60))
 
-        # special gold batches
-        import_gold_batches = prefixes(hs6_imports_Gold)
-        export_gold_batches = prefixes(hs6_exports_Gold)
-
-        # time= takes a whole year, verified identical to twelve monthly pulls
-        period = str(year)
-        print("Pulling: %s  (%d import / %d export prefixes)"
-              % (period, len(import_batches), len(export_batches)))
-
-        for label, pull_fn, variables, batches in (
-                ("imports_all", import_pull, IMPORTS_ALL, import_batches),
-                ("exports_all", export_pull, EXPORTS_ALL, export_batches),
-                ("imports_71",  import_pull, IMPORTS_71,  import_gold_batches),
-                ("exports_71",  export_pull, EXPORTS_71,  export_gold_batches)):
-
-            for prefix in batches:
-                tag = "%s_%s_%s" % (label, period, prefix)
-                if os.path.exists(os.path.join(OUTDIR, tag + ".parquet")):
-                    continue                       # resume: already fetched
-
-                df, status = pull_fn(session, variables, period, prefix + "*")
-                if df is not None and status in ("ok", "leaked commodities"):
-                    save(df, tag)
-                manifest.append({"tag": tag, "status": status,
-                                 "rows": 0 if df is None else len(df)})
-                time.sleep(PAUSE)
-
-        pd.DataFrame(manifest).to_csv(
-            os.path.join(OUTDIR, "manifest.csv"), index=False)
-
-    print("done. %d chunks, %d ok" %
-          (len(manifest), sum(1 for m in manifest if m["status"] == "ok")))
+    pd.DataFrame(manifest).to_csv(os.path.join(OUTDIR, "manifest.csv"), index=False)
+    ok = sum(1 for m in manifest if m["status"] in ("ok", "cached"))
+    print("done in %.1f min. %d/%d ok, %s rows"
+          % ((time.time() - t0) / 60, ok, len(manifest),
+             format(sum(m["rows"] for m in manifest), ",")))
