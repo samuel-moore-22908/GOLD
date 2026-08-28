@@ -63,9 +63,25 @@ arrives: validating that nothing but individual countries came back (a grouping 
 past `SUMMARY_LVL` would double-count everything, silently), and joining names on without
 carrying `CTY_NAME` through sixteen million rows.
 
-**Untested against the live API** — `api.census.gov` rejects unkeyed requests and I had no
-key. Field names, however, are *not* guesses: they were read from the endpoints' own
-`variables.json` (public, no key) on 27 Aug 2026. Run the probe first.
+## Verified against the live API, 28 Aug 2026
+
+Six findings from actually running it, three of which fail *silently*:
+
+1. **`get=` must not contain spaces after commas.** `"I_COMMODITY, CTY_CODE"` returns
+   400 `unknown variable ''`.
+2. **The commodity predicate does not accept a list.** `I_COMMODITY=710811,710812`
+   returns **204 with an empty body** — it looks like "no data", not a bad request. Same
+   for a bare prefix `7108`. Only the wildcard `7108*` works.
+3. **`time=` accepts a whole year.** Verified exact against twelve monthly pulls for
+   HS 710812 in 2025: same 594 rows, same $51,791,089,686. Twelve times fewer requests.
+4. **Every response carries a `CTY_CODE="-"` row — "TOTAL FOR ALL COUNTRIES" — despite
+   `SUMMARY_LVL=DET`.** It equals the sum of the individual countries, so keeping it
+   doubles every total. Must be filtered.
+5. **The response header repeats the commodity column**, once from `get=` and once as the
+   echoed predicate. `pd.DataFrame` with duplicate names makes `df["col"]` return a
+   DataFrame, breaking every `.str` accessor and numeric cast.
+6. **Chapter-wide wildcards are slow and fail on big chapters.** `71*` took 64s for one
+   month; `84*` returned a 500 after 150s. Chunk on the HS4 prefix.
 
 ## Run order
 

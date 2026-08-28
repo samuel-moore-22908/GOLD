@@ -58,12 +58,16 @@ KEY = os.environ.get("CENSUS_API_KEY", "")
 # The window and the chapter list live in 01b_build_worklist.py, which is the
 # single source of truth for the plan. This script only executes it.
 
-# Set from the probe report. One of:
-#   "explicit_list"    I_COMMODITY=<comma-separated HS6 codes for the chapter>
-#   "prefix_wildcard"  I_COMMODITY=71*
-#   "prefix_bare"      I_COMMODITY=71
-#   "month_only"       no commodity predicate; whole month per request
-CHUNK_MODE = "explicit_list"
+# VERIFIED AGAINST THE LIVE API, 28 Aug 2026. Only the wildcard form works:
+#   "prefix_wildcard"  I_COMMODITY=7108*   -> 200, correct rows        USE THIS
+#   "explicit_list"    I_COMMODITY=a,b,c   -> 204 EMPTY BODY, silently
+#   "prefix_bare"      I_COMMODITY=7108    -> 204 EMPTY BODY, silently
+#   "month_only"       no predicate        -> times out on a full month
+# The two silent-204 forms are the dangerous ones: they look like "no data"
+# rather than a bad request, so a whole run can complete and produce nothing.
+# Chunk on the HS4 prefix -- chapter-wide wildcards are slow ("71*" took 64s
+# for one month) and fail outright on large chapters ("84*" returned a 500).
+CHUNK_MODE = "prefix_wildcard"
 
 PAUSE = 1.2          # deliberate pacing between calls
 JITTER = 0.4
