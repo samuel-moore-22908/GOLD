@@ -49,14 +49,21 @@ clear all
 set more off
 version 18
 
-local out "claude/gl-universe/output"
+* Directories are globals, never locals. A local dies with the do-file, the
+* program, or the quietly{} block that created it, so a path held in one
+* silently becomes an empty string as soon as this code is split into
+* subroutines, run interactively, or called from another do-file. Locals below
+* are all scalars and counters, which is what they are for.
+global proj "claude/gl-universe"
+global out  "$proj/output"
+
 capture log close
-log using "`out'/gl_results.log", replace text
+log using "$out/gl_results.log", replace text
 
 *------------------------------------------------------------------ exports
 * Collapse rather than reshape: DF=1 and DF=2 arrive as separate rows, and a
 * commodity-month may have either, both, or neither.
-use "`out'/universe_exports.dta", clear
+use "$out/universe_exports.dta", clear
 destring DF, replace
 keep if inlist(DF, 1, 2)
 gen double x_dom = ALL_VAL_MO if DF == 1
@@ -66,7 +73,7 @@ tempfile exports
 save `exports'
 
 *------------------------------------------------------------------ imports
-use "`out'/universe_imports.dta", clear
+use "$out/universe_imports.dta", clear
 rename GEN_VAL_MO m_gen
 rename CON_VAL_MO m_con
 recast double m_gen m_con
@@ -101,7 +108,7 @@ gen byte is7108 = substr(hs6, 1, 4) == "7108"
 gen byte ch71   = substr(hs6, 1, 2) == "71"
 
 compress
-save "`out'/gl_panel.dta", replace
+save "$out/gl_panel.dta", replace
 
 *==============================================================================
 * A. Coverage
@@ -331,7 +338,7 @@ preserve
     keep hs6 mdate year x_dom x_re x_tot m_gen m_con gl_total gl_dom gl_con wedge
     order hs6 mdate year
     sort hs6 mdate
-    export delimited using "`out'/gl_gold_monthly.csv", replace
+    export delimited using "$out/gl_gold_monthly.csv", replace
 restore
 
 preserve
@@ -340,7 +347,7 @@ preserve
     gen double gl_total = 1 - abs(x_tot - m_gen) / (x_tot + m_gen) if (x_tot + m_gen) > 0
     gen double gl_dom   = 1 - abs(x_dom - m_gen) / (x_dom + m_gen) if (x_dom + m_gen) > 0
     gen double wedge = gl_total - gl_dom
-    export delimited using "`out'/gl_by_commodity_year.csv", replace
+    export delimited using "$out/gl_by_commodity_year.csv", replace
 restore
 
 display _n(2) "wrote gl_panel.dta, gl_gold_monthly.csv, gl_by_commodity_year.csv"
