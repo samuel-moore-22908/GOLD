@@ -158,17 +158,31 @@ foreach y of local yrs {
 * 3. THE MONTHLY EVOLUTION
 *==============================================================================
 display _n(2) "{hline 95}"
-display "3. COMPOSITE GOLD GL, MONTHLY"
+display "3. COMPOSITE GOLD GL, MONTHLY -- all 54 months"
+display "   Same columns as the annual table in section 1, so the two read"
+display "   against each other directly."
 display "{hline 95}"
 preserve
     keep if defn == 1
     gen double xd_bn = x_dom / 1e9
     gen double xr_bn = x_re / 1e9
-    gen double m_bn = m_gen / 1e9
-    format xd_bn xr_bn m_bn %7.2f
+    gen double x_bn  = x_tot / 1e9
+    gen double m_bn  = m_gen / 1e9
+    label var xd_bn "X domestic"
+    label var xr_bn "X re-export"
+    label var x_bn  "X total"
+    label var m_bn  "M general"
+    format xd_bn xr_bn x_bn m_bn %8.2f
     format gl_total gl_dom wedge re_sh %7.3f
-    list mdate m_bn xd_bn xr_bn gl_total gl_dom wedge re_sh, ///
+    list mdate xd_bn xr_bn x_bn m_bn gl_total gl_dom wedge re_sh, ///
          noobs abbrev(9) separator(12)
+
+    * Net position each month, since the sign of the wedge depends on it and
+    * the table above is easier to read with it stated rather than inferred.
+    quietly count if x_tot > m_gen
+    display _n "  net export months: " r(N) " of 54"
+    quietly count if m_gen > x_tot
+    display "  net import months: " r(N) " of 54"
 restore
 
 *==============================================================================
