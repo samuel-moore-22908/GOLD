@@ -4,8 +4,9 @@ One figure showing that during the tariff scare gold became an outlier in **both
 the direction of its trade and its magnitude: it flipped to flowing into the US,
 and it did so through a channel carrying real value.
 
-Status: **built.** Figure at `claude/inflow-scatter/inflow_scatter.html`,
-underlying points at `inflow_scatter_points.csv`, data from
+Status: **built, both flows.** Figures at `scatter_imports.html` and
+`scatter_exports.html`, underlying points at `scatter_points_<flow>.csv`,
+data from
 `data/processed/us_hs4_universe_monthly.csv` (fresh Census API pull, all 1,229
 HS4 headings, Jan–Apr 2024 and 2025, both flows).
 
@@ -169,3 +170,47 @@ effect — worth addressing directly rather than leaving for a referee to find.
 it was *already* import-dominated before the episode, so on its own it cannot
 show a switch in direction. Only the combined series crosses 0.50. Both are
 plotted, and the combined point is the one the directional claim rests on.
+
+
+---
+
+## Gold is one heading, not three
+
+Earlier drafts plotted 7108, 7115 and their sum as separate points, which let
+gold compete with itself for a place in the top 100 and invited the reader to
+pick whichever framing suited. The parts are now **replaced** by the combined
+heading before ranking, so gold appears once. The 7108/7115 split is a
+bookkeeping artifact of how US Census books bullion, not an economic
+distinction, and nothing in the argument turns on it.
+
+Combined gold ranks **#3 of 1,229 headings by total trade** — it belongs in the
+top 100 on merit, not by the "include gold if absent" escape hatch.
+
+## The export analogue
+
+Same construction, same 100 headings, with the axes swapped to the other side
+of the trade account: x is US **export** value, y is **export share**
+`X / (M+X)`.
+
+Export share is arithmetically `1 − import share`, so the y-axis is a mirror.
+The x-axis is not, and that is the reason the second figure earns its place: a
+heading can grow both channels at once, and gold does — imports 15.6×, exports
+2.5×. Metal went in during Jan–Mar and came back out in April once the tariff
+exemption landed.
+
+**Displacement is ranked separately per flow**, because a heading that barely
+moved its imports may have moved its exports a great deal.
+
+| | Value | Share | Rank of 100 |
+|---|---|---|---|
+| Imports | $5.25bn → $81.71bn | 0.30 → 0.72 | **#2** |
+| Exports | $12.39bn → $31.10bn | 0.70 → 0.28 | **#1** |
+
+**The export figure is the stronger of the two for the outlier claim.** On the
+import side gold is second to HS 2937 (hormones and steroids), whose share
+moved further. On the export side gold is first outright: its export share
+collapsed from 0.70 to 0.28 while the export channel itself still grew.
+
+HS 2937 and HS 7106 (silver) sit near the top of both rankings. The
+precious-metals cluster and the pharmaceutical front-running both need
+addressing in the text rather than being left for a referee.
