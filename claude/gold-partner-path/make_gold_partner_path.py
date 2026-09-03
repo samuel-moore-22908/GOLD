@@ -55,7 +55,14 @@ MONTHS = {"baseline": 12, "surge": 5, "reversal": 8}
 # gold with the US in one direction only, so they have no position here at all.
 # They are named beneath the figure rather than silently dropped.
 LEG_FLOOR = 0.001          # $1m per month
-TOP_N = 10                 # partners plotted, by total gold trade
+TOP_N = 10                 # partners plotted, by bilateral gold trade
+
+# "Bilateral" is the selection criterion, not a decoration. A partner qualifies
+# only if gold moves in BOTH directions in EVERY phase, above LEG_FLOOR. That
+# is what the plane measures - a position needs an import coordinate and an
+# export coordinate - and it is why the chart is not simply the ten largest
+# gold partners. South Africa is the fifth largest by volume and has no
+# position here at all, because it sells gold to the US and buys none back.
 
 plt.rcParams.update({
     "figure.dpi": 150, "savefig.dpi": 150, "font.size": 9,
@@ -145,10 +152,25 @@ def main():
     d["volume"] = np.minimum(d["swing_in"], d["swing_out"])
     d["retrace"] = d["path"] = d["out"] + d["back"]
     d["retrace"] = np.where(d["net"] > 1e-6, d["path"] / d["net"], np.nan)
-    d["gold_trade"] = d[flat].sum(axis=1)
-    d = d.sort_values("gold_trade", ascending=False).reset_index(drop=True)
+    # Rank on bilateral trade: both directions, all three phases.
+    d["bilateral"] = d[flat].sum(axis=1)
+    d = d.sort_values("bilateral", ascending=False).reset_index(drop=True)
     d["rank"] = d.index + 1
     d.to_csv(OUT / "gold_partner_points.csv", index=False)
+    print(f"  top {TOP_N} by bilateral gold trade ($bn/month, summed over phases):")
+    for _, r in d.head(TOP_N).iterrows():
+        print(f"    #{int(r['rank']):>2} {str(r.cty_name).split(' (')[0][:20]:22} "
+              f"{r['bilateral']:6.2f}")
+    # Where the excluded one-way corridors would have ranked, had the plane
+    # been able to hold them.
+    if len(oneway):
+        cutoff = d.head(TOP_N)["bilateral"].min()
+        for _, r in oneway.iterrows():
+            tot = sum(r[c] for c in flat)
+            if tot > cutoff:
+                print(f"    ** {str(r.cty_name).split(' (')[0][:20]:22} "
+                      f"{tot:6.2f}  would rank inside the top {TOP_N}, "
+                      f"but is one-directional")
     d = d.head(TOP_N).copy()
 
     print("  largest round trips by partner (ranked on dollar volume):")
@@ -217,18 +239,21 @@ def main():
     ax.set_xlabel("US exports to partner, $bn per month")
     ax.set_ylabel("US imports from partner, $bn per month")
     ax.set_title("Where the gold came from, and where it went back to",
-                 loc="left", fontsize=11, pad=26)
-    ax.text(0, 1.035, f"The {len(d)} largest US gold partners (HS 7108 + 7115), "
+                 loc="left", fontsize=11, pad=38)
+    ax.text(0, 1.035, f"The {len(d)} largest US gold partners by bilateral trade (HS 7108 + 7115), "
             "three phases each. Above the diagonal the US is a net importer.",
-            transform=ax.transAxes, fontsize=8, color="#555", va="bottom")
+            transform=ax.transAxes, fontsize=8, color="#555", va="bottom",
+            linespacing=1.5)
     if len(oneway):
-        who = ", ".join(f"{str(r.cty_name).split(' (')[0]} (${r.surge_m:.2f}bn/mo)"
-                        for _, r in oneway.head(3).iterrows())
-        ax.text(0, -0.125,
-                "Omitted: one-directional corridors, which have no position "
-                "on a log-log plane."
-                f"\nSurge imports: {who}."
-                "\nTheir gold moves to the US and does not come back, so they cannot be drawn here.",
+        rank_in = oneway.assign(tot=oneway[flat].sum(axis=1))
+        rank_in = rank_in[rank_in["tot"] > d["bilateral"].min()]
+        who = ", ".join(
+            f"{str(r.cty_name).split(' (')[0]} (\\${r.tot:.2f}bn)"
+            for _, r in rank_in.sort_values("tot", ascending=False).head(4).iterrows())
+        ax.text(0, -0.135,
+                f"Four one-directional corridors would rank inside this top ten but cannot be drawn:"
+                f"\n{who}."
+                "\nTheir gold moves to the US and does not come back, so they have no export coordinate.",
                 transform=ax.transAxes, fontsize=7.5, color="#666",
                 va="top", linespacing=1.5)
     ax.text(0.03, 0.955, "US net importer", transform=ax.transAxes,
