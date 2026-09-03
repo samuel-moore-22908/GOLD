@@ -1,0 +1,129 @@
+<title>Gold — Round Trip</title>
+<style>
+ .viz-root{color-scheme:light;--surface-1:#fcfcfb;--text-primary:#0b0b0b;
+  --text-secondary:#52514e;--muted:#898781;--grid:#e1e0d9;--baseline:#c3c2b7;
+  --gold:#eda100;--other:#a9a7a0;--ring:rgba(11,11,11,0.10);
+  background:var(--surface-1);color:var(--text-primary);
+  font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+  padding:22px;max-width:1040px;margin:0 auto}
+ @media (prefers-color-scheme:dark){:root:where(:not([data-theme="light"])) .viz-root{
+  color-scheme:dark;--surface-1:#1a1a19;--text-primary:#fff;--text-secondary:#c3c2b7;
+  --muted:#898781;--grid:#2c2c2a;--baseline:#383835;--gold:#c98500;--other:#6f6d67;
+  --ring:rgba(255,255,255,0.10)}}
+ :root[data-theme="dark"] .viz-root{color-scheme:dark;--surface-1:#1a1a19;
+  --text-primary:#fff;--text-secondary:#c3c2b7;--muted:#898781;--grid:#2c2c2a;
+  --baseline:#383835;--gold:#c98500;--other:#6f6d67;--ring:rgba(255,255,255,0.10)}
+ body{margin:0;background:var(--surface-1)}
+ h1{font-size:19px;margin:0 0 4px}
+ .sub{color:var(--text-secondary);font-size:13px;margin:0 0 12px}
+ .legend{display:flex;gap:16px;font-size:12px;color:var(--text-secondary);
+  margin:0 0 8px;flex-wrap:wrap}
+ .key{display:inline-flex;align-items:center;gap:6px}
+ .dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+ .hollow{background:transparent;border:2.5px solid var(--gold)}
+ table{border-collapse:collapse;font-size:12px;margin-top:20px;width:100%}
+ th,td{text-align:right;padding:5px 9px;border-bottom:1px solid var(--grid)}
+ th:first-child,td:first-child,th:nth-child(2),td:nth-child(2){text-align:left}
+ th{color:var(--text-secondary);font-weight:600}
+ caption{caption-side:top;text-align:left;font-size:12px;color:var(--text-secondary);
+  padding-bottom:7px}
+ tr.g td{background:rgba(237,161,0,.13);font-weight:600}
+ #tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .1s;
+  background:var(--surface-1);border:1px solid var(--ring);border-radius:5px;
+  padding:7px 10px;font-size:12px;box-shadow:0 3px 10px rgba(0,0,0,.13);z-index:9}
+ .wrap{overflow-x:auto}
+</style>
+<div class="viz-root">
+<h1>Gold went in, then came back out</h1>
+<p class="sub">The 100 most-traded HS4 headings. Horizontal is US exports,
+vertical is US imports, both monthly-average rates on a log scale. The diagonal
+is M&nbsp;=&nbsp;X. Each heading is three points — <b>baseline</b> (Nov&nbsp;23–Oct&nbsp;24),
+<b>surge</b> (Nov&nbsp;24–Mar&nbsp;25), <b>reversal</b> (Apr–Nov&nbsp;25) — joined in order.
+A permanent repositioning draws a straight path. <b>A round trip doubles back</b>,
+and gold's retraces 2.9× its net displacement, rank #1 of 100.</p>
+<div class="legend">
+ <span class="key"><span class="dot hollow"></span>baseline</span>
+ <span class="key"><span class="dot" style="background:var(--gold);opacity:.55"></span>surge</span>
+ <span class="key"><span class="dot" style="background:var(--gold)"></span>reversal (end)</span>
+ <span class="key"><span class="dot" style="background:var(--other)"></span>other headings</span>
+</div>
+<div class="wrap"><svg id="chart" width="1000" height="640" role="img"
+ aria-label="Three-phase path of US imports against exports by HS4 heading"></svg></div>
+<table id="tbl"><caption>Largest round trips — ranked on the shorter of the two legs,
+so a heading must travel far out <em>and</em> far back</caption>
+<thead><tr><th>#</th><th>HS4</th><th>Amplitude</th><th>Retrace</th><th>Imports M, $bn/mo</th>
+<th>Exports X, $bn/mo</th></tr></thead><tbody></tbody></table>
+</div><div id="tip"></div>
+<script>
+const D=[{"c":"2709","d":"CRUDE OIL FROM PETROLEUM AND BITUMINOUS MINERALS","rk":25,"rt":1.0,"amp":0.07,"p":[[14256.08,10195.66],[12594.74,9081.02],[11478.69,8035.87]]},{"c":"8703","d":"MOTOR CARS & VEHICLES FOR TRANSPORTING PERSONS","rk":39,"rt":1.22,"amp":0.04,"p":[[18195.55,5105.2],[17946.63,4655.34],[14215.61,4605.62]]},{"c":"8471","d":"AUTOMATIC DATA PROCESS MACHINES; MAGN READER ETC","rk":8,"rt":1.0,"amp":0.11,"p":[[11154.14,3204.11],[13432.1,3815.29],[22556.29,5391.02]]},{"c":"8517","d":"PHONE SETS; OTH APPARAT TRANS/RECEP VOICE/IMG/DATA","rk":38,"rt":1.03,"amp":0.04,"p":[[9449.27,3219.89],[11158.35,3607.08],[11642.17,3924.8]]},{"c":"7108+7115","d":"GOLD (HS 7108 + 7115)","rk":1,"rt":2.88,"amp":0.94,"p":[[1954.76,2459.16],[19405.67,3402.11],[3104.08,10866.94]]},{"c":"3002","d":"HUMAN BLOOD; ANIMAL BLOOD; ANTISERA, VACCINES ETC","rk":23,"rt":4.06,"amp":0.07,"p":[[8711.29,4514.24],[10118.48,4143.22],[8331.72,4984.04]]},{"c":"2710","d":"OIL (NOT CRUDE) FROM PETROL & BITUM MINERAL ETC.","rk":65,"rt":1.49,"amp":0.03,"p":[[4923.11,9777.98],[3776.52,9178.72],[3997.67,9021.04]]},{"c":"3004","d":"MEDICAMENTS NESOI, MIXED OR NOT, IN DOSAGE ETC FM","rk":13,"rt":6.48,"amp":0.1,"p":[[7614.51,2839.88],[9482.17,2825.34],[7030.78,2859.54]]},{"c":"8708","d":"PARTS & ACCESS FOR MOTOR VEHICLES (HEAD 8701-8705)","rk":82,"rt":2.12,"amp":0.02,"p":[[7271.55,3807.23],[6698.45,3678.56],[6936.94,3678.36]]},{"c":"8473","d":"PARTS ETC FOR TYPEWRITERS & OTHER OFFICE MACHINES","rk":6,"rt":1.12,"amp":0.17,"p":[[4113.24,1915.73],[6027.6,2067.7],[7313.28,3165.08]]},{"c":"8542","d":"ELECTRONIC INTEGRATED CIRCUITS & MICROASSEMBL, PTS","rk":66,"rt":2.86,"amp":0.03,"p":[[3208.91,4082.04],[3541.31,4375.14],[3382.03,4222.89]]},{"c":"2711","d":"PETROLEUM GASES & OTHER GASEOUS HYDROCARBONS","rk":4,"rt":4.35,"amp":0.24,"p":[[778.42,5151.75],[1257.17,6698.13],[672.9,6462.65]]},{"c":"9018","d":"MEDICAL, SURGICAL, DENTAL OR VET INST, NO ELEC, PT","rk":53,"rt":1.59,"amp":0.03,"p":[[3361.46,3095.67],[3583.01,2940.83],[3704.07,3142.5]]},{"c":"8704","d":"MOTOR VEHICLES FOR TRANSPORT OF GOODS","rk":46,"rt":1.05,"amp":0.04,"p":[[3919.44,1853.25],[3701.7,1732.0],[3413.0,1696.41]]},{"c":"2937","d":"HORMONES; DERIVATIVES & STERIODS USED AS HORMONES","rk":2,"rt":2.44,"amp":0.54,"p":[[1263.57,749.57],[7934.37,886.01],[2974.49,1906.53]]},{"c":"8544","d":"INSULATED WIRE, CABLE ETC; OPT SHEATH FIB CABLES","rk":68,"rt":1.0,"amp":0.02,"p":[[2541.93,1056.86],[2673.43,1078.22],[3103.57,1176.64]]},{"c":"8411","d":"TURBOJETS, TURBOPROPELLERS & OTH GAS TURBINES, PTS","rk":45,"rt":1.93,"amp":0.04,"p":[[2515.98,1116.37],[2739.16,1375.12],[2543.83,1312.14]]},{"c":"8504","d":"ELEC TRANS, STATIC CONV & INDUCT, ADP PWR SUPP, PT","rk":42,"rt":1.01,"amp":0.04,"p":[[2380.86,680.69],[2605.79,682.65],[2965.64,713.6]]},{"c":"8507","d":"ELECTRIC STORAGE BATTERIES, INCL SEPARATORS, PARTS","rk":32,"rt":1.67,"amp":0.05,"p":[[2579.83,726.97],[2837.52,767.39],[2097.14,568.45]]},{"c":"8481","d":"TAPS, COCKS, VALVES ETC FOR PIPES, TANKS ETC, PTS","rk":88,"rt":1.28,"amp":0.01,"p":[[1469.69,1173.4],[1477.64,1213.57],[1517.37,1215.11]]},{"c":"9021","d":"ORTHOPEDIC APPL; ARTIF BODY PTS; HEAR AID; PTS ETC","rk":95,"rt":1.21,"amp":0.01,"p":[[1540.75,1092.27],[1568.62,1083.41],[1621.09,1152.15]]},{"c":"8486","d":"MACH,APP MANUF SEMICON BOULES ETC;C84 NT 11(C);PT","rk":71,"rt":2.07,"amp":0.02,"p":[[1071.57,1655.93],[1113.59,1603.53],[1010.94,1589.76]]},{"c":"8523","d":"PREPARED UNRECORDED MEDIA (NO FILM) FOR SOUND ETC.","rk":21,"rt":2.34,"amp":0.08,"p":[[1451.02,716.34],[1893.91,824.85],[1594.24,858.55]]},{"c":"8537","d":"BOARDS, PANELS ETC ELEC SWITCH AND N/C APPAR ETC.","rk":54,"rt":1.15,"amp":0.03,"p":[[1623.95,669.61],[1668.01,717.35],[1816.89,727.6]]},{"c":"9403","d":"FURNITURE NESOI AND PARTS THEREOF","rk":51,"rt":1.78,"amp":0.03,"p":[[2173.59,243.58],[2221.17,226.61],[1928.37,235.47]]},{"c":"9401","d":"SEATS (EXCEPT BARBER, DENTAL, ETC), AND PARTS","rk":74,"rt":1.47,"amp":0.02,"p":[[2090.49,313.05],[2082.65,300.18],[1882.41,315.1]]},{"c":"8536","d":"ELECTRICAL APPARATUS FOR SWITCHING ETC, NOV 1000 V","rk":84,"rt":1.02,"amp":0.01,"p":[[1187.26,1037.24],[1226.95,1044.82],[1282.3,1074.92]]},{"c":"8421","d":"CENTRIFUGES; FILTER ETC MACH FOR LIQ OR GASES; PTS","rk":91,"rt":1.82,"amp":0.01,"p":[[1195.56,1043.12],[1194.55,1018.76],[1158.89,1035.65]]},{"c":"7113","d":"ARTICLES OF JEWELRY & PTS, OF PREC METAL OR CLAD","rk":94,"rt":1.16,"amp":0.01,"p":[[1185.96,939.37],[1196.52,957.89],[977.55,937.52]]},{"c":"8541","d":"SEMICON DEV;PHOTOSENS;LED;MOUNT PIEZOELEC CRYS;PTS","rk":19,"rt":1.76,"amp":0.08,"p":[[2006.14,603.44],[1125.71,503.4],[1286.36,569.9]]},{"c":"8807","d":"PARTS OF GOODS OF HEADING 8801, 8802 OR 8806","rk":67,"rt":1.74,"amp":0.02,"p":[[1352.47,602.5],[1348.72,569.58],[1452.31,684.7]]},{"c":"8543","d":"ELECTRICAL MACH ETC, WITH IND FUNCTIONS NESOI, PTS","rk":77,"rt":1.58,"amp":0.02,"p":[[1375.52,488.05],[1537.76,531.37],[1479.53,532.3]]},{"c":"4011","d":"NEW PNEUMATIC TIRES, OF RUBBER","rk":75,"rt":1.0,"amp":0.02,"p":[[1563.63,417.26],[1576.95,401.31],[1598.6,382.2]]},{"c":"1201","d":"SOYBEANS, WHETHER OR NOT BROKEN","rk":7,"rt":2.14,"amp":0.14,"p":[[31.83,1956.33],[27.24,2560.7],[37.14,1167.54]]},{"c":"8414","d":"AIR/VACUUM PUMPS, FANS; VENT HOODS ETC; PARTS","rk":72,"rt":2.11,"amp":0.02,"p":[[1291.9,643.71],[1303.59,614.29],[1227.04,687.05]]},{"c":"3926","d":"ARTICLES OF PLASTICS (INC POLYMERS & RESINS) NESOI","rk":100,"rt":1.38,"amp":0.0,"p":[[1151.14,752.76],[1150.63,745.15],[1134.83,791.78]]},{"c":"8413","d":"PUMPS FOR LIQUIDS; LIQUID ELEVATORS; PARTS THEREOF","rk":87,"rt":1.84,"amp":0.01,"p":[[1071.49,803.52],[1083.73,782.68],[1044.39,783.83]]},{"c":"8528","d":"TV RECVRS, INCL VIDEO MONITORS & PROJECTORS","rk":31,"rt":1.16,"amp":0.05,"p":[[1715.72,194.84],[1564.0,173.3],[1637.82,155.78]]},{"c":"8479","d":"MACHINES ETC HAVING INDIVIDUAL FUNCTIONS NESOI, PT","rk":58,"rt":1.23,"amp":0.03,"p":[[1195.69,689.09],[1130.73,712.26],[1043.77,660.31]]},{"c":"7102","d":"DIAMONDS, WORKED OR NOT, NOT MOUNTED OR SET","rk":29,"rt":1.0,"amp":0.06,"p":[[1277.21,1054.77],[1136.64,999.64],[433.93,512.0]]},{"c":"3901","d":"POLYMERS OF ETHYLENE, IN PRIMARY FORMS","rk":35,"rt":1.43,"amp":0.04,"p":[[354.47,1344.71],[333.21,1448.38],[306.49,1347.08]]},{"c":"8407","d":"SPARK-IGNITION RECIP OR ROTARY INT COMB PISTON ENG","rk":27,"rt":1.44,"amp":0.06,"p":[[974.89,652.43],[914.2,743.7],[1045.68,789.19]]},{"c":"8483","d":"TRANSMISSION SHAFTS, BEARINGS, GEARS ETC; PARTS","rk":96,"rt":1.81,"amp":0.01,"p":[[902.39,741.77],[886.17,739.5],[900.26,764.89]]},{"c":"8802","d":"AIRCRAFT, POWERED; SPACECRAFT & LAUNCH VEHICLES","rk":18,"rt":1.85,"amp":0.08,"p":[[1424.87,225.7],[1580.97,262.98],[1029.37,170.51]]},{"c":"8701","d":"TRACTORS (OTHER THAN WORKS TRUCKS OF HEADING 8709)","rk":10,"rt":1.01,"amp":0.11,"p":[[1399.28,599.91],[981.29,465.6],[828.95,386.87]]},{"c":"8501","d":"ELECTRIC MOTORS AND GENERATORS (NO SETS)","rk":86,"rt":1.79,"amp":0.01,"p":[[1093.64,436.89],[1076.51,448.94],[1139.18,408.15]]},{"c":"9027","d":"INST ETC FOR PHYSICAL ETC ANAL ETC; MICROTOME; PTS","rk":97,"rt":2.06,"amp":0.01,"p":[[649.36,888.87],[650.1,902.92],[644.87,863.64]]},{"c":"8415","d":"AIR CONDITIONING MACHINES (TEMP & HUM CHANGE), PTS","rk":92,"rt":1.48,"amp":0.01,"p":[[1193.27,255.27],[1291.44,234.18],[1279.08,239.28]]},{"c":"8431","d":"PARTS FOR MACHINERY OF HEADINGS 8425 TO 8430","rk":98,"rt":1.0,"amp":0.01,"p":[[942.67,630.61],[880.96,553.49],[871.47,547.56]]},{"c":"8443","d":"PRINT MACH INCL INK-JET MACH ANCIL T PRNT PT NESOI","rk":78,"rt":1.0,"amp":0.02,"p":[[1185.79,348.77],[1149.06,341.1],[1023.14,311.78]]},{"c":"3822","d":"DIAG/LAB REAGENTS INCL KITS, EXCL HEAD 3006;CRM","rk":52,"rt":1.59,"amp":0.03,"p":[[515.59,884.08],[512.03,952.49],[468.38,924.6]]},{"c":"9503","d":"TOYS NESOI; SCALE MODELS ETC; PUZZLES; PARTS ETC","rk":56,"rt":1.01,"amp":0.03,"p":[[1435.5,105.6],[1345.2,105.91],[1154.58,101.45]]},{"c":"1005","d":"CORN (MAIZE)","rk":34,"rt":1.2,"amp":0.04,"p":[[21.73,1150.16],[17.59,1452.34],[18.72,1563.91]]},{"c":"8409","d":"PARTS FOR ENGINES OF HEADING 8407 OR 8408","rk":43,"rt":23.54,"amp":0.04,"p":[[944.08,489.8],[883.84,460.57],[945.37,493.64]]},{"c":"8518","d":"MICROPHONES; LOUDSPEAKERS; SOUND AMPLIFIER ETC, PT","rk":79,"rt":1.39,"amp":0.02,"p":[[1099.39,295.39],[1106.14,306.77],[968.37,295.99]]},{"c":"3923","d":"CONTAINERS (BOXES, BAGS ETC), CLOSURERS ETC, PLAST","rk":76,"rt":4.79,"amp":0.02,"p":[[780.25,576.55],[784.1,554.29],[768.89,584.55]]},{"c":"8418","d":"REFRIGERATORS, FREEZERS ETC; HEAT PUMPS NESOI, PTS","rk":70,"rt":1.24,"amp":0.02,"p":[[1100.72,237.33],[1153.06,223.02],[1117.9,214.14]]},{"c":"9031","d":"MACHINES, NESOI IN CHAPTER 90; PROFILE PROJECT, PT","rk":59,"rt":3.17,"amp":0.03,"p":[[612.96,689.15],[640.26,722.68],[580.04,687.8]]},{"c":"8525","d":"TRANS APPAR FOR RADIOTELE ETC; TV CAMERA & REC","rk":40,"rt":2.34,"amp":0.04,"p":[[955.57,307.27],[888.97,289.98],[899.72,331.79]]},{"c":"7110","d":"PLATINUM, UNWROUGHT, SEMIMFR FORMS OR IN POWDER FM","rk":61,"rt":1.0,"amp":0.03,"p":[[603.03,407.05],[631.92,425.39],[897.55,573.55]]},{"c":"8419","d":"MACHINERY ETC FOR TEMP CHANG TREAT MAT; W HEAT, PT","rk":73,"rt":1.05,"amp":0.02,"p":[[719.43,404.56],[751.76,402.0],[832.66,427.29]]},{"c":"2106","d":"FOOD PREPARATIONS NESOI","rk":48,"rt":2.13,"amp":0.03,"p":[[557.25,604.86],[602.99,601.85],[494.22,644.3]]},{"c":"2933","d":"HETEROCYCLIC COMP, NIT HETERO-ATOMS ONLY","rk":5,"rt":7.14,"amp":0.23,"p":[[817.22,201.24],[1390.74,202.77],[695.12,189.81]]},{"c":"9701","d":"PAINTINGS, DRAWINGS ETC BY HAND AS ART; COLLAG ETC","rk":12,"rt":2.3,"amp":0.1,"p":[[515.87,630.31],[525.58,503.54],[657.0,645.24]]},{"c":"1905","d":"BREAD, PASTRY, CAKES ETC; COMM WAFRS, EMP CAPS ETC","rk":93,"rt":4.57,"amp":0.01,"p":[[932.33,224.92],[919.23,221.18],[940.78,226.8]]},{"c":"8429","d":"SELF-PROPELLED BULLDOZERS, GRADERS, SCRAPERS ETC","rk":69,"rt":1.22,"amp":0.02,"p":[[943.47,437.56],[667.54,348.54],[702.34,342.52]]},{"c":"7403","d":"REFINED COPPER & ALLOYS (NO MAST ALLOY), UNWROUGHT","rk":15,"rt":1.0,"amp":0.09,"p":[[635.58,157.31],[788.56,156.67],[1502.83,177.67]]},{"c":"8516","d":"ELEC WATER, SPACE & SOIL HEATERS; HAIR ETC DRY, PT","rk":36,"rt":4.7,"amp":0.04,"p":[[982.54,153.16],[960.14,168.77],[942.64,153.63]]},{"c":"3304","d":"BEAUTY, MAKE-UP & SKIN-CARE PREP; MANICURE ETC PRP","rk":85,"rt":1.09,"amp":0.01,"p":[[611.46,519.02],[621.27,504.5],[609.65,478.88]]},{"c":"2208","d":"ETHYL ALCOHOL, UNDENAT, UND80% ALC; SPIRIT BEVERAG","rk":44,"rt":1.42,"amp":0.04,"p":[[961.16,235.63],[1012.38,219.01],[676.29,233.74]]},{"c":"6110","d":"SWEATERS, PULLOVERS, VESTS ETC, KNIT OR CROCHETED","rk":24,"rt":3.85,"amp":0.07,"p":[[1043.61,60.1],[912.12,55.72],[1159.23,61.39]]},{"c":"8408","d":"COMPRESSION-IGNITION INTERNAL COMB PISTON ENGINES","rk":50,"rt":1.51,"amp":0.03,"p":[[524.8,663.49],[448.3,569.19],[482.93,554.57]]},{"c":"7326","d":"ARTICLES OF IRON OR STEEL, NESOI","rk":80,"rt":1.02,"amp":0.02,"p":[[587.1,554.42],[569.42,541.99],[424.11,537.36]]},{"c":"9504","d":"VIDEO GAME CONSOLES, MACH, TABLE/PARLOR GAMES ETC","rk":49,"rt":1.94,"amp":0.03,"p":[[692.55,268.89],[844.19,246.9],[804.84,262.9]]},{"c":"4202","d":"TRAVEL GOODS, HANDBAGS, WALLETS, JEWELRY CASES ETC","rk":64,"rt":1.11,"amp":0.03,"p":[[937.1,112.27],[955.88,105.88],[903.23,97.42]]},{"c":"2701","d":"COAL; BRIQUETTES, OVOIDS ETC. MFR FROM COAL","rk":9,"rt":1.28,"amp":0.11,"p":[[31.4,1212.13],[27.59,977.1],[33.49,812.66]]},{"c":"3824","d":"BINDERS FOR FOUND MOLDS; CHEMICAL PROD ETC NESOI","rk":26,"rt":6.88,"amp":0.07,"p":[[549.91,504.27],[470.11,451.41],[539.99,481.26]]},{"c":"7318","d":"SCREWS, BOLTS, NUTS, WASHERS ETC, IRON OR STEEL","rk":90,"rt":1.3,"amp":0.01,"p":[[542.65,477.06],[547.16,466.04],[486.67,471.24]]},{"c":"7106","d":"SILVER (INCL PREC PLATED), UNWR, SEMIMFR OR POWDER","rk":3,"rt":1.4,"amp":0.35,"p":[[419.33,106.92],[932.17,107.48],[516.95,902.93]]},{"c":"0901","d":"COFFEE; COFFEE HUSKS ETC; SUBSTITUTES WITH COFFEE","rk":20,"rt":1.01,"amp":0.08,"p":[[688.8,94.93],[911.16,97.87],[1086.58,95.44]]},{"c":"8302","d":"HARDWARE, FIXTURES, CASTORS ETC & PARTS, BASE METL","rk":83,"rt":1.02,"amp":0.01,"p":[[719.4,297.17],[696.71,294.04],[672.91,284.74]]},{"c":"7601","d":"ALUMINUM, UNWROUGHT","rk":17,"rt":1.28,"amp":0.09,"p":[[903.87,144.57],[1006.43,120.65],[688.15,91.9]]},{"c":"3920","d":"PLATES, SHEETS, FILM ETC NO AD, NON-CEL ETC, PLAST","rk":81,"rt":1.33,"amp":0.02,"p":[[512.72,479.19],[523.08,464.41],[487.19,444.7]]},{"c":"6403","d":"FOOTWEAR, OUTER SOLE RUB, PLAST OR LEA & UPPER LEA","rk":60,"rt":21.02,"amp":0.03,"p":[[946.55,35.21],[892.3,36.13],[952.58,35.17]]},{"c":"8412","d":"ENGINES AND MOTORS NESOI, AND PARTS THEREOF","rk":99,"rt":1.01,"amp":0.0,"p":[[541.0,366.08],[545.78,368.02],[604.2,366.25]]},{"c":"2901","d":"ACYCLIC HYDROCARBONS","rk":22,"rt":3.36,"amp":0.08,"p":[[114.89,745.86],[131.68,829.7],[102.8,792.22]]},{"c":"0802","d":"NUTS NESOI, FRESH OR DRIED","rk":11,"rt":1.64,"amp":0.1,"p":[[61.57,740.89],[66.77,918.97],[40.56,865.19]]},{"c":"6204","d":"WOMEN'S OR GIRLS' SUITS, ENSEMB ETC, NOT KNIT ETC","rk":14,"rt":1.75,"amp":0.09,"p":[[823.47,69.48],[923.51,54.99],[744.46,53.96]]},{"c":"9030","d":"OSCILLOSCOPES, SPECTRUM ANALYZERS ETC, PARTS ETC","rk":55,"rt":1.21,"amp":0.03,"p":[[423.75,478.63],[407.08,505.61],[356.17,482.18]]},{"c":"0201","d":"MEAT OF BOVINE ANIMALS, FRESH OR CHILLED","rk":47,"rt":1.04,"amp":0.04,"p":[[476.28,369.74],[517.08,365.16],[582.55,328.54]]},{"c":"9405","d":"LIGHTING FITTINGS, PARTS;ILLUMIINATED SIGNS, PARTS","rk":63,"rt":1.24,"amp":0.03,"p":[[757.3,131.67],[703.67,126.05],[714.11,118.67]]},{"c":"8428","d":"LIFTING, HANDLING, LOADING & UNLOAD MACHINES NESOI","rk":62,"rt":1.01,"amp":0.03,"p":[[713.11,188.83],[671.32,185.85],[606.02,173.43]]},{"c":"2934","d":"NUCLEIC ACIDS & SALTS, HETEROCYCLIC COMP NESOI","rk":30,"rt":1.49,"amp":0.05,"p":[[653.05,117.27],[699.61,105.78],[832.01,129.29]]},{"c":"0202","d":"MEAT OF BOVINE ANIMALS, FROZEN","rk":16,"rt":1.53,"amp":0.09,"p":[[353.54,378.06],[539.24,389.24],[514.47,315.48]]},{"c":"4407","d":"WOOD SAWN OR CHIPPED LENGTH, SLICED ETC, OV6MM TH","rk":57,"rt":2.02,"amp":0.03,"p":[[600.93,223.4],[632.81,214.77],[557.67,210.41]]},{"c":"8427","d":"FORK-LIFT TRUCKS; OTH WORKS TRUCKS WITH LIFTS ETC.","rk":28,"rt":1.14,"amp":0.06,"p":[[666.28,235.54],[566.12,220.59],[504.99,239.13]]},{"c":"3907","d":"POLYETHERS, EXPOXIDES & POLYESTERS, PRIMARY FORMS","rk":41,"rt":1.06,"amp":0.04,"p":[[361.61,492.66],[354.27,443.57],[330.03,418.16]]},{"c":"9506","d":"ARTLS & EQUIP F GENRL PHYSCL EXERC ETC; POOLS; PTS","rk":33,"rt":2.45,"amp":0.04,"p":[[619.13,175.01],[672.77,186.03],[556.45,159.37]]},{"c":"8716","d":"TRAILERS ETC; OTHER VEHICLES, NOT MECH PROPELD, PT","rk":89,"rt":1.06,"amp":0.01,"p":[[484.95,368.42],[421.76,324.67],[424.32,316.52]]},{"c":"7308","d":"STRUCTURES NESOI & PARTS THEREOF, OF IRON OR STEEL","rk":37,"rt":1.03,"amp":0.04,"p":[[715.22,121.19],[686.58,111.25],[593.29,100.1]]}], GOLD="7108+7115";
+const W=1000,H=640,M={t:26,r:150,b:58,l:74},iw=W-M.l-M.r,ih=H-M.t-M.b;
+const all=D.flatMap(d=>d.p.flat()).filter(v=>v>0);
+const L0=Math.log10(Math.min(...all)*0.7),L1=Math.log10(Math.max(...all)*1.5);
+const sx=v=>M.l+(Math.log10(v)-L0)/(L1-L0)*iw;
+const sy=v=>M.t+ih-(Math.log10(v)-L0)/(L1-L0)*ih;
+const svg=document.getElementById("chart"),NS="http://www.w3.org/2000/svg";
+const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e};
+const defs=el("defs",{});
+[["ah","var(--gold)"],["ah2","var(--other)"]].forEach(([id,c])=>{
+ const m=el("marker",{id,viewBox:"0 0 10 10",refX:"8",refY:"5",markerWidth:"5",
+  markerHeight:"5",orient:"auto-start-reverse"});
+ m.appendChild(el("path",{d:"M0,0 L10,5 L0,10 z",fill:c}));defs.appendChild(m)});
+svg.appendChild(defs);
+for(let e=Math.ceil(L0);e<=L1;e++){const v=Math.pow(10,e);
+ svg.appendChild(el("line",{x1:sx(v),x2:sx(v),y1:M.t,y2:M.t+ih,stroke:"var(--grid)","stroke-width":1}));
+ svg.appendChild(el("line",{x1:M.l,x2:M.l+iw,y1:sy(v),y2:sy(v),stroke:"var(--grid)","stroke-width":1}));
+ const lab=v>=1000?"$"+(v/1000)+"bn":"$"+v+"m";
+ let t=el("text",{x:sx(v),y:M.t+ih+20,"text-anchor":"middle","font-size":11,fill:"var(--muted)"});
+ t.textContent=lab;svg.appendChild(t);
+ t=el("text",{x:M.l-10,y:sy(v)+4,"text-anchor":"end","font-size":11,fill:"var(--muted)"});
+ t.textContent=lab;svg.appendChild(t)}
+const lo=Math.pow(10,L0),hi=Math.pow(10,L1);
+svg.appendChild(el("line",{x1:sx(lo),y1:sy(lo),x2:sx(hi),y2:sy(hi),
+ stroke:"var(--baseline)","stroke-width":2,"stroke-dasharray":"6 5"}));
+let t=el("text",{x:sx(hi)-8,y:sy(hi)+18,"text-anchor":"end","font-size":11,fill:"var(--muted)"});
+t.textContent="M = X · balanced";svg.appendChild(t);
+t=el("text",{x:M.l+14,y:M.t+18,"font-size":11.5,fill:"var(--muted)"});
+t.textContent="↑ import-dominated";svg.appendChild(t);
+t=el("text",{x:M.l+iw-8,y:M.t+ih-12,"text-anchor":"end","font-size":11.5,fill:"var(--muted)"});
+t.textContent="export-dominated ↓";svg.appendChild(t);
+t=el("text",{x:M.l+iw/2,y:H-14,"text-anchor":"middle","font-size":12,fill:"var(--text-secondary)"});
+t.textContent="US exports, $m per month (log scale)";svg.appendChild(t);
+t=el("text",{x:-(M.t+ih/2),y:18,transform:"rotate(-90)","text-anchor":"middle","font-size":12,
+ fill:"var(--text-secondary)"});t.textContent="US imports, $m per month (log scale)";svg.appendChild(t);
+const tip=document.getElementById("tip");
+function hov(n,h){n.addEventListener("mousemove",e=>{tip.innerHTML=h;tip.style.opacity=1;
+ tip.style.left=(e.clientX+14)+"px";tip.style.top=(e.clientY-10)+"px"});
+ n.addEventListener("mouseleave",()=>tip.style.opacity=0)}
+const fmt=v=>v>=1000?"$"+(v/1000).toFixed(2)+"bn":"$"+v.toFixed(0)+"m";
+const NAMES=["baseline","surge","reversal"];
+D.slice().sort((a,b)=>(a.c===GOLD)-(b.c===GOLD)).forEach(d=>{
+ const g=d.c===GOLD, big=d.amp>=0.5, col=g?"var(--gold)":"var(--other)", grp=el("g",{});
+ const op=g?1:(big?.65:.28);
+ for(let i=0;i<d.p.length-1;i++){
+  grp.appendChild(el("line",{x1:sx(d.p[i][1]),y1:sy(d.p[i][0]),
+   x2:sx(d.p[i+1][1]),y2:sy(d.p[i+1][0]),stroke:col,
+   "stroke-width":g?3:(big?1.8:1.2),"marker-end":g?"url(#ah)":"url(#ah2)",opacity:op}))}
+ d.p.forEach((pt,i)=>{
+  const last=i===d.p.length-1;
+  grp.appendChild(el("circle",{cx:sx(pt[1]),cy:sy(pt[0]),
+   r:g?(last?9:6.5):(last?4:3),
+   fill:i===0?"var(--surface-1)":col,stroke:col,
+   "stroke-width":g?(i===0?3:2):1.2,
+   opacity:i===0?op:(last?op:op*0.8)}))});
+ hov(grp,`<b>${d.d}</b> (HS ${d.c})<br>`+
+  d.p.map((pt,i)=>`${NAMES[i]}: M ${fmt(pt[0])} · X ${fmt(pt[1])}`).join("<br>")+
+  `<br>amplitude ${d.amp} · retrace ${d.rt}× (rank #${d.rk})`);
+ svg.appendChild(grp);
+ if(g||d.rk<=3){const lb=el("text",{x:sx(d.p[2][1])+11,y:sy(d.p[2][0])+4,
+  "font-size":g?13:10.5,"font-weight":g?700:400,
+  fill:g?"var(--text-primary)":"var(--text-secondary)"});
+  lb.textContent=g?"GOLD":d.d.slice(0,22);svg.appendChild(lb)}});
+const tb=document.querySelector("#tbl tbody");
+D.slice().sort((a,b)=>a.rk-b.rk).slice(0,10).forEach(d=>{
+ const tr=document.createElement("tr"); if(d.c===GOLD)tr.className="g";
+ tr.innerHTML=`<td>${d.rk}</td><td>${d.d.slice(0,32)} (${d.c})</td>`+
+  `<td>${d.amp}</td><td>${d.rt}×</td>`+
+  `<td>${d.p.map(p=>(p[0]/1000).toFixed(1)).join(" → ")}</td>`+
+  `<td>${d.p.map(p=>(p[1]/1000).toFixed(1)).join(" → ")}</td>`;
+ tb.appendChild(tr)});
+</script>
