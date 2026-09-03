@@ -55,6 +55,7 @@ MONTHS = {"baseline": 12, "surge": 5, "reversal": 8}
 # gold with the US in one direction only, so they have no position here at all.
 # They are named beneath the figure rather than silently dropped.
 LEG_FLOOR = 0.001          # $1m per month
+TOP_N = 10                 # partners plotted, by total gold trade
 
 plt.rcParams.update({
     "figure.dpi": 150, "savefig.dpi": 150, "font.size": 9,
@@ -144,9 +145,11 @@ def main():
     d["volume"] = np.minimum(d["swing_in"], d["swing_out"])
     d["retrace"] = d["path"] = d["out"] + d["back"]
     d["retrace"] = np.where(d["net"] > 1e-6, d["path"] / d["net"], np.nan)
-    d = d.sort_values("volume", ascending=False).reset_index(drop=True)
+    d["gold_trade"] = d[flat].sum(axis=1)
+    d = d.sort_values("gold_trade", ascending=False).reset_index(drop=True)
     d["rank"] = d.index + 1
     d.to_csv(OUT / "gold_partner_points.csv", index=False)
+    d = d.head(TOP_N).copy()
 
     print("  largest round trips by partner (ranked on dollar volume):")
     for _, r in d.head(6).iterrows():
@@ -155,42 +158,59 @@ def main():
               f"M {r.baseline_m:6.2f} -> {r.surge_m:6.2f} -> {r.reversal_m:6.2f}"
               f"   X {r.baseline_x:5.2f} -> {r.surge_x:5.2f} -> {r.reversal_x:5.2f}")
 
-    fig, ax = plt.subplots(figsize=(7.6, 6.6))
-    lo = d[flat].min().min() * 0.5
-    hi = d[flat].max().max() * 2.4
-    ax.plot([lo, hi], [lo, hi], ls="--", lw=1.1, color=INK, alpha=0.4, zorder=1)
-    ax.text(hi * 0.5, hi * 0.55, "M = X", fontsize=8, color=INK, alpha=0.55,
+    fig, ax = plt.subplots(figsize=(7.4, 6.6))
+    lo = d[flat].min().min() * 0.45
+    hi = d[flat].max().max() * 3.0
+    ax.plot([lo, hi], [lo, hi], ls="--", lw=1.0, color=INK, alpha=0.35, zorder=1)
+    ax.text(hi * 0.45, hi * 0.5, "M = X", fontsize=8, color=INK, alpha=0.5,
             ha="right", va="bottom", rotation=45, rotation_mode="anchor")
 
-    # Uniform treatment. Line weight tracks the size of the round trip only so
-    # that a $10bn corridor is not drawn as faintly as a $2m one; it is a
-    # legibility device, not an emphasis on any particular partner.
+    # Uniform treatment; weight tracks round-trip size only for legibility, so
+    # a $10bn corridor is not as faint as a $2m one.
+    pts = []
     for _, r in d.iterrows():
         xs = [r[x] for _, x in cols]
         ys = [r[m] for m, _ in cols]
-        # volume is negative for a partner whose surge imports fell below
-        # baseline, and a negative base raised to a fractional power is NaN,
-        # which matplotlib refuses to write to PDF. Clamp before the power.
         frac = max(0.0, min(r["volume"] / d["volume"].max(), 1.0))
-        w = 1.0 + 1.6 * frac ** 0.45
+        w = 1.1 + 1.7 * frac ** 0.45
         for i in range(2):
             ax.annotate("", xy=(xs[i + 1], ys[i + 1]), xytext=(xs[i], ys[i]),
                         arrowprops=dict(arrowstyle="-|>", lw=w, color=PATH,
-                                        alpha=0.8, shrinkA=3, shrinkB=4),
+                                        alpha=0.85, shrinkA=3, shrinkB=4),
                         zorder=3)
-        ax.plot(xs[0], ys[0], "o", ms=4.5, mfc="white", mec=DOT, mew=1.1,
-                zorder=4)
-        ax.plot(xs[-1], ys[-1], "o", ms=5.0, color=DOT, zorder=4)
+        # All three phases get a mark, so the middle of the path is a point
+        # rather than only an inflection in a line.
+        ax.plot(xs[0], ys[0], "o", ms=5.5, mfc="white", mec=DOT, mew=1.3, zorder=4)
+        ax.plot(xs[1], ys[1], "o", ms=4.5, mfc=MUTED, mec="white", mew=0.9, zorder=4)
+        ax.plot(xs[2], ys[2], "o", ms=6.5, color=DOT, zorder=5)
+        pts.append((xs, ys, str(r["cty_name"]).split(" (")[0]))
 
-    # Label every partner. Offsets alternate around the endpoint so that
-    # neighbours do not stack.
-    OFF = [(8, 6), (8, -12), (-8, 8), (-8, -12)]
-    for i, (_, r) in enumerate(d.iterrows()):
-        dx, dy = OFF[i % len(OFF)]
-        ax.annotate(str(r["cty_name"]).split(" (")[0][:18],
-                    (r[cols[2][1]], r[cols[2][0]]),
-                    textcoords="offset points", xytext=(dx, dy), fontsize=7.5,
-                    color=INK, ha="left" if dx > 0 else "right", va="center")
+    # Greedy label placement: try offsets around the end point and keep the
+    # first that collides with nothing already placed. Hand-tuned offsets do
+    # not survive a change of data.
+    fig.canvas.draw()
+    rend = fig.canvas.get_renderer()
+    placed = []
+    CAND = [(9, 4), (9, -12), (-9, 4), (-9, -12), (9, 14), (-9, 14),
+            (9, -22), (-9, -22), (0, 18), (0, -24)]
+    for xs, ys, name in pts:
+        best = None
+        for dx, dy in CAND:
+            t = ax.annotate(name, (xs[2], ys[2]), textcoords="offset points",
+                            xytext=(dx, dy), fontsize=8, color=INK,
+                            ha="left" if dx > 0 else ("right" if dx < 0 else "center"),
+                            va="center", zorder=6)
+            bb = t.get_window_extent(renderer=rend).expanded(1.06, 1.25)
+            if not any(bb.overlaps(q) for q in placed):
+                placed.append(bb)
+                best = t
+                break
+            t.remove()
+        if best is None:
+            t = ax.annotate(name, (xs[2], ys[2]), textcoords="offset points",
+                            xytext=(9, 4), fontsize=8, color=INK, ha="left",
+                            va="center", zorder=6)
+            placed.append(t.get_window_extent(renderer=rend))
 
     ax.set_xscale("log"); ax.set_yscale("log")
     ax.set_xlim(lo, hi); ax.set_ylim(lo, hi)
@@ -198,15 +218,17 @@ def main():
     ax.set_ylabel("US imports from partner, $bn per month")
     ax.set_title("Where the gold came from, and where it went back to",
                  loc="left", fontsize=11, pad=26)
-    ax.text(0, 1.035, f"US gold trade (HS 7108 + 7115) with {len(d)} partners, "
+    ax.text(0, 1.035, f"The {len(d)} largest US gold partners (HS 7108 + 7115), "
             "three phases each. Above the diagonal the US is a net importer.",
             transform=ax.transAxes, fontsize=8, color="#555", va="bottom")
     if len(oneway):
-        who = ", ".join(str(x)[:14] for x in oneway["cty_name"].head(4))
+        who = ", ".join(f"{str(r.cty_name).split(' (')[0]} (${r.surge_m:.2f}bn/mo)"
+                        for _, r in oneway.head(3).iterrows())
         ax.text(0, -0.125,
-                "One-directional corridors have no position on a log-log plane"
-                f"\nand are omitted: {who}."
-                "\nTheir gold moves to the US and does not come back.",
+                "Omitted: one-directional corridors, which have no position "
+                "on a log-log plane."
+                f"\nSurge imports: {who}."
+                "\nTheir gold moves to the US and does not come back, so they cannot be drawn here.",
                 transform=ax.transAxes, fontsize=7.5, color="#666",
                 va="top", linespacing=1.5)
     ax.text(0.03, 0.955, "US net importer", transform=ax.transAxes,
@@ -216,9 +238,11 @@ def main():
 
     handles = [
         plt.Line2D([], [], marker="o", ls="none", mfc="white", mec=DOT,
-                   mew=1.2, ms=7, label="baseline (Nov 23-Oct 24)"),
-        plt.Line2D([], [], marker="o", ls="none", color=DOT, ms=7,
-                   label="reversal (Apr-Nov 25), arrow via surge"),
+                   mew=1.3, ms=7, label="baseline  Nov 23 - Oct 24"),
+        plt.Line2D([], [], marker="o", ls="none", mfc=MUTED, mec="white",
+                   ms=6, label="surge  Nov 24 - Mar 25"),
+        plt.Line2D([], [], marker="o", ls="none", color=DOT, ms=8,
+                   label="reversal  Apr - Nov 25"),
     ]
     ax.legend(handles=handles, loc="lower left", fontsize=7.5, ncol=1,
               handletextpad=0.5, columnspacing=1.4)
