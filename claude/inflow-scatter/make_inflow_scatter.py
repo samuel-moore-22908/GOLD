@@ -36,12 +36,12 @@ OUTDIR = "claude/inflow-scatter"
 # out when the tariff exemption landed in April.
 FLOWS = {
     "imports": {"val": ("m24", "m25"), "share": lambda r, y: r[f"share{y}"],
-                "xlab": "US imports, Jan-Apr (log scale)",
+                "xlab": "US imports, 12 months (log scale)",
                 "ylab": "Import share  M / (M+X)",
                 "title": "Gold was an outlier in direction and in size",
                 "ref": "0.50 - balanced two-way trade"},
     "exports": {"val": ("x24", "x25"), "share": lambda r, y: 1 - r[f"share{y}"],
-                "xlab": "US exports, Jan-Apr (log scale)",
+                "xlab": "US exports, 12 months (log scale)",
                 "ylab": "Export share  X / (M+X)",
                 "title": "The same episode seen from the export side",
                 "ref": "0.50 - balanced two-way trade"},
@@ -56,11 +56,35 @@ GOLD = "7108+7115"
 TOP_N = 100
 
 
+# Two stacked 12-month windows, split at November 2024 where the episode
+# begins. Equal length and immediately consecutive, so seasonality cancels
+# exactly - each window contains every calendar month once - with no gap and
+# no overlap. Window B runs far enough past the peak to contain the April 2025
+# reversal rather than stopping at the top of the inflow.
+WINDOW_A = ("2023-11", "2024-10")
+WINDOW_B = ("2024-11", "2025-10")
+
+
+def _win(month):
+    if WINDOW_A[0] <= month <= WINDOW_A[1]:
+        return "A"
+    if WINDOW_B[0] <= month <= WINDOW_B[1]:
+        return "B"
+    return None
+
+
 def load():
-    agg = defaultdict(float)          # (hs4, year, flow) -> value
+    agg = defaultdict(float)          # (hs4, window, flow) -> value
+    months = set()
     for r in csv.DictReader(open(SRC, encoding="utf-8")):
-        year = r["date"][:4]
-        agg[(r["hs4"], year, r["flow"])] += float(r["value_usd"] or 0)
+        w = _win(r["date"][:7])
+        if not w:
+            continue
+        months.add((w, r["date"][:7]))
+        agg[(r["hs4"], w, r["flow"])] += float(r["value_usd"] or 0)
+    for w in ("A", "B"):
+        n = len({m for ww, m in months if ww == w})
+        print(f"  window {w}: {n} months of data")
     return agg
 
 
@@ -68,8 +92,8 @@ def build(agg, descs):
     codes = {k[0] for k in agg}
     rows = []
     for c in sorted(codes):
-        m24, x24 = agg.get((c, "2024", "imports"), 0), agg.get((c, "2024", "exports"), 0)
-        m25, x25 = agg.get((c, "2025", "imports"), 0), agg.get((c, "2025", "exports"), 0)
+        m24, x24 = agg.get((c, "A", "imports"), 0), agg.get((c, "A", "exports"), 0)
+        m25, x25 = agg.get((c, "B", "imports"), 0), agg.get((c, "B", "exports"), 0)
         # A heading needs trade in both windows to have a movement to plot, and
         # a positive import value or the log axis is undefined.
         if min(m24, m25, x24, x25) <= 0:
@@ -233,12 +257,12 @@ TEMPLATE = r"""<title>Gold Scatter — __FLOW__</title>
 </style>
 <div class="viz-root">
 <h1>__TITLE__</h1>
-<p class="sub">The __N__ most-traded HS4 headings, Jan–Apr 2024 → Jan–Apr 2025.
+<p class="sub">The __N__ most-traded HS4 headings, Nov 2023–Oct 2024 → Nov 2024–Oct 2025.
 Each heading is two points joined by an arrow. __SUB__</p>
 <div class="legend">
   <span class="key"><span class="dot" style="background:var(--gold)"></span>Gold (HS 7108 + 7115)</span>
   <span class="key"><span class="dot" style="background:var(--other)"></span>Other headings</span>
-  <span class="key">→ arrow points to Jan–Apr 2025</span>
+  <span class="key">→ arrow points to Nov 2024–Oct 2025</span>
 </div>
 <div class="wrap"><svg id="chart" width="1000" height="600" role="img"
  aria-label="Connected scatter of US imports against import share by HS4 heading"></svg></div>
