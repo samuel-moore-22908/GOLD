@@ -8,10 +8,11 @@ partner sit before the episode, during the inflow, and after it turned.
 The commodity figure establishes that gold went in and came back out. This one
 answers the question that follows - through whom.
 
-No path is highlighted. Switzerland accounts for 57% of the surge, so its path
-necessarily resembles the aggregate, and colouring it differently would assert
-that resemblance rather than let the reader find it. Every path is drawn the
-same way and labelled; the shape and the position carry the argument.
+Styled to match claude/inflow-scatter/make_phase_path_figure.py, which is the
+template for this family of figures: Switzerland in the accent colour with an
+arrowhead on each leg and its three phases annotated, the rest in muted grey.
+Five partners, so every path is labelled and every label is assignable to a
+country without a leader line.
 
 Verified against the API before use: the 50 codes are all individual countries
 with no aggregate groupings, there are no duplicated (code, partner, month)
@@ -55,7 +56,7 @@ MONTHS = {"baseline": 12, "surge": 5, "reversal": 8}
 # gold with the US in one direction only, so they have no position here at all.
 # They are named beneath the figure rather than silently dropped.
 LEG_FLOOR = 0.001          # $1m per month
-TOP_N = 10                 # partners plotted, by bilateral gold trade
+TOP_N = 5                  # partners plotted, by bilateral gold trade
 
 # "Bilateral" is the selection criterion, not a decoration. A partner qualifies
 # only if gold moves in BOTH directions in EVERY phase, above LEG_FLOOR. That
@@ -72,6 +73,7 @@ plt.rcParams.update({
 INK, ACCENT, MUTED = "#1a1a1a", "#b5482a", "#7a8b99"
 # Every path uses the same ink: nothing is singled out.
 PATH, DOT = "#5c6b78", "#3d4a54"
+HIGHLIGHT = "Switzerland"
 
 
 def load():
@@ -180,59 +182,76 @@ def main():
               f"M {r.baseline_m:6.2f} -> {r.surge_m:6.2f} -> {r.reversal_m:6.2f}"
               f"   X {r.baseline_x:5.2f} -> {r.surge_x:5.2f} -> {r.reversal_x:5.2f}")
 
-    fig, ax = plt.subplots(figsize=(7.4, 6.6))
-    lo = d[flat].min().min() * 0.45
-    hi = d[flat].max().max() * 3.0
-    ax.plot([lo, hi], [lo, hi], ls="--", lw=1.0, color=INK, alpha=0.35, zorder=1)
-    ax.text(hi * 0.45, hi * 0.5, "M = X", fontsize=8, color=INK, alpha=0.5,
+    fig, ax = plt.subplots(figsize=(7.2, 6.4))
+    lo = d[flat].min().min() * 0.4
+    hi = d[flat].max().max() * 3.2
+    ax.plot([lo, hi], [lo, hi], ls="--", lw=1.1, color=INK, alpha=0.45, zorder=1)
+    ax.text(hi * 0.42, hi * 0.47, "M = X", fontsize=8, color=INK, alpha=0.6,
             ha="right", va="bottom", rotation=45, rotation_mode="anchor")
 
-    # Uniform treatment; weight tracks round-trip size only for legibility, so
-    # a $10bn corridor is not as faint as a $2m one.
-    pts = []
-    for _, r in d.iterrows():
+    hi_row = d[d.cty_name.str.startswith(HIGHLIGHT)]
+    rest = d[~d.cty_name.str.startswith(HIGHLIGHT)]
+
+    # The other partners: muted, but heavier than in the commodity figure.
+    # There are four of them rather than ninety-nine, so they are meant to be
+    # read individually rather than to form a cloud.
+    ends = []
+    for _, r in rest.iterrows():
         xs = [r[x] for _, x in cols]
         ys = [r[m] for m, _ in cols]
-        frac = max(0.0, min(r["volume"] / d["volume"].max(), 1.0))
-        w = 1.1 + 1.7 * frac ** 0.45
         for i in range(2):
             ax.annotate("", xy=(xs[i + 1], ys[i + 1]), xytext=(xs[i], ys[i]),
-                        arrowprops=dict(arrowstyle="-|>", lw=w, color=PATH,
+                        arrowprops=dict(arrowstyle="-|>", lw=1.4, color=MUTED,
                                         alpha=0.85, shrinkA=3, shrinkB=4),
                         zorder=3)
-        # All three phases get a mark, so the middle of the path is a point
-        # rather than only an inflection in a line.
-        ax.plot(xs[0], ys[0], "o", ms=5.5, mfc="white", mec=DOT, mew=1.3, zorder=4)
-        ax.plot(xs[1], ys[1], "o", ms=4.5, mfc=MUTED, mec="white", mew=0.9, zorder=4)
-        ax.plot(xs[2], ys[2], "o", ms=6.5, color=DOT, zorder=5)
-        pts.append((xs, ys, str(r["cty_name"]).split(" (")[0]))
+        ax.plot(xs[0], ys[0], "o", ms=5.0, mfc="white", mec=MUTED, mew=1.3, zorder=4)
+        ax.plot(xs[1], ys[1], "o", ms=4.0, mfc=MUTED, mec="white", mew=0.8,
+                alpha=0.85, zorder=4)
+        ax.plot(xs[2], ys[2], "o", ms=6.0, color=MUTED, zorder=4)
+        ends.append((xs[2], ys[2], str(r["cty_name"]).split(" (")[0]))
 
-    # Greedy label placement: try offsets around the end point and keep the
-    # first that collides with nothing already placed. Hand-tuned offsets do
-    # not survive a change of data.
+    if len(hi_row):
+        r = hi_row.iloc[0]
+        gx = [r[x] for _, x in cols]
+        gy = [r[m] for m, _ in cols]
+        for i in range(2):
+            ax.annotate("", xy=(gx[i + 1], gy[i + 1]), xytext=(gx[i], gy[i]),
+                        arrowprops=dict(arrowstyle="-|>", lw=2.0, color=ACCENT,
+                                        shrinkA=4, shrinkB=6), zorder=6)
+        ax.plot(gx[0], gy[0], "o", ms=8, mfc="white", mec=ACCENT, mew=2.0, zorder=7)
+        ax.plot(gx[1], gy[1], "o", ms=8, color=ACCENT, mec="white", mew=1.2,
+                alpha=0.65, zorder=7)
+        ax.plot(gx[2], gy[2], "o", ms=10, color=ACCENT, mec="white", mew=1.2,
+                zorder=7)
+        for (px, py), lab, off, ha in zip(
+                zip(gx, gy),
+                ["baseline\nNov 23-Oct 24", "surge\nNov 24-Mar 25",
+                 "reversal\nApr-Nov 25"],
+                [(10, -26), (-13, 4), (13, -14)], ["left", "right", "left"]):
+            ax.annotate(lab, (px, py), textcoords="offset points", xytext=off,
+                        fontsize=7, color=ACCENT, ha=ha, va="center",
+                        linespacing=1.3)
+        ax.annotate("SWITZERLAND", (gx[1], gy[1]), textcoords="offset points",
+                    xytext=(-13, 26), fontsize=10, fontweight="bold",
+                    color=ACCENT, ha="right")
+
+    # Label the other four by search, so each name lands beside its own end
+    # point and nothing overlaps.
     fig.canvas.draw()
     rend = fig.canvas.get_renderer()
     placed = []
-    CAND = [(9, 4), (9, -12), (-9, 4), (-9, -12), (9, 14), (-9, 14),
-            (9, -22), (-9, -22), (0, 18), (0, -24)]
-    for xs, ys, name in pts:
-        best = None
+    CAND = [(9, 3), (9, -11), (-9, 3), (-9, -11), (9, 12), (-9, 12), (0, -18)]
+    for ex, ey, name in ends:
         for dx, dy in CAND:
-            t = ax.annotate(name, (xs[2], ys[2]), textcoords="offset points",
+            t = ax.annotate(name, (ex, ey), textcoords="offset points",
                             xytext=(dx, dy), fontsize=8, color=INK,
                             ha="left" if dx > 0 else ("right" if dx < 0 else "center"),
-                            va="center", zorder=6)
-            bb = t.get_window_extent(renderer=rend).expanded(1.06, 1.25)
+                            va="center", zorder=8)
+            bb = t.get_window_extent(renderer=rend).expanded(1.06, 1.3)
             if not any(bb.overlaps(q) for q in placed):
                 placed.append(bb)
-                best = t
                 break
             t.remove()
-        if best is None:
-            t = ax.annotate(name, (xs[2], ys[2]), textcoords="offset points",
-                            xytext=(9, 4), fontsize=8, color=INK, ha="left",
-                            va="center", zorder=6)
-            placed.append(t.get_window_extent(renderer=rend))
 
     ax.set_xscale("log"); ax.set_yscale("log")
     ax.set_xlim(lo, hi); ax.set_ylim(lo, hi)
@@ -247,11 +266,15 @@ def main():
     if len(oneway):
         rank_in = oneway.assign(tot=oneway[flat].sum(axis=1))
         rank_in = rank_in[rank_in["tot"] > d["bilateral"].min()]
+        rank_in = rank_in.sort_values("tot", ascending=False)
         who = ", ".join(
             f"{str(r.cty_name).split(' (')[0]} (\\${r.tot:.2f}bn)"
-            for _, r in rank_in.sort_values("tot", ascending=False).head(4).iterrows())
+            for _, r in rank_in.head(4).iterrows())
+        n_out = len(rank_in)
+        word = {1: "One", 2: "Two", 3: "Three", 4: "Four"}.get(n_out, str(n_out))
+        plural = "corridor" if n_out == 1 else "corridors"
         ax.text(0, -0.135,
-                f"Four one-directional corridors would rank inside this top ten but cannot be drawn:"
+                f"{word} one-directional {plural} would rank inside this top {TOP_N} but cannot be drawn:"
                 f"\n{who}."
                 "\nTheir gold moves to the US and does not come back, so they have no export coordinate.",
                 transform=ax.transAxes, fontsize=7.5, color="#666",
@@ -262,14 +285,16 @@ def main():
             fontsize=8, color=INK, alpha=0.55, ha="right")
 
     handles = [
-        plt.Line2D([], [], marker="o", ls="none", mfc="white", mec=DOT,
-                   mew=1.3, ms=7, label="baseline  Nov 23 - Oct 24"),
-        plt.Line2D([], [], marker="o", ls="none", mfc=MUTED, mec="white",
-                   ms=6, label="surge  Nov 24 - Mar 25"),
-        plt.Line2D([], [], marker="o", ls="none", color=DOT, ms=8,
-                   label="reversal  Apr - Nov 25"),
+        plt.Line2D([], [], marker="o", ls="none", mfc="white", mec=ACCENT,
+                   mew=1.6, ms=7, label="baseline"),
+        plt.Line2D([], [], marker="o", ls="none", color=ACCENT, alpha=0.65,
+                   ms=7, label="surge"),
+        plt.Line2D([], [], marker="o", ls="none", color=ACCENT, ms=8,
+                   label="reversal"),
+        plt.Line2D([], [], color=MUTED, lw=1.4, alpha=0.85,
+                   label="other partners"),
     ]
-    ax.legend(handles=handles, loc="lower left", fontsize=7.5, ncol=1,
+    ax.legend(handles=handles, loc="lower left", fontsize=8, ncol=2,
               handletextpad=0.5, columnspacing=1.4)
 
     fig.tight_layout()
