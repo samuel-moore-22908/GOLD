@@ -6,9 +6,17 @@ Same construction as claude/inflow-scatter, but the unit of observation is a
 partner sit before the episode, during the inflow, and after it turned.
 
 The commodity figure establishes that gold went in and came back out. This one
-answers the question that follows - through whom - and the answer is legible
-without arithmetic: Switzerland traces a hook of its own while most partners
-sit still.
+answers the question that follows - through whom.
+
+No path is highlighted. Switzerland accounts for 57% of the surge, so its path
+necessarily resembles the aggregate, and colouring it differently would assert
+that resemblance rather than let the reader find it. Every path is drawn the
+same way and labelled; the shape and the position carry the argument.
+
+Verified against the API before use: the 50 codes are all individual countries
+with no aggregate groupings, there are no duplicated (code, partner, month)
+rows, and Switzerland/Jan-2025 matches a direct call exactly - 711590 at
+$18.902bn and 710812 at $0.573bn. The bullion sits specifically in HS 711590.
 
 Reads   transfer/raw/gold_panel_top50.parquet   (HS6, bilateral, monthly)
         transfer/raw/gold_partners_top50.csv    (partner names, ch71 ranking)
@@ -38,8 +46,6 @@ PHASES = {"baseline": ("2023-11", "2024-10"),
           "surge":    ("2024-11", "2025-03"),
           "reversal": ("2025-04", "2025-11")}
 MONTHS = {"baseline": 12, "surge": 5, "reversal": 8}
-HIGHLIGHT = "Switzerland"
-
 # A partner needs at least this much trade in *both* directions in *every*
 # phase to have a position on a log-log plane. Below it the coordinate is
 # rounding noise, and including such partners stretched the axes across seven
@@ -56,6 +62,8 @@ plt.rcParams.update({
     "axes.spines.right": False, "legend.frameon": False,
 })
 INK, ACCENT, MUTED = "#1a1a1a", "#b5482a", "#7a8b99"
+# Every path uses the same ink: nothing is singled out.
+PATH, DOT = "#5c6b78", "#3d4a54"
 
 
 def load():
@@ -147,67 +155,49 @@ def main():
               f"M {r.baseline_m:6.2f} -> {r.surge_m:6.2f} -> {r.reversal_m:6.2f}"
               f"   X {r.baseline_x:5.2f} -> {r.surge_x:5.2f} -> {r.reversal_x:5.2f}")
 
-    hi_row = d[d.cty_name == HIGHLIGHT]
-    rest = d[d.cty_name != HIGHLIGHT]
-
-    fig, ax = plt.subplots(figsize=(7.2, 6.4))
-    lo = d[flat].min().min() * 0.55
-    hi = d[flat].max().max() * 1.9
-    ax.plot([lo, hi], [lo, hi], ls="--", lw=1.1, color=INK, alpha=0.45, zorder=1)
-    ax.text(hi * 0.5, hi * 0.55, "M = X", fontsize=8, color=INK, alpha=0.6,
+    fig, ax = plt.subplots(figsize=(7.6, 6.6))
+    lo = d[flat].min().min() * 0.5
+    hi = d[flat].max().max() * 2.4
+    ax.plot([lo, hi], [lo, hi], ls="--", lw=1.1, color=INK, alpha=0.4, zorder=1)
+    ax.text(hi * 0.5, hi * 0.55, "M = X", fontsize=8, color=INK, alpha=0.55,
             ha="right", va="bottom", rotation=45, rotation_mode="anchor")
 
-    labelled = 0
-    for _, r in rest.iterrows():
+    # Uniform treatment. Line weight tracks the size of the round trip only so
+    # that a $10bn corridor is not drawn as faintly as a $2m one; it is a
+    # legibility device, not an emphasis on any particular partner.
+    for _, r in d.iterrows():
         xs = [r[x] for _, x in cols]
         ys = [r[m] for m, _ in cols]
-        big = r["volume"] >= 0.05
-        ax.plot(xs, ys, "-", lw=1.1 if big else 0.7, color=MUTED,
-                alpha=0.65 if big else 0.32, zorder=3 if big else 2)
-        ax.plot(xs[0], ys[0], "o", ms=3.0, mfc="white", mec=MUTED, mew=0.7,
-                alpha=0.6, zorder=3)
-        ax.plot(xs[-1], ys[-1], "o", ms=3.6, color=MUTED, alpha=0.6, zorder=3)
-        # Name the ones that actually moved; the rest would be a thicket.
-        if big:
-            # Alternate the offset: neighbouring partners land close together
-            # and a fixed offset stacks their labels on top of each other.
-            nudge = (7, 5) if (labelled % 2 == 0) else (7, -11)
-            ax.annotate(str(r["cty_name"])[:18], (xs[-1], ys[-1]),
-                        textcoords="offset points", xytext=nudge,
-                        fontsize=7, color="#5c6b78")
-            labelled += 1
-
-    if len(hi_row):
-        r = hi_row.iloc[0]
-        gx = [r[x] for _, x in cols]
-        gy = [r[m] for m, _ in cols]
+        # volume is negative for a partner whose surge imports fell below
+        # baseline, and a negative base raised to a fractional power is NaN,
+        # which matplotlib refuses to write to PDF. Clamp before the power.
+        frac = max(0.0, min(r["volume"] / d["volume"].max(), 1.0))
+        w = 1.0 + 1.6 * frac ** 0.45
         for i in range(2):
-            ax.annotate("", xy=(gx[i + 1], gy[i + 1]), xytext=(gx[i], gy[i]),
-                        arrowprops=dict(arrowstyle="-|>", lw=2.0, color=ACCENT,
-                                        shrinkA=4, shrinkB=6), zorder=6)
-        ax.plot(gx[0], gy[0], "o", ms=8, mfc="white", mec=ACCENT, mew=2.0, zorder=7)
-        ax.plot(gx[1], gy[1], "o", ms=8, color=ACCENT, mec="white", mew=1.2,
-                alpha=0.65, zorder=7)
-        ax.plot(gx[2], gy[2], "o", ms=10, color=ACCENT, mec="white", mew=1.2,
-                zorder=7)
-        for (px, py), lab, off, ha in zip(
-                zip(gx, gy),
-                ["baseline\nNov 23–Oct 24", "surge\nNov 24–Mar 25",
-                 "reversal\nApr–Nov 25"],
-                [(-14, -30), (-12, 6), (12, -12)], ["right", "right", "left"]):
-            ax.annotate(lab, (px, py), textcoords="offset points", xytext=off,
-                        fontsize=7.5, color=ACCENT, ha=ha, va="center",
-                        linespacing=1.25)
-        ax.annotate("SWITZERLAND", (gx[1], gy[1]), textcoords="offset points",
-                    xytext=(-20, -34), fontsize=10, fontweight="bold",
-                    color=ACCENT, ha="right")
+            ax.annotate("", xy=(xs[i + 1], ys[i + 1]), xytext=(xs[i], ys[i]),
+                        arrowprops=dict(arrowstyle="-|>", lw=w, color=PATH,
+                                        alpha=0.8, shrinkA=3, shrinkB=4),
+                        zorder=3)
+        ax.plot(xs[0], ys[0], "o", ms=4.5, mfc="white", mec=DOT, mew=1.1,
+                zorder=4)
+        ax.plot(xs[-1], ys[-1], "o", ms=5.0, color=DOT, zorder=4)
+
+    # Label every partner. Offsets alternate around the endpoint so that
+    # neighbours do not stack.
+    OFF = [(8, 6), (8, -12), (-8, 8), (-8, -12)]
+    for i, (_, r) in enumerate(d.iterrows()):
+        dx, dy = OFF[i % len(OFF)]
+        ax.annotate(str(r["cty_name"]).split(" (")[0][:18],
+                    (r[cols[2][1]], r[cols[2][0]]),
+                    textcoords="offset points", xytext=(dx, dy), fontsize=7.5,
+                    color=INK, ha="left" if dx > 0 else "right", va="center")
 
     ax.set_xscale("log"); ax.set_yscale("log")
     ax.set_xlim(lo, hi); ax.set_ylim(lo, hi)
     ax.set_xlabel("US exports to partner, $bn per month")
     ax.set_ylabel("US imports from partner, $bn per month")
-    ax.set_title("The round trip ran through Switzerland", loc="left",
-                 fontsize=11, pad=26)
+    ax.set_title("Where the gold came from, and where it went back to",
+                 loc="left", fontsize=11, pad=26)
     ax.text(0, 1.035, f"US gold trade (HS 7108 + 7115) with {len(d)} partners, "
             "three phases each. Above the diagonal the US is a net importer.",
             transform=ax.transAxes, fontsize=8, color="#555", va="bottom")
@@ -225,15 +215,12 @@ def main():
             fontsize=8, color=INK, alpha=0.55, ha="right")
 
     handles = [
-        plt.Line2D([], [], marker="o", ls="none", mfc="white", mec=ACCENT,
-                   mew=1.6, ms=7, label="baseline"),
-        plt.Line2D([], [], marker="o", ls="none", color=ACCENT, alpha=0.65,
-                   ms=7, label="surge"),
-        plt.Line2D([], [], marker="o", ls="none", color=ACCENT, ms=8,
-                   label="reversal"),
-        plt.Line2D([], [], color=MUTED, lw=1.1, alpha=0.6, label="other partners"),
+        plt.Line2D([], [], marker="o", ls="none", mfc="white", mec=DOT,
+                   mew=1.2, ms=7, label="baseline (Nov 23-Oct 24)"),
+        plt.Line2D([], [], marker="o", ls="none", color=DOT, ms=7,
+                   label="reversal (Apr-Nov 25), arrow via surge"),
     ]
-    ax.legend(handles=handles, loc="lower left", fontsize=7.5, ncol=2,
+    ax.legend(handles=handles, loc="lower left", fontsize=7.5, ncol=1,
               handletextpad=0.5, columnspacing=1.4)
 
     fig.tight_layout()
