@@ -214,3 +214,57 @@ collapsed from 0.70 to 0.28 while the export channel itself still grew.
 HS 2937 and HS 7106 (silver) sit near the top of both rankings. The
 precious-metals cluster and the pharmaceutical front-running both need
 addressing in the text rather than being left for a referee.
+
+
+---
+
+## Windows: two stacked 12-month periods, split at November 2024
+
+Superseding the Jan–Apr slice.
+
+- **A:** Nov 2023 – Oct 2024
+- **B:** Nov 2024 – Oct 2025
+
+Equal length, immediately consecutive, no gap and no overlap. At exactly twelve
+months each window contains **every calendar month precisely once**, so
+seasonality cancels by construction rather than approximately. A 13-month
+window double-counts one month and tilts toward whatever that month does.
+
+The split falls at November 2024, where the episode begins, and window B runs
+far enough past the peak to contain the **April 2025 reversal** rather than
+stopping at the top of the inflow. This is the honest framing: it asks whether
+gold's *annual net position* flipped, not whether it flipped during four months
+chosen after the fact.
+
+### What the annual framing costs, and what it buys
+
+| | Jan–Apr slice | 12-month windows |
+|---|---|---|
+| Imports | $5.25bn → $81.71bn | $23.46bn → $120.13bn |
+| Import share | 0.30 → 0.72 | **0.443 → 0.569** |
+| Import rank | #2 | **#1 of 100** |
+
+The share flip is much smaller — 0.44 → 0.57 rather than 0.30 → 0.72 — because
+window B contains the metal going back out in April. That is the correct
+number. The four-month version measured the peak of a round trip and read it as
+a permanent repositioning.
+
+What it buys is a **stronger** claim on the two things that matter:
+
+1. **Gold is now rank #1 of 100 on import displacement**, ahead of HS 2937
+   (hormones), which drops to #3. The pharmaceutical front-running was
+   concentrated in a few months and dilutes over a year; gold's does not.
+2. **Only 3 of 100 headings cross the balance diagonal at all**, down from 7,
+   and the other two — articles of iron or steel, frozen beef — are an order of
+   magnitude smaller. The crossing is now close to unique to gold.
+
+Gold still crosses: export-dominated (M $23.46bn vs X $29.51bn) to
+import-dominated (M $120.13bn vs X $90.96bn).
+
+### Silver is now the thing to address
+
+HS 7106 ranks **#2 on imports and #1 on exports** under the annual framing, and
+its import share moves *down* (0.80 → 0.57) while its export share moves up.
+Silver is behaving like the mirror of gold rather than a fellow traveller. The
+precious-metals story is no longer "gold and silver both surged" and needs
+stating precisely rather than gestured at.

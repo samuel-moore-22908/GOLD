@@ -30,10 +30,24 @@ import requests
 OUT = "data/processed/us_hs4_universe_monthly.csv"
 UA = {"User-Agent": "academic research (samuel.moore.econresearch@gmail.com)"}
 
-# Jan-Apr in both years: the tariff-scare window and the same months a year
-# earlier, since commodity trade is strongly seasonal and an adjacent-quarter
-# baseline would confound season with treatment.
-MONTHS = [f"{y}-{m:02d}" for y in (2024, 2025) for m in (1, 2, 3, 4)]
+# Two consecutive 13-month windows, Oct 2023 - Oct 2024 and Nov 2024 - Nov 2025.
+# Equal length and back to back, so seasonality cancels without a gap between
+# them, and the second window runs far enough past the episode to include the
+# April 2025 reversal rather than stopping at the peak.
+def _months(a, b):
+    y, m = a
+    out = []
+    while (y, m) <= b:
+        out.append(f"{y}-{m:02d}")
+        m += 1
+        if m == 13:
+            y, m = y + 1, 1
+    return out
+
+
+WINDOW_A = _months((2023, 10), (2024, 10))
+WINDOW_B = _months((2024, 11), (2025, 11))
+MONTHS = WINDOW_A + WINDOW_B
 
 SPEC = {
     "imports": ("I_COMMODITY", "I_COMMODITY,GEN_VAL_MO,GEN_QY1_MO,UNIT_QY1"),
