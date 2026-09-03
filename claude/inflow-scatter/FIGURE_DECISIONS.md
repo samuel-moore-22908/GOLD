@@ -268,3 +268,57 @@ its import share moves *down* (0.80 → 0.57) while its export share moves up.
 Silver is behaving like the mirror of gold rather than a fellow traveller. The
 precious-metals story is no longer "gold and silver both surged" and needs
 stating precisely rather than gestured at.
+
+
+---
+
+## The annual window cancels the phenomenon
+
+Twelve-month windows measure **net** displacement, and a round trip nets to
+almost nothing. The annual figure was averaging away the thing it was built to
+show. Gold's monthly series makes the problem obvious:
+
+| Phase | Imports | Exports | Share |
+|---|---|---|---|
+| Nov 23 – Oct 24 | $1.95bn/mo | $2.46bn/mo | 0.44 |
+| **Nov 24 – Mar 25** | **$19.41bn/mo** | $3.40bn/mo | **0.85** |
+| **Apr – Nov 25** | $3.10bn/mo | **$10.87bn/mo** | **0.22** |
+
+January 2025 alone hits $34.2bn of imports and a share of 0.95. April flips to
+$2.5bn imports against $18.9bn exports.
+
+## Three phases, two segments
+
+`make_phase_path.py`. Same balance plane, but each heading is three points
+joined in order: baseline, surge, reversal. **A permanent repositioning draws a
+straight path; a round trip doubles back.** Gold traces a hook — straight up as
+imports rise tenfold with exports flat, then down and right as imports collapse
+and exports triple.
+
+Positions are **monthly-average rates**, not cumulative totals, because the
+phases are 12, 5 and 8 months long. Cumulative values would make a long phase
+look large purely for being long.
+
+The reversal ends at share 0.22, *below* the 0.44 baseline. Gold did not merely
+return to where it was parked — it overshot into stronger export dominance than
+before the episode.
+
+## Ranking statistic: amplitude, not the retrace ratio
+
+The obvious measure is path length ÷ net displacement. It is **scale-free, and
+that makes it useless for ranking**: a heading whose net displacement lands near
+zero gets an enormous ratio from a tiny wobble. It ranked engine parts at 23.5×
+and footwear at 21× above gold, neither of which went anywhere, and put gold
+14th.
+
+Ranking instead on **round-trip amplitude = min(out-leg, back-leg)** requires a
+heading to travel a long way out *and* a long way back, which is the actual
+claim. On that measure gold is **#1 of 100 at 0.94**, against 0.54 for HS 2937.
+The ratio is still reported — it is the natural way to say "it came back" — but
+it does not drive the ranking.
+
+### Silver, again
+
+HS 7106 has a back-leg of 0.96, as long as gold's, but an out-leg of only 0.35.
+It left without having arrived first. That is a different phenomenon from
+gold's round trip and should not be described as the same one.
