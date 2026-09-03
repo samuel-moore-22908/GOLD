@@ -1,0 +1,193 @@
+<title>Gold Inflow Scatter — Preview</title>
+<style>
+  .viz-root{
+    color-scheme: light;
+    --surface-1:#fcfcfb; --text-primary:#0b0b0b; --text-secondary:#52514e;
+    --muted:#898781; --grid:#e1e0d9; --baseline:#c3c2b7;
+    --gold:#eda100; --other:#a9a7a0; --ring:rgba(11,11,11,0.10);
+    background:var(--surface-1); color:var(--text-primary);
+    font:14px/1.5 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;
+    padding:22px; max-width:1000px; margin:0 auto;
+  }
+  @media (prefers-color-scheme: dark){
+    :root:where(:not([data-theme="light"])) .viz-root{
+      color-scheme: dark;
+      --surface-1:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7;
+      --muted:#898781; --grid:#2c2c2a; --baseline:#383835;
+      --gold:#c98500; --other:#6f6d67; --ring:rgba(255,255,255,0.10);
+    }
+  }
+  :root[data-theme="dark"] .viz-root{
+    color-scheme: dark;
+    --surface-1:#1a1a19; --text-primary:#ffffff; --text-secondary:#c3c2b7;
+    --muted:#898781; --grid:#2c2c2a; --baseline:#383835;
+    --gold:#c98500; --other:#6f6d67; --ring:rgba(255,255,255,0.10);
+  }
+  body{margin:0;background:var(--surface-1)}
+  h1{font-size:19px;margin:0 0 4px}
+  .sub{color:var(--text-secondary);font-size:13px;margin:0 0 6px}
+  .caveat{font-size:12px;color:var(--text-secondary);background:rgba(237,161,0,.10);
+    border-left:3px solid var(--gold);padding:8px 11px;border-radius:4px;margin:12px 0 18px}
+  .legend{display:flex;gap:18px;align-items:center;font-size:12px;
+    color:var(--text-secondary);margin:0 0 10px}
+  .key{display:inline-flex;align-items:center;gap:7px}
+  .dot{width:11px;height:11px;border-radius:50%;display:inline-block}
+  table{border-collapse:collapse;font-size:12px;margin-top:20px;width:100%}
+  th,td{text-align:right;padding:6px 10px;border-bottom:1px solid var(--grid)}
+  th:first-child,td:first-child{text-align:left}
+  th{color:var(--text-secondary);font-weight:600}
+  caption{caption-side:top;text-align:left;font-size:12px;color:var(--text-secondary);
+    padding-bottom:7px}
+  #tip{position:fixed;pointer-events:none;opacity:0;transition:opacity .1s;
+    background:var(--surface-1);border:1px solid var(--ring);border-radius:5px;
+    padding:7px 10px;font-size:12px;box-shadow:0 3px 10px rgba(0,0,0,.13);z-index:9}
+  .wrap{overflow-x:auto}
+</style>
+
+<div class="viz-root">
+<h1>Where gold went during the inflow window</h1>
+<p class="sub">US trade by commodity, Jan–Apr 2024 → Jan–Apr 2025. Each commodity is
+two points joined by an arrow: where it sat before the tariff scare, and where it
+moved to during it.</p>
+
+<div class="caveat"><b>Preview, not a result.</b> Gold's two positions are computed
+from real mirror data (Swiss-reported exports to the US, HS&nbsp;7108). Every other
+commodity shown is an <b>illustrative placeholder</b> — the all-commodity monthly
+Census pull does not exist yet, and the US-reported import series currently
+understates gold by roughly 50×.</div>
+
+<div class="legend">
+  <span class="key"><span class="dot" style="background:var(--gold)"></span>Gold (HS 7108) — real</span>
+  <span class="key"><span class="dot" style="background:var(--other)"></span>Other commodities — illustrative</span>
+  <span class="key">→ arrow points to Jan–Apr 2025</span>
+</div>
+
+<div class="wrap"><svg id="chart" width="960" height="560" role="img"
+  aria-label="Connected scatter of US commodity imports against import share, 2024 to 2025"></svg></div>
+
+<table>
+  <caption>Gold, HS 7108 — the two plotted positions</caption>
+  <thead><tr><th>Window</th><th>Imports</th><th>Exports</th>
+    <th>Import share</th><th>Grubel–Lloyd</th><th>Net mass in</th></tr></thead>
+  <tbody>
+    <tr><td>Jan–Apr 2024</td><td>$1.16bn</td><td>$8.24bn</td>
+        <td>0.12</td><td>0.25</td><td>17 t</td></tr>
+    <tr><td>Jan–Apr 2025</td><td>$43.15bn</td><td>$17.70bn</td>
+        <td>0.71</td><td>0.58</td><td>639 t</td></tr>
+  </tbody>
+</table>
+<p class="sub" style="margin-top:10px">Imports are Swiss-reported exports to the US
+(the mirror), because the US-reported series is broken. Exports are US-reported.
+Tonnage rising 37× is what rules out a pure gold-price effect.</p>
+</div>
+<div id="tip"></div>
+
+<script>
+const DATA = [
+  // name, import$m 2024, share 2024, import$m 2025, share 2025, real?
+  ["Gold (HS 7108)", 1160, 0.123, 43150, 0.709, true],
+  ["Crude petroleum", 62000, 0.74, 58000, 0.72, false],
+  ["Passenger vehicles", 51000, 0.81, 55000, 0.83, false],
+  ["Pharmaceuticals", 38000, 0.61, 44000, 0.66, false],
+  ["Semiconductors", 21000, 0.55, 23500, 0.57, false],
+  ["Computers", 34000, 0.86, 36000, 0.87, false],
+  ["Refined petroleum", 17000, 0.44, 16000, 0.42, false],
+  ["Medical instruments", 12000, 0.50, 13000, 0.52, false],
+  ["Aluminium", 8800, 0.70, 9600, 0.73, false],
+  ["Aircraft", 7200, 0.34, 6900, 0.33, false],
+  ["Silver (HS 7106)", 2400, 0.52, 4100, 0.63, false],
+  ["Natural gas", 4300, 0.21, 4050, 0.20, false],
+  ["Soybeans", 900, 0.09, 850, 0.08, false],
+  ["Corn", 480, 0.06, 520, 0.07, false],
+];
+
+const W=960,H=560,M={t:26,r:150,b:56,l:66};
+const iw=W-M.l-M.r, ih=H-M.t-M.b;
+const X0=Math.log10(300), X1=Math.log10(120000);
+const sx=v=>M.l+(Math.log10(v)-X0)/(X1-X0)*iw;
+const sy=v=>M.t+(1-v)*ih;
+const svg=document.getElementById("chart");
+const NS="http://www.w3.org/2000/svg";
+const el=(n,a)=>{const e=document.createElementNS(NS,n);
+  for(const k in a)e.setAttribute(k,a[k]);return e;};
+
+// arrowhead
+const defs=el("defs",{});
+const mk=el("marker",{id:"ah",viewBox:"0 0 10 10",refX:"8",refY:"5",
+  markerWidth:"5",markerHeight:"5",orient:"auto-start-reverse"});
+mk.appendChild(el("path",{d:"M0,0 L10,5 L0,10 z",fill:"var(--gold)"}));
+const mk2=el("marker",{id:"ah2",viewBox:"0 0 10 10",refX:"8",refY:"5",
+  markerWidth:"5",markerHeight:"5",orient:"auto-start-reverse"});
+mk2.appendChild(el("path",{d:"M0,0 L10,5 L0,10 z",fill:"var(--other)"}));
+defs.appendChild(mk);defs.appendChild(mk2);svg.appendChild(defs);
+
+// gridlines + y axis
+for(let s=0;s<=1.0001;s+=0.25){
+  svg.appendChild(el("line",{x1:M.l,x2:M.l+iw,y1:sy(s),y2:sy(s),
+    stroke:"var(--grid)","stroke-width":1}));
+  const t=el("text",{x:M.l-10,y:sy(s)+4,"text-anchor":"end",
+    "font-size":11,fill:"var(--muted)"});t.textContent=s.toFixed(2);
+  svg.appendChild(t);
+}
+// balance reference line at 0.5
+svg.appendChild(el("line",{x1:M.l,x2:M.l+iw,y1:sy(.5),y2:sy(.5),
+  stroke:"var(--baseline)","stroke-width":1.5,"stroke-dasharray":"5 4"}));
+const bl=el("text",{x:M.l+6,y:sy(.5)-7,"font-size":11,fill:"var(--muted)"});
+bl.textContent="0.50 — balanced two-way trade";svg.appendChild(bl);
+
+// x ticks
+[1e3,1e4,1e5].forEach(v=>{
+  svg.appendChild(el("line",{x1:sx(v),x2:sx(v),y1:M.t,y2:M.t+ih,
+    stroke:"var(--grid)","stroke-width":1}));
+  const t=el("text",{x:sx(v),y:M.t+ih+20,"text-anchor":"middle",
+    "font-size":11,fill:"var(--muted)"});
+  t.textContent = v>=1e3 ? "$"+(v/1000)+"bn" : "$"+v+"m";
+  svg.appendChild(t);
+});
+svg.appendChild(el("line",{x1:M.l,x2:M.l+iw,y1:M.t+ih,y2:M.t+ih,
+  stroke:"var(--baseline)","stroke-width":1}));
+
+const xl=el("text",{x:M.l+iw/2,y:H-14,"text-anchor":"middle","font-size":12,
+  fill:"var(--text-secondary)"});
+xl.textContent="US imports, Jan–Apr (log scale)";svg.appendChild(xl);
+const yl=el("text",{x:-(M.t+ih/2),y:16,transform:"rotate(-90)","text-anchor":"middle",
+  "font-size":12,fill:"var(--text-secondary)"});
+yl.textContent="Import share  M / (M+X)";svg.appendChild(yl);
+
+const tip=document.getElementById("tip");
+function hover(node,html){
+  node.addEventListener("mousemove",e=>{
+    tip.innerHTML=html;tip.style.opacity=1;
+    tip.style.left=(e.clientX+14)+"px";tip.style.top=(e.clientY-10)+"px";});
+  node.addEventListener("mouseleave",()=>tip.style.opacity=0);
+}
+
+// draw non-gold first so gold sits on top
+DATA.slice().sort((a,b)=>a[5]-b[5]).forEach(d=>{
+  const [name,m0,s0,m1,s1,real]=d;
+  const col=real?"var(--gold)":"var(--other)";
+  const g=el("g",{});
+  g.appendChild(el("line",{x1:sx(m0),y1:sy(s0),x2:sx(m1),y2:sy(s1),
+    stroke:col,"stroke-width":real?3:2,"marker-end":real?"url(#ah)":"url(#ah2)",
+    opacity:real?1:.6}));
+  g.appendChild(el("circle",{cx:sx(m0),cy:sy(s0),r:real?7:5,fill:"var(--surface-1)",
+    stroke:col,"stroke-width":real?3:2,opacity:real?1:.7}));
+  g.appendChild(el("circle",{cx:sx(m1),cy:sy(s1),r:real?9:6,fill:col,
+    stroke:"var(--surface-1)","stroke-width":2,opacity:real?1:.7}));
+  hover(g,`<b>${name}</b><br>2024: $${(m0/1000).toFixed(2)}bn · share ${s0.toFixed(2)}`+
+         `<br>2025: $${(m1/1000).toFixed(2)}bn · share ${s1.toFixed(2)}`+
+         (real?"":"<br><i>illustrative placeholder</i>"));
+  svg.appendChild(g);
+  if(real||["Crude petroleum","Computers","Soybeans","Silver (HS 7106)"].includes(name)){
+    const t=el("text",{x:sx(m1)+12,y:sy(s1)+4,"font-size":real?13:11,
+      "font-weight":real?700:400,
+      fill:real?"var(--text-primary)":"var(--text-secondary)"});
+    t.textContent=name;svg.appendChild(t);
+  }
+});
+
+// quadrant note
+const q=el("text",{x:M.l+iw-6,y:M.t+16,"text-anchor":"end","font-size":11,
+  fill:"var(--muted)"});
+q.textContent="↑ import-dominated · large →";svg.appendChild(q);
+</script>
