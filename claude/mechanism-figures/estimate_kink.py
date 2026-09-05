@@ -53,7 +53,7 @@ OUT = Path("claude/mechanism-figures")
 # into an exercise about a tariff threat buys precision at the cost of scope.
 # The full-sample fit is still reported below, because the fact that the two
 # agree is worth more than either on its own.
-SAMPLE = ("2023-01-01", "2025-11-01")
+SAMPLE = ("2023-01-01", None)      # None = to the end of the data
 
 TRIM = 0.15          # fraction of the sample kept out of each regime
 GRID = 400           # candidate thresholds
@@ -136,8 +136,8 @@ def main():
         subset=["disloc_pp", "che_to_us_t"])
     m = full.loc[SAMPLE[0]:SAMPLE[1]]
 
-    print(f"estimation window {SAMPLE[0][:7]} to {SAMPLE[1][:7]}: "
-          f"n = {len(m)} months")
+    print(f"estimation window {SAMPLE[0][:7]} to "
+          f"{m.index.max():%Y-%m}: n = {len(m)} months")
     print(f"full series available: n = {len(full)}, "
           f"{full.index.min():%Y-%m} to {full.index.max():%Y-%m}")
     print(f"gold price {full.lbma_pm_usd.min():,.0f} to "
@@ -202,33 +202,52 @@ def main():
           f"correlation {np.corrcoef(x, ye)[0, 1]:+.3f}")
     print(f"  kink R2 {fe['r2']:.3f} at g={fe['g']:+.2f}, slope below "
           f"{fe['b_below']:+.2f}, above {fe['b_above']:+.2f}")
-    lowest = m.nsmallest(2, "excess_usd")
-    print("  The apparent below-kink slope is carried by the only two months in the")
-    print("  window with a premium below -$2, and it is steep because one of them "
-          "is also")
-    print("  the largest eastward shipment on record:")
-    for dt, r in lowest.iterrows():
+    disc = m[m.excess_usd < -2].sort_values("excess_usd")
+    print(f"  The below-kink slope now rests on {len(disc)} discount months rather "
+          f"than two,")
+    print("  which is the main thing extending the window to the present changed:")
+    for dt, r in disc.iterrows():
         print(f"    {dt:%b %Y}  premium {r.excess_usd:+6.2f}/oz   "
               f"eastward {r.us_to_che_t:5.1f} t")
-    print("  Two observations are not a threshold, so no fitted line is drawn on")
-    print("  that panel. The absence of structure is the point it makes.")
+    print("  So the earlier flat claim - that the return leg shows no price response")
+    print("  at all - is too strong. What survives is weaker and worth stating as")
+    print("  such: when New York goes to a discount, more metal does seem to leave,")
+    print("  but the threshold interval spans zero, the straight-line R2 is 0.01 and")
+    print("  the correlation is not distinguishable from noise at n = 43. The line")
+    print("  is drawn on the figure; the diagnostics are printed beside it.")
 
     # ------------------------------------------------------------ for the figure
-    f = f_usd
+    # Both legs are fitted and both are drawn. The eastward line is drawn on
+    # request rather than on the evidence: see the diagnostics above, where its
+    # threshold interval spans zero and the straight-line R2 is 0.01. It is on
+    # the figure so a reader can see what a fitted kink looks like when there is
+    # nothing for it to fit, which is a fair thing to show as long as the
+    # numbers travel with it.
+    def curve(f, lo_x, hi_x):
+        xs = np.linspace(lo_x, hi_x, 200)
+        yh = (f["a"] + f["b_below"] * (xs - f["g"])
+              + (f["b_above"] - f["b_below"]) * np.maximum(0.0, xs - f["g"]))
+        return pd.DataFrame({"x": xs, "yhat": np.maximum(yh, 0)})
+
     lo, hi = ci_usd
-    xs = np.linspace(x.min(), x.max(), 200)
-    fitted = f["a"] + f["b_below"] * (xs - f["g"]) + \
-        (f["b_above"] - f["b_below"]) * np.maximum(0.0, xs - f["g"])
-    pd.DataFrame({"x": xs, "yhat": np.maximum(fitted, 0)}).to_csv(
-        OUT / "kink_fit.csv", index=False)
-    pd.DataFrame([{"g": f["g"], "g_lo": lo, "g_hi": hi, "b_below": f["b_below"],
-                   "b_above": f["b_above"], "a": f["a"], "r2": f["r2"],
-                   "n": f["n"]}]).to_csv(OUT / "kink_estimates.csv", index=False)
+    lo_e, hi_e, _ = boot_ci(x, ye, reps=BOOT)
+    curve(f_usd, x.min(), x.max()).to_csv(OUT / "kink_fit.csv", index=False)
+    curve(fe, x.min(), x.max()).to_csv(OUT / "kink_fit_east.csv", index=False)
+    pd.DataFrame([{
+        "g": f_usd["g"], "g_lo": lo, "g_hi": hi,
+        "b_below": f_usd["b_below"], "b_above": f_usd["b_above"],
+        "a": f_usd["a"], "r2": f_usd["r2"], "n": f_usd["n"],
+        "r2_lin": linear_r2(x, y),
+        "g_e": fe["g"], "g_e_lo": lo_e, "g_e_hi": hi_e,
+        "b_below_e": fe["b_below"], "b_above_e": fe["b_above"],
+        "r2_e": fe["r2"], "r2_lin_e": linear_r2(x, ye),
+        "corr_e": float(np.corrcoef(x, ye)[0, 1]),
+    }]).to_csv(OUT / "kink_estimates.csv", index=False)
 
     # The monthly panel itself belongs to build_figure_data.py, which already
     # carries excess_usd. Writing a second copy here would give the figure two
     # sources of truth for the same points.
-    print("\nwrote kink_estimates.csv and kink_fit.csv")
+    print("\nwrote kink_estimates.csv, kink_fit.csv and kink_fit_east.csv")
     return 0
 
 
