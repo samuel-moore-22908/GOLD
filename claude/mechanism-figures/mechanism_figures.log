@@ -266,17 +266,17 @@ wrote claude/mechanism-figures/figures/fig2_dislocation.png
 . * Figure 3 - the two legs side by side, on the same axes
 . *============================================================================
 > ==
-. * Estimated on January 2023 to November 2025 only. 2020 and the March 2022
+. * Estimated on January 2023 to the end of the data. 2020 and the March 2022
 . * sanctions shock are location dislocations of a different kind - grounded
 . * aircraft and shut refineries in one, a payments rupture in the other - and
 . * folding them into an exercise about a tariff threat widens the scope of the
 . * claim beyond what the paper is arguing. It costs precision rather than the
 . * result: the full 2015-2026 series puts the threshold at $2.99 and this wind
 > ow
-. * puts it at $3.02.
+. * puts it at $3.77, well inside its own interval.
 . import delimited using "$PROJ/kink_estimates.csv", varnames(1) clear
 (encoding automatically selected: ISO-8859-1)
-(8 vars, 1 obs)
+(17 vars, 1 obs)
 
 . local G    = g[1]
 
@@ -286,10 +286,50 @@ wrote claude/mechanism-figures/figures/fig2_dislocation.png
 
 . local BABV = b_above[1]
 
-. di as txt "kink: " as res %5.2f `G' as txt " dollars/oz  90% CI [" ///
->     as res %5.2f `GLO' as txt ", " as res %5.2f `GHI' as txt "]"
-kink:  3.02 dollars/oz  90% CI [ 0.77, 10.82]
+. local BBLW = b_below[1]
 
+. local R2   = r2[1]
+
+. local R2L  = r2_lin[1]
+
+. local N    = n[1]
+
+. local GE   = g_e[1]
+
+. local GELO = g_e_lo[1]
+
+. local GEHI = g_e_hi[1]
+
+. local BBLE = b_below_e[1]
+
+. local R2E  = r2_e[1]
+
+. local R2LE = r2_lin_e[1]
+
+. local CORE = corr_e[1]
+
+. di as txt "west: g=" as res %5.2f `G' as txt " CI [" as res %5.2f `GLO' ///
+>     as txt ", " as res %5.2f `GHI' as txt "]   east: g=" as res %5.2f `GE' //
+> /
+>     as txt " slope below " as res %5.2f `BBLE'
+west: g= 3.77 CI [ 0.83, 10.25]   east: g=-0.17 slope below -2.99
+
+. 
+. tempfile hingeE
+
+. import delimited using "$PROJ/kink_fit_east.csv", varnames(1) clear
+(encoding automatically selected: ISO-8859-1)
+(2 vars, 200 obs)
+
+. rename yhat yhatE
+
+. gen byte ishinge = 1
+
+. save `hingeE'
+file C:\Users\smoor\AppData\Local\Temp\ST_95ac_000001.tmp saved as .dta
+    format
+
+. 
 . 
 . tempfile hinge
 
@@ -299,8 +339,16 @@ kink:  3.02 dollars/oz  90% CI [ 0.77, 10.82]
 
 . gen byte ishinge = 1
 
+. merge 1:1 x using `hingeE', nogen
+
+    Result                      Number of obs
+    -----------------------------------------
+    Not matched                             0
+    Matched                               200  
+    -----------------------------------------
+
 . save `hinge'
-file C:\Users\smoor\AppData\Local\Temp\ST_b810_000001.tmp saved as .dta
+file C:\Users\smoor\AppData\Local\Temp\ST_95ac_000002.tmp saved as .dta
     format
 
 . 
@@ -316,19 +364,19 @@ file C:\Users\smoor\AppData\Local\Temp\ST_b810_000001.tmp saved as .dta
 . tempfile monthly
 
 . save `monthly'
-file C:\Users\smoor\AppData\Local\Temp\ST_b810_000002.tmp saved as .dta
+file C:\Users\smoor\AppData\Local\Temp\ST_95ac_000003.tmp saved as .dta
     format
 
 . 
-. keep if on_scatter == 1 & ym >= "2023-01" & ym <= "2025-11"
-(105 observations deleted)
+. keep if on_scatter == 1 & ym >= "2023-01"
+(97 observations deleted)
 
 . gen byte grp = episode == 1
 
 . append using `hinge'
 
 . replace ishinge = 0 if missing(ishinge)
-(35 real changes made)
+(43 real changes made)
 
 . 
 . gen byte mlpos = 3
@@ -342,7 +390,7 @@ file C:\Users\smoor\AppData\Local\Temp\ST_b810_000002.tmp saved as .dta
 . 
 . gen str8 calloutE = cond(inlist(ym, "2025-10", "2025-04", "2025-09"), callout
 > , "")
-(233 missing values generated)
+(241 missing values generated)
 
 . 
 . * The threshold's bootstrap interval as a vertical strip. rarea across two
@@ -350,13 +398,13 @@ file C:\Users\smoor\AppData\Local\Temp\ST_b810_000002.tmp saved as .dta
 > d
 . * -xline- cannot carry a width.
 . gen double bx = .
-(235 missing values generated)
+(243 missing values generated)
 
 . gen double btop = .
-(235 missing values generated)
+(243 missing values generated)
 
 . gen double bbot = .
-(235 missing values generated)
+(243 missing values generated)
 
 . replace bx = `GLO' in 1
 (1 real change made)
@@ -408,10 +456,13 @@ file C:\Users\smoor\AppData\Local\Temp\ST_b810_000002.tmp saved as .dta
 >   , ///
 >   `XAX' `YAX' `GLINE' ///
 >   ytitle("Tonnes per month", size(vsmall) color("`SOFT'") margin(r=2)) ///
->   text(186 `=`G'+0.7' "estimated threshold, {c $|}3.02 an ounce" ///
->       "shaded: 90% interval, {c $|}0.77 to {c $|}10.82", ///
+>   text(186 `=`G'+0.7' ///
+>       "estimated threshold, {c $|}`=string(`G',"%3.2f")' an ounce" ///
+>       "shaded: 90% interval, {c $|}`=string(`GLO',"%3.2f")' to {c $|}`=string
+> (`GHI',"%4.2f")'", ///
 >       place(e) size(vsmall) color("`INK'%80") justification(left)) ///
->   text(74 20.5 "above it, 8.3 tonnes" "a month per extra dollar", ///
+>   text(74 20.5 "above it, `=string(`BABV',"%3.1f")' tonnes" ///
+>       "a month per extra dollar", ///
 >       place(w) size(vsmall) color("`INK'%80") justification(right)) ///
 >   `REGION' legend(off) ///
 >   title("Westward: Switzerland to New York", size(small) color("`INK'") ///
@@ -423,13 +474,18 @@ file C:\Users\smoor\AppData\Local\Temp\ST_b810_000002.tmp saved as .dta
 . 
 . *----------------------------------------------------- eastbound: no threshol
 > d
-. * Same axes, same scale, same threshold strip, and deliberately no fitted lin
-> e.
-. * A kink fitted to this leg returns g = -1.98 with a steep negative slope bel
-> ow
-. * it, and that slope is carried by the only two months in the window with a
-. * premium under -$2. Two observations are not a threshold; drawing one would
-. * invent the structure this panel exists to show is absent.
+. * Same axes, same scale, same threshold strip, and now a fitted line of its o
+> wn.
+. *
+. * Extending the window to the present is what made drawing it defensible. On 
+> the
+. * shorter window the below-kink slope rested on two discount months; it now
+. * rests on nine, and the earlier flat claim - that this leg shows no price
+. * response at all - was too strong. What survives is weaker and the panel say
+> s
+. * so in figures rather than in adjectives: the threshold interval spans zero,
+. * the straight-line R-squared is 0.01, and the correlation is -0.11 on 43
+. * months. The line is drawn; the reader is told not to lean on it.
 . twoway ///
 >   `BAND' ///
 >   (scatter us_to_che_t excess_usd if ishinge == 0 & !grp, ///
@@ -437,16 +493,20 @@ file C:\Users\smoor\AppData\Local\Temp\ST_b810_000002.tmp saved as .dta
 >   (scatter us_to_che_t excess_usd if ishinge == 0 & grp, ///
 >       `SCAT' mcolor("`BLUE'") ///
 >       mlabel(calloutE) `MLAB' mlabcolor("`INK'") mlabposition(12)) ///
+>   (line yhatE x if ishinge == 1, ///
+>       lcolor("`INK'%55") lwidth(medthick) lpattern(solid)) ///
 >   , ///
 >   `XAX' `YAX' `GLINE' ///
 >   ytitle("", size(vsmall)) ///
->   text(186 `=`G'+0.7' "the same threshold, and nothing" ///
->       "on either side of it", ///
->       place(e) size(vsmall) color("`INK'%80") justification(left)) ///
+>   text(186 -8.6 "fitted the same way, and not to be leaned on:" ///
+>       "R-squared `=string(`R2E',"%3.2f")', against `=string(`R2LE',"%3.2f")' 
+> for a straight line," ///
+>       "and a threshold interval that spans zero", ///
+>       place(e) size(vsmall) color("`INK'%75") justification(left)) ///
 >   `REGION' legend(off) ///
 >   title("Eastward: New York back to Switzerland", size(small) ///
 >       color("`INK'") position(11) justification(left)) ///
->   subtitle("Not arbitrage. No threshold, no slope, no sign", ///
+>   subtitle("Not arbitrage. A slope only where New York is at a discount", ///
 >       size(vsmall) color("`SOFT'") position(11) justification(left)) ///
 >   name(f3b, replace) nodraw
 
@@ -454,34 +514,37 @@ file C:\Users\smoor\AppData\Local\Temp\ST_b810_000002.tmp saved as .dta
 . graph combine f3a f3b, cols(2) ycommon ///
 >     graphregion(color(white) lcolor(white)) imargin(small) iscale(*0.95) ///
 >     `TAB' ///
->     subtitle("{bf:One leg is priced. The other is not}" ///
+>     subtitle("{bf:One leg is priced. The other barely is}" ///
 >         "Swiss customs gold trade with the United States against the New York
 > " ///
->         "premium. Each dot is one month, January 2023 to November 2025", `HEA
-> D') ///
->     note("Estimated on the tariff window alone: 2020 and the 2022 sanctions s
-> hock" ///
->         "are location dislocations of a different kind, and folding them in w
-> idens" ///
->         "the claim past what this paper argues. It costs precision, not the r
-> esult" ///
->         "- the full 2015-2026 series puts the threshold at {c $|}2.99 against
->  {c $|}3.02 here." ///
+>         "premium. Each dot is one month, January 2023 to July 2026", `HEAD') 
+> ///
+>     note("Estimated from January 2023 forward: 2020 and the 2022 sanctions sh
+> ock are" ///
+>         "location dislocations of a different kind, and folding them in widen
+> s the" ///
+>         "claim past what this paper argues. It costs precision, not the resul
+> t - the" ///
+>         "full 2015-2026 series puts the westward threshold at {c $|}2.99 agai
+> nst {c $|}`=string(`G',"%3.2f")' here." ///
 >         "Method: a continuous kink, tonnes = a + b1(x-g) + b2 max(0, x-g), wi
 > th g by" ///
 >         "profile least squares, 15% trimmed from each regime, and a 90% inter
 > val from" ///
->         "2,000 iid and moving-block bootstrap replications. On 35 months that
->  interval" ///
->         "is wide - {c $|}0.77 to {c $|}10.82 - and dropping the three largest
->  months moves the" ///
->         "point estimate to {c $|}4.72. The threshold is well located and poor
-> ly pinned." ///
->         "Westward: R-squared 0.44 against 0.36 for a straight line, slope bel
-> ow the" ///
->         "threshold 0.5 tonnes per dollar. Eastward: straight-line R-squared 0
-> .000 and" ///
->         "a correlation of +0.02, so no line is fitted." ///
+>         "2,000 iid and moving-block bootstrap replications. On `=string(`N',"
+> %2.0f")' months that" ///
+>         "interval runs {c $|}`=string(`GLO',"%3.2f")' to {c $|}`=string(`GHI'
+> ,"%4.2f")', so the threshold is well located and poorly pinned." ///
+>         "Westward: R-squared `=string(`R2',"%3.2f")' against `=string(`R2L',"
+> %3.2f")' for a straight line, and a slope of" ///
+>         "`=string(`BBLW',"%3.1f")' tonnes per dollar below the threshold agai
+> nst `=string(`BABV',"%3.1f")' above it." ///
+>         "Eastward: R-squared `=string(`R2E',"%3.2f")' against `=string(`R2LE'
+> ,"%3.2f")', correlation `=string(`CORE',"%4.2f")', and a threshold" ///
+>         "interval of -{c $|}`=string(-`GELO',"%3.2f")' to +{c $|}`=string(`GE
+> HI',"%3.2f")' that spans zero. Its downward slope where" ///
+>         "New York is at a discount rests on nine months: report it, do not re
+> ly on it." ///
 >         " " ///
 >         "Sources: Swiss Federal Customs Administration; CME; LBMA; FRED", `NO
 > TE') ///
@@ -503,14 +566,14 @@ wrote claude/mechanism-figures/figures/fig3_two_legs.png
 . * Figure 4 - the monthly path
 . *============================================================================
 > ==
-. * Shown to the end of the data rather than to the end of the estimation windo
-> w.
-. * This figure estimates nothing, and stopping it in November 2025 would end o
-> n a
-. * 63-tonne outflow, leaving the impression that the episode was still running
-> .
-. * The window figure 3 is fitted on is shaded instead, so the relationship
-. * between the two is on the page rather than in a caption.
+. * Figure 3 is now estimated on everything from January 2023 forward, which is
+. * exactly the span this chart draws. The shaded strip that used to mark the
+. * estimation window would therefore cover the whole panel and say nothing, so
+>  it
+. * is gone and the note carries the point instead. (It was also shading the wr
+> ong
+. * thing: Nov 2024 to Nov 2025 is the episode, not the window it was labelled 
+> as.)
 . use `monthly', clear
 
 . keep if mdate >= tm(2023m1)
@@ -533,35 +596,7 @@ wrote claude/mechanism-figures/figures/fig3_two_legs.png
 
 . local EXM = tm(2025m4)
 
-. local WLO = tm(2024m11)
-
-. local WHI = tm(2025m11)
-
-. 
-. gen double wtop = .
-(44 missing values generated)
-
-. gen double wbot = .
-(44 missing values generated)
-
-. gen double wx = .
-(44 missing values generated)
-
-. replace wx = `WLO' in 1
-(1 real change made)
-
-. replace wx = `WHI' in 2
-(1 real change made)
-
-. replace wtop = 210 in 1/2
-(2 real changes made)
-
-. replace wbot = -110 in 1/2
-(2 real changes made)
-
-. 
 . twoway ///
->   (rarea wtop wbot wx, color("`INK'%5") lwidth(none)) ///
 >   (bar west mdate, barwidth(0.8) color("`RED'%85") lwidth(none)) ///
 >   (bar east mdate, barwidth(0.8) color("`BLUE'%85") lwidth(none)) ///
 >   , ///
@@ -581,7 +616,7 @@ wrote claude/mechanism-figures/figures/fig3_two_legs.png
 >   text(150 `=`EXM'+2' "gold exempted," "2 Apr 2025", place(e) size(vsmall) //
 > /
 >       color("`INK'") justification(left)) ///
->   text(-95 `=tm(2025m5)' "shaded: the window figure 3 is estimated on", ///
+>   text(-95 `=tm(2025m3)' "figure 3 is estimated on this whole span", ///
 >       place(e) size(vsmall) color("`SOFT'") justification(left)) ///
 >   `REGION' legend(off) ///
 >   `TAB' ///

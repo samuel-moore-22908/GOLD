@@ -23,18 +23,21 @@ Three figures, in `figures/`:
 | `fig3_two_legs.png` | **Both legs on one pair of axes** — westward with the estimated threshold, eastward with none. This merges what the plan below calls figure 3 and the left panel of figure 4. |
 | `fig4_monthly_path.png` | **The monthly path, standing alone.** Formerly the right panel of figure 4. |
 
-**Figures 3 and 4 are now estimated on January 2023 to November 2025 only.**
-2020 and the March 2022 sanctions shock are location dislocations of a different
-kind — grounded aircraft and shut refineries in one case, a payments and
-counterparty rupture in the other — and folding them into an exercise about a
-tariff threat widens the scope of the claim past what the paper argues.
+**Figure 3 is estimated on January 2023 to the end of the data**, currently July
+2026, n = 43. 2020 and the March 2022 sanctions shock are location dislocations
+of a different kind — grounded aircraft and shut refineries in one case, a
+payments and counterparty rupture in the other — and folding them into an
+exercise about a tariff threat widens the scope of the claim past what the paper
+argues.
 
-The cost is precision, not the result. On 35 months the threshold comes out at
-**$3.02** against **$2.99** on the full 2015–2026 series, which is about as close
-as two independent windows get. But the 90% interval widens from [$1.15, $5.39]
-to **[$0.77, $10.82]**, and dropping the three largest months moves the point
-estimate to $4.72 rather than $2.69. The threshold is well located and poorly
-pinned, and the figure note says so.
+The cost is precision, not the result. The westward threshold comes out at
+**$3.77** against **$2.99** on the full 2015–2026 series — comfortably inside its
+own interval, which is about as close as two independent windows get. But that
+interval is **[$0.83, $10.25]**, so the threshold is well located and poorly
+pinned. Every estimate quoted on the figure is now interpolated from
+`kink_estimates.csv` at draw time rather than typed into the do-file, because an
+earlier revision shipped a chart captioned $3.02 with its dashed line standing
+at $3.77.
 
 Two things were lost with the earlier window, and both are worth remembering
 rather than pretending away:
@@ -42,11 +45,34 @@ rather than pretending away:
 - **The three-unrelated-causes argument is no longer on the figure.** It was the strongest thing in the exercise — covid, sanctions and tariffs producing one response — and it now lives only in this document and in `validation_output.txt`. If a reviewer asks whether the hinge is an artefact of one episode, the full-sample fit is the answer and it should be reported in the text.
 - **The dollar-versus-rate comparison reverses on the short window.** Rate space fits better by 15% of SSR on 2023–2025, where it lost by 13% on 2015–2026. The two specifications are only distinguishable when the gold price moves a lot, and the short window has a third of the observations and half the price variation, so this is weak evidence against a prior that never came from the data: freight, insurance and recasting are charged on weight, so a physical transfer cost is a dollar figure. The figures stay in dollars and `estimate_kink.py` prints the caution.
 
-The eastward panel carries **no fitted line on purpose.** A kink fitted to it
-returns g = −1.98 with a steep negative slope below, and that slope rests on the
-only two months in the window with a premium under −$2, one of which is also the
-largest eastward shipment on record. Two observations are not a threshold, and
-drawing one would invent the structure the panel exists to show is missing.
+### The eastward leg now carries a fitted line, and my earlier claim was too strong
+
+The first version of this panel had no fitted line, on the grounds that its
+below-kink slope rested on two discount months. **Extending the window to the
+present changed that.** There are now nine months with a premium below −$2, and
+the fit is no longer hostage to a pair of points:
+
+| | westward | eastward |
+|---|---|---|
+| threshold | **$3.77** | −$0.17 |
+| 90% interval | [$0.83, $10.25] | **[−$2.69, +$4.65]** — spans zero |
+| slope below | +0.5 t/$ | **−3.0 t/$** |
+| slope above | +7.8 t/$ | +0.8 t/$ |
+| R² kink | 0.38 | 0.13 |
+| R² straight line | 0.27 | 0.01 |
+| correlation | +0.52 | −0.11 |
+
+So the flat statement made earlier in this project — that the return leg shows
+*no* price response at all — does not survive the longer window and should not be
+repeated. What survives is weaker and worth stating as such: **when New York goes
+to a discount, more metal does appear to leave**, which is the direction
+`CLAUDE.md`'s "sign is directional" prediction called for. But the threshold
+interval spans zero, the straight-line R² is 0.01, and a correlation of −0.11 on
+43 months cannot be told from noise. Report it; do not rely on it.
+
+The asymmetry that motivates the figure is intact, and sharper for being
+quantified rather than asserted: westward has a threshold six times its own
+below-slope, eastward has one that cannot be distinguished from zero.
 
 Everything below describes the full-sample version and is kept as the record of
 how the estimate was arrived at.
