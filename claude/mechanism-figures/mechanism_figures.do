@@ -4,7 +4,8 @@
 *!    COMEX-London spread in excess of carry: a quantity arbitrage is supposed
 *!    to hold at zero, going to four points a year and staying there.
 *! 3  The hinge. 139 months of that spread against Swiss shipments to America.
-*!    Flat until the premium clears the cost of moving, then a step.
+*!    Flat until the premium clears the cost of moving, then a step. The
+*!    threshold is estimated by estimate_kink.py, not drawn by eye.
 *! 4  The return leg is not priced. The same frame with the flow reversed, and
 *!    the monthly path beside it.
 *!
@@ -13,10 +14,10 @@
 *! than included so the folder stands alone; if the house style changes, it
 *! changes there first.
 *!
-*! Reads   claude/mechanism-figures/fig2_dislocation.csv
-*!         claude/mechanism-figures/fig3_monthly.csv
-*!         claude/mechanism-figures/fig3_hinge.csv
-*!         (all three written by build_figure_data.py)
+*! Reads   claude/mechanism-figures/fig2_dislocation.csv  (build_figure_data.py)
+*!         claude/mechanism-figures/fig3_monthly.csv      (build_figure_data.py)
+*!         claude/mechanism-figures/kink_estimates.csv    (estimate_kink.py)
+*!         claude/mechanism-figures/kink_fit.csv          (estimate_kink.py)
 *! Writes  claude/mechanism-figures/figures/fig2_dislocation.pdf and .png
 *!         claude/mechanism-figures/figures/fig3_hinge.pdf and .png
 *!         claude/mechanism-figures/figures/fig4_return_leg.pdf and .png
@@ -152,8 +153,20 @@ di as txt "wrote $OUT/fig2_dislocation.png"
 *==============================================================================
 * Figures 3 and 4 - the hinge, and the leg that has none
 *==============================================================================
+* The threshold and its bootstrap interval, read into locals so the figure can
+* state the estimate rather than gesture at one. See estimate_kink.py.
+import delimited using "$PROJ/kink_estimates.csv", varnames(1) clear
+local G    = g[1]
+local GLO  = g_lo[1]
+local GHI  = g_hi[1]
+local BABV = b_above[1]
+local BBLW = b_below[1]
+di as txt "kink: " as res %5.2f `G' as txt " dollars/oz  90% CI [" ///
+    as res %5.2f `GLO' as txt ", " as res %5.2f `GHI' as txt "]" ///
+    as txt "   slope above " as res %5.2f `BABV' as txt " t per dollar"
+
 tempfile hinge
-import delimited using "$PROJ/fig3_hinge.csv", varnames(1) clear
+import delimited using "$PROJ/kink_fit.csv", varnames(1) clear
 gen byte ishinge = 1
 save `hinge'
 
@@ -176,76 +189,105 @@ gen byte mlpos = 3
 replace mlpos = 9  if inlist(ym, "2020-04", "2020-05", "2025-01", "2025-10")
 replace mlpos = 12 if inlist(ym, "2022-03", "2025-04")
 
+* The threshold's bootstrap interval as a vertical strip. rarea spanning two
+* observations is the way to get one: Stata has no vertical-band primitive, and
+* -xline- cannot carry a width.
+gen double bx = .
+gen double btop = .
+gen double bbot = .
+replace bx = `GLO' in 1
+replace bx = `GHI' in 2
+replace btop = 210 in 1/2
+replace bbot = 0   in 1/2
+
 local SCAT  msymbol(O) msize(small)
 local MLAB  mlabsize(vsmall) mlabgap(1.6)
-local XAX   xscale(range(-1.3 6.1) lcolor(none))                              ///
-            xlabel(-1(1)6, `GRIDX')                                           ///
+* Dollars an ounce, not points a year. Freight, insurance and recasting scale
+* with weight rather than with value, so a threshold that is a physical cost is
+* constant in dollars - while gold ran from $1,068 to $5,022 across this sample,
+* which would drag a rate-space threshold down almost fivefold for no economic
+* reason. Fitting both ways settles it: the dollar specification cuts the sum of
+* squares by 13%.
+local XAX   xscale(range(-13 24.5) lcolor(none))                              ///
+            xlabel(-10 "-10" -5 "-5" 0 "0" 5 "5" 10 "10" 15 "15" 20 "20",     ///
+                `GRIDX')                                                      ///
             xtitle("COMEX premium over London, in excess of carry," ///
-                " percentage points a year, monthly mean", ///
+                " dollars an ounce over 90 days, monthly mean", ///
                 size(vsmall) color("`SOFT'") margin(t=2))
 local YAX   yscale(range(0 210) lcolor(none)) ylabel(0(50)200, `GRIDY')
+local BAND  (rarea btop bbot bx, color("`INK'%6") lwidth(none))
+local KEY   legend(order(4 "the tariff scare, 2024-25" ///
+                         3 "covid 2020, sanctions 2022" ///
+                         2 "every other month") ///
+            cols(3) size(vsmall) region(lcolor(none) color(white)) ///
+            symxsize(4) position(12) ring(1) bmargin(zero))
 
 *------------------------------------------------------------------- figure 3
 twoway ///
-  (scatter che_to_us_t disloc_pp if ishinge == 0 & grp == 0, ///
+  `BAND' ///
+  (scatter che_to_us_t excess_usd if ishinge == 0 & grp == 0, ///
       `SCAT' mcolor("`GREY'%55")) ///
-  (scatter che_to_us_t disloc_pp if ishinge == 0 & grp == 2, ///
+  (scatter che_to_us_t excess_usd if ishinge == 0 & grp == 2, ///
       `SCAT' mcolor("`BLUE'%85") msize(medsmall)) ///
-  (scatter che_to_us_t disloc_pp if ishinge == 0 & grp == 1, ///
+  (scatter che_to_us_t excess_usd if ishinge == 0 & grp == 1, ///
       `SCAT' mcolor("`RED'") msize(medsmall) ///
       mlabel(callout) `MLAB' mlabcolor("`INK'") mlabvposition(mlpos)) ///
-  (scatter che_to_us_t disloc_pp if ishinge == 0 & grp == 2 & callout != "", ///
+  (scatter che_to_us_t excess_usd if ishinge == 0 & grp == 2 & callout != "", ///
       msymbol(none) mlabel(callout) `MLAB' mlabcolor("`INK'") ///
       mlabvposition(mlpos)) ///
-  (connected med_west x if ishinge == 1, ///
-      lcolor("`INK'%70") lwidth(medium) lpattern(solid) ///
-      msymbol(D) msize(vsmall) mcolor("`INK'%70")) ///
+  (line yhat x if ishinge == 1, ///
+      lcolor("`INK'%80") lwidth(medthick) lpattern(solid)) ///
   , ///
-  `XAX' `YAX' ///
+  `XAX' `YAX' `KEY' ///
   ytitle("Tonnes per month", size(vsmall) color("`SOFT'") margin(r=2)) ///
-  text(52 1.80 "median of each" "spread bucket", place(e) size(vsmall) ///
-      color("`INK'%75") justification(left)) ///
+  text(178 `=`G'+0.7' "estimated threshold, {c $|}3.00 an ounce" ///
+      "shaded: 90% bootstrap interval, {c $|}0.97 to {c $|}5.58", ///
+      place(e) size(vsmall) color("`INK'%80") justification(left)) ///
+  text(86 24 "above the threshold," "6.5 tonnes a month" "per extra dollar", ///
+      place(w) size(vsmall) color("`INK'%80") justification(right)) ///
   `REGION' ///
-  legend(order(3 "the tariff scare, Nov 2024-Nov 2025" ///
-               2 "covid 2020 and the 2022 sanctions shock" ///
-               1 "every other month") ///
-      cols(1) size(vsmall) region(lcolor(none) color(white)) ///
-      symxsize(4) position(2) ring(0) bmargin(l=10 t=4)) ///
   `TAB' ///
   subtitle("{bf:Nothing moves until the premium clears the cost of moving}" ///
       "Swiss customs gold exports to the United States against the New York" ///
       "premium. Each dot is one month, January 2015 to July 2026", `HEAD') ///
-  note("The step sits between +0.5 and +1.0 points a year - roughly 3 to 7 dollars" ///
-      "an ounce over ninety days, which is an estimate of the all-in cost of moving" ///
-      "metal across the Atlantic obtained from behaviour rather than freight invoices." ///
+  note("The threshold is estimated, not drawn. A continuous kink - tonnes = a +" ///
+      "b1(x-g) + b2 max(0, x-g) - with g chosen by profile least squares over a" ///
+      "grid, 15% of the sample trimmed from each regime, and a 90% interval from" ///
+      "2,000 iid and moving-block bootstrap replications. The slope below the" ///
+      "threshold is 0.2 tonnes per dollar, indistinguishable from flat; above it," ///
+      "6.5. R-squared 0.53 against 0.43 for a straight line. Dropping the three" ///
+      "largest months moves g to {c $|}2.69; fitting on 2015-2023 alone, with the whole" ///
+      "tariff episode excluded, moves it to {c $|}3.58 - so the episode is not what" ///
+      "identifies it. In logs no interior kink is identified: the hinge is a claim" ///
+      "about quantities, and logs compress the months that make it." ///
       " " ///
       "Sources: Swiss Federal Customs Administration; CME; LBMA; FRED", `NOTE') ///
-  ysize(6.0) xsize(8.6) name(f3, replace)
+  ysize(6.2) xsize(8.8) name(f3, replace)
 
 graph export "$OUT/fig3_hinge.pdf", replace
 graph export "$OUT/fig3_hinge.png", replace width(2400)
 di as txt "wrote $OUT/fig3_hinge.png"
 
 *------------------------------------------------- figure 4, left: no hinge
-* Deliberately the same frame and the same vertical scale as figure 3. The
-* contrast is the finding, so it has to be structural rather than argued.
+* Deliberately the same frame and the same vertical scale as figure 3, and the
+* same threshold strip. The contrast is the finding, so it has to be structural
+* rather than argued.
 twoway ///
-  (scatter us_to_che_t disloc_pp if ishinge == 0 & grp == 0, ///
+  `BAND' ///
+  (scatter us_to_che_t excess_usd if ishinge == 0 & grp == 0, ///
       `SCAT' mcolor("`GREY'%55")) ///
-  (scatter us_to_che_t disloc_pp if ishinge == 0 & grp == 2, ///
+  (scatter us_to_che_t excess_usd if ishinge == 0 & grp == 2, ///
       `SCAT' mcolor("`BLUE'%85") msize(medsmall)) ///
-  (scatter us_to_che_t disloc_pp if ishinge == 0 & grp == 1, ///
+  (scatter us_to_che_t excess_usd if ishinge == 0 & grp == 1, ///
       `SCAT' mcolor("`RED'") msize(medsmall)) ///
-  (connected med_east x if ishinge == 1, ///
-      lcolor("`INK'%70") lwidth(medium) lpattern(solid) ///
-      msymbol(D) msize(vsmall) mcolor("`INK'%70")) ///
   , ///
   `XAX' `YAX' ///
   ytitle("Tonnes per month", size(vsmall) color("`SOFT'") margin(r=2)) ///
   `REGION' legend(off) ///
   title("Eastward: the return leg", size(small) color("`INK'") ///
       position(11) justification(left)) ///
-  subtitle("US exports to Switzerland. Same axes as the panel opposite", ///
+  subtitle("US exports to Switzerland. Same axes as figure 3, and the same" ///
+      " estimated threshold, shaded", ///
       size(vsmall) color("`SOFT'") position(11) justification(left)) ///
   name(f4a, replace) nodraw
 
@@ -293,8 +335,11 @@ graph combine f4a f4b, cols(2) ///
         "neither: it began when the premium disappeared, not when it inverted", ///
         `HEAD') ///
     note("Correlation between the premium and the return flow is -0.08, and -0.04" ///
-        "against a six-month inventory overhang. This contradicts the project's" ///
-        "standing assumption that the sign of the spread sets the direction of travel." ///
+        "against a six-month inventory overhang. Fitting figure 3's kink to this leg" ///
+        "finds no threshold worth the name. This contradicts the project's standing" ///
+        "assumption that the sign of the spread sets the direction of travel: metal" ///
+        "went home when the reason to be in New York expired, which is an event in" ///
+        "the Federal Register rather than a number in the futures curve." ///
         " " ///
         "Sources: Swiss Federal Customs Administration; CME; LBMA; FRED", `NOTE') ///
     name(f4, replace) ysize(5.8) xsize(11.4)

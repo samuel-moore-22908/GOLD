@@ -1,0 +1,33 @@
+n = 139 months, 2015-01 to 2026-07
+gold price 1,068 to 5,022 over the sample - a factor of 4.7
+
+==============================================================================
+Which unit is the threshold constant in?
+==============================================================================
+
+--- rate space (x in pp a year) ---
+  threshold      +0.415 pp a year   90% CI [+0.231, +1.010]   (iid [+0.23,+1.00], block-6 [+0.23,+1.01])
+  slope below       +1.14 t per unit
+  slope above      +27.30 t per unit
+  R2 kink 0.460   vs linear 0.400   n=139
+  threshold in dollars an ounce at the sample-mean gold price ($1,912): $1.96
+
+--- dollar space (x in $/oz over 90 days) ---
+  threshold      +2.994 $/oz over 90 days   90% CI [+0.972, +5.580]   (iid [+1.09,+5.58], block-6 [+0.97,+4.97])
+  slope below       +0.23 t per unit
+  slope above       +6.49 t per unit
+  R2 kink 0.532   vs linear 0.426   n=139
+
+  The two are fitted to the same y, so the sums of squares compare directly:
+    rate space   SSR     62,518   R2 0.460
+    dollar space SSR     54,156   R2 0.532
+    -> dollar space fits better by 13.4% of SSR
+
+==============================================================================
+Robustness of the dollar-space threshold
+==============================================================================
+  drop the three largest months (Jan 2025, Feb 2025, May 2020):  threshold +2.69
+  log tonnes instead of levels:                         threshold -0.36
+  exclude the whole tariff episode (pre-2024 only, n=108):  threshold +3.58
+
+wrote kink_estimates.csv and kink_fit.csv

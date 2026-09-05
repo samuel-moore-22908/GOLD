@@ -13,6 +13,71 @@ depends on the one before it.
 
 ---
 
+## The kink, estimated
+
+`estimate_kink.py` replaces the drawn hinge with a fitted one. Model, threshold
+found by profile least squares with 15% trimming, 90% interval from 2,000 iid
+and moving-block bootstrap replications:
+
+```
+tonnes = a + b1*(x - g) + b2*max(0, x - g)
+```
+
+**The unit matters, and it is an economic question rather than a modelling
+preference.** Freight, insurance and recasting scale with weight, not value, so
+a threshold that is a physical cost should be constant in dollars an ounce — and
+a constant *rate* threshold would then have to fall as gold rises. Gold ran from
+$1,068 to $5,022 across this sample, a factor of 4.7, so the two specifications
+are far apart. Fitting both:
+
+| Specification | Threshold | R² | SSR |
+|---|---|---|---|
+| rate space, pp a year | +0.42 | 0.460 | 62,518 |
+| **dollar space, $/oz over 90 days** | **+2.99** | **0.532** | **54,156** |
+| straight line, no kink | — | 0.426 | — |
+
+Dollar space wins by 13% of the sum of squares. **The threshold is a physical
+cost**, which is the claim the paper wanted to be able to make and now can.
+
+**ĝ = $2.99 an ounce over ninety days, 90% CI [$0.97, $5.58].** That is
+**$96,000 a tonne**, or 0.11% of the metal's value at January 2025 prices —
+squarely in the range air freight, insurance and recasting would plausibly cost,
+which is a reassuring external check on a number estimated purely from
+behaviour. Slope below the threshold 0.2 tonnes per dollar, indistinguishable
+from flat; above it, 6.5.
+
+Robustness: dropping the three largest months moves ĝ to $2.69. **Fitting on
+2015–2023 alone, with the entire tariff episode excluded, gives $3.58** — the
+episode is not what identifies the threshold. In logs no interior kink is
+identified at all; the profile is flat to the trimming boundary. That is a real
+limitation and worth stating: the hinge is a claim about quantities, and logs
+compress precisely the months that make it.
+
+### What the estimate exposed that the bucket medians hid
+
+The hinge does not hold after the exemption. Splitting the months with a premium
+above $6 an ounce:
+
+| Window | n | Median tonnes shipped |
+|---|---|---|
+| before April 2025 | 13 | **68.7** |
+| April 2025 onward | 7 | **5.8** |
+
+Same price signal, a twelvefold difference in response. August and September
+2025 carried premiums of $12.8 and $11.1 and moved 2.7 and 6.9 tonnes. The
+relationship is therefore conditional, not structural, and the obvious candidate
+for the conditioning variable is the stock already sitting in New York: COMEX
+registered went from 440 t in January 2025 to 752 t in April, and once the metal
+is there an arbitrage can be closed by delivering it rather than by importing
+more.
+
+If that is right it cuts *for* the paper rather than against it — it is the
+sharpest available evidence that the flows were relocation and not absorption,
+since a genuine demand shock would not switch itself off the moment the
+warehouse filled. It also raises the priority of the CME vault pull, which is
+now the missing variable in the specification rather than just a nice figure.
+Until that exists this stays an interpretation, not a finding.
+
 ## Built
 
 All three now exist, in `figures/`, drawn by `mechanism_figures.do` from inputs

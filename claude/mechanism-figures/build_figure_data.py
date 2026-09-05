@@ -88,9 +88,10 @@ def main():
           f"band {lo:+.2f} to {hi:+.2f} pp")
 
     # ------------------------------------------------------------ figures 3, 4
-    mon = daily.disloc_pp.groupby(daily.index.to_period("M")).mean()
+    mon = daily[["disloc_pp", "excess_usd"]].groupby(
+        daily.index.to_period("M")).mean()
     mon.index = mon.index.to_timestamp()
-    m = pd.concat([mon.rename("disloc_pp"), swiss_tonnes()], axis=1, sort=True)
+    m = pd.concat([mon, swiss_tonnes()], axis=1, sort=True)
     m = m.loc["2015-01-01":]
 
     m["episode"] = 0
@@ -103,15 +104,16 @@ def main():
     # panel keeps the rest, so the two are flagged rather than filtered.
     m["on_scatter"] = (m.disloc_pp.notna() & m.che_to_us_t.notna()).astype(int)
     m.to_csv(OUT / "fig3_monthly.csv", index=False,
-             columns=["ym", "disloc_pp", "che_to_us_t", "us_to_che_t",
-                      "episode", "callout", "on_scatter"])
+             columns=["ym", "disloc_pp", "excess_usd", "che_to_us_t",
+                      "us_to_che_t", "episode", "callout", "on_scatter"])
     print(f"fig3_monthly.csv      {len(m)} months, "
           f"{int(m.on_scatter.sum())} on the scatter, "
           f"{int((m.episode > 0).sum())} tagged to an episode")
 
     # ------------------------------------------------------- the drawn hinge
     s = m[m.on_scatter == 1].copy()
-    s["bucket"] = pd.cut(s.disloc_pp, BUCKETS)
+    s["bucket"] = pd.cut(s.disloc_pp, BUCKETS)  # still in rate space: the
+    # bucket table is a summary of the raw relationship, not the fitted model
     h = s.groupby("bucket", observed=True).agg(
         n=("che_to_us_t", "size"),
         med_west=("che_to_us_t", "median"),
