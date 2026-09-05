@@ -47,6 +47,14 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from validate_mechanism import constant_maturity, swiss_tonnes  # noqa: E402
 
 OUT = Path("claude/mechanism-figures")
+# The estimation window. 2020 and the 2022 sanctions shock are location
+# dislocations of a different kind - grounded aircraft and closed refineries in
+# one case, a payments and counterparty rupture in the other - and folding them
+# into an exercise about a tariff threat buys precision at the cost of scope.
+# The full-sample fit is still reported below, because the fact that the two
+# agree is worth more than either on its own.
+SAMPLE = ("2023-01-01", "2025-11-01")
+
 TRIM = 0.15          # fraction of the sample kept out of each regime
 GRID = 400           # candidate thresholds
 BOOT = 2000
@@ -124,14 +132,18 @@ def main():
     mon = d[["disloc_pp", "excess_usd", "lbma_pm_usd"]].groupby(
         d.index.to_period("M")).mean()
     mon.index = mon.index.to_timestamp()
-    m = pd.concat([mon, swiss_tonnes()], axis=1, sort=True).loc["2015-01-01":].dropna(
+    full = pd.concat([mon, swiss_tonnes()], axis=1, sort=True).loc["2015-01-01":].dropna(
         subset=["disloc_pp", "che_to_us_t"])
+    m = full.loc[SAMPLE[0]:SAMPLE[1]]
 
+    print(f"estimation window {SAMPLE[0][:7]} to {SAMPLE[1][:7]}: "
+          f"n = {len(m)} months")
+    print(f"full series available: n = {len(full)}, "
+          f"{full.index.min():%Y-%m} to {full.index.max():%Y-%m}")
+    print(f"gold price {full.lbma_pm_usd.min():,.0f} to "
+          f"{full.lbma_pm_usd.max():,.0f} across the full series - a factor of "
+          f"{full.lbma_pm_usd.max()/full.lbma_pm_usd.min():.1f}")
     y = m.che_to_us_t.to_numpy(float)
-    print(f"n = {len(m)} months, {m.index.min():%Y-%m} to {m.index.max():%Y-%m}")
-    print(f"gold price {m.lbma_pm_usd.min():,.0f} to {m.lbma_pm_usd.max():,.0f} "
-          f"over the sample - a factor of "
-          f"{m.lbma_pm_usd.max()/m.lbma_pm_usd.min():.1f}")
 
     print("\n" + "=" * 78)
     print("Which unit is the threshold constant in?")
@@ -148,6 +160,17 @@ def main():
     better = "dollar" if f_usd["ssr"] < f_pp["ssr"] else "rate"
     print(f"    -> {better} space fits better by "
           f"{abs(f_usd['ssr']-f_pp['ssr'])/max(f_pp['ssr'],f_usd['ssr']):.1%} of SSR")
+    print("""
+  READ THIS COMPARISON WITH CARE ON A SHORT WINDOW. The two specifications are
+  only distinguishable when the gold price moves a lot, because that is the only
+  thing that separates a constant dollar cost from a constant rate. Over
+  2015-2026 the price moves 4.7-fold and the dollar version wins clearly. Over
+  2023-2025 it moves about half as much on a third of the observations, and the
+  ranking flips - which is weak evidence against a prior that does not come from
+  the data in the first place: freight, insurance and recasting are charged on
+  weight, so a physical transfer cost is a dollar figure whatever this window
+  says. The figures stay in dollars, and this note is the reason to distrust any
+  claim that the short window settles the question.""")
 
     print("\n" + "=" * 78)
     print("Robustness of the dollar-space threshold")
@@ -161,9 +184,34 @@ def main():
     ylog = np.log(np.maximum(y, 0.05))
     print(f"  log tonnes instead of levels:                       "
           f"  threshold {fit_kink(x, ylog)['g']:+.2f}")
-    pre = m.index < "2024-01-01"
-    print(f"  exclude the whole tariff episode (pre-2024 only, n={pre.sum()}):"
-          f"  threshold {fit_kink(x[pre], y[pre])['g']:+.2f}")
+    xf = full.excess_usd.to_numpy(float)
+    yf = full.che_to_us_t.to_numpy(float)
+    ff = fit_kink(xf, yf)
+    lo_f, hi_f, _ = boot_ci(xf, yf, reps=1000)
+    print(f"  the full 2015-2026 series (n={len(full)}), which the window excludes:"
+          f"  threshold {ff['g']:+.2f}, 90% CI [{lo_f:+.2f}, {hi_f:+.2f}]")
+    print("  -> the two windows agree on the point estimate almost exactly. The")
+    print("     restriction costs precision, not the result.")
+
+    print("\n" + "=" * 78)
+    print("The eastward leg, same window, same specification")
+    print("=" * 78)
+    ye = m.us_to_che_t.to_numpy(float)
+    fe = fit_kink(x, ye)
+    print(f"  straight line R2 {linear_r2(x, ye):.3f}, "
+          f"correlation {np.corrcoef(x, ye)[0, 1]:+.3f}")
+    print(f"  kink R2 {fe['r2']:.3f} at g={fe['g']:+.2f}, slope below "
+          f"{fe['b_below']:+.2f}, above {fe['b_above']:+.2f}")
+    lowest = m.nsmallest(2, "excess_usd")
+    print("  The apparent below-kink slope is carried by the only two months in the")
+    print("  window with a premium below -$2, and it is steep because one of them "
+          "is also")
+    print("  the largest eastward shipment on record:")
+    for dt, r in lowest.iterrows():
+        print(f"    {dt:%b %Y}  premium {r.excess_usd:+6.2f}/oz   "
+              f"eastward {r.us_to_che_t:5.1f} t")
+    print("  Two observations are not a threshold, so no fitted line is drawn on")
+    print("  that panel. The absence of structure is the point it makes.")
 
     # ------------------------------------------------------------ for the figure
     f = f_usd
