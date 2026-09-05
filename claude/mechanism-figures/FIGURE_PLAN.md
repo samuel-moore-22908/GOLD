@@ -13,6 +13,38 @@ depends on the one before it.
 
 ---
 
+## Built
+
+All three now exist, in `figures/`, drawn by `mechanism_figures.do` from inputs
+written by `build_figure_data.py`. Two things came out of the drawing that the
+plan below had wrong, and both are kept here rather than quietly edited out.
+
+**Figure 2 does not show a return to zero.** The plan said April 2025 put the
+premium "back inside the band". It does not. The collapse at the exemption is
+violent and unmistakable — the smoothed series goes from +3.8 to −2.1 inside a
+fortnight — but it then settles around **+0.5 points for the rest of 2025**,
+above the ±0.41 calm band and never back inside it. The honest sentence is that
+the premium fell hard and stayed at a lower plateau, not that arbitrage was
+restored.
+
+That reads as a problem for the story until Figure 3 is laid beside it, where it
+becomes the opposite. Half a point is *below the hinge*. A premium that size
+does not pay for a shipment, so metal stops moving even though the spread has
+not closed — which is exactly what the flow data does from April onward. The two
+figures corroborate each other precisely where the plan expected only one of
+them to speak.
+
+**The daily series is plotted as dots, not a line.** A faint line underneath the
+read line was the plan, and it fails twice. Stata's `yscale(range())` only ever
+widens an axis, so it cannot clip: the frame stretched to the daily minimum near
+−6 and left two-thirds of the panel empty. More substantively, a line asserts
+continuity between consecutive settlements that these data do not have — the
+three-hour gap between the London fix and the New York settle makes each day an
+independent draw carrying about four points of noise. Dots say that; a line
+denies it. 41 of 389 sessions fall outside the frame and the note says so.
+
+---
+
 ## Before anything else: the spread series in the repo cannot be used as it is
 
 `data/processed/efp_dislocation_v2.csv` has two candidate measures and both are
