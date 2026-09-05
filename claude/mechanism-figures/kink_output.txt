@@ -1,33 +1,60 @@
-n = 139 months, 2015-01 to 2026-07
-gold price 1,068 to 5,022 over the sample - a factor of 4.7
+estimation window 2023-01 to 2025-11: n = 35 months
+full series available: n = 139, 2015-01 to 2026-07
+gold price 1,068 to 5,022 across the full series - a factor of 4.7
 
 ==============================================================================
 Which unit is the threshold constant in?
 ==============================================================================
 
 --- rate space (x in pp a year) ---
-  threshold      +0.415 pp a year   90% CI [+0.231, +1.010]   (iid [+0.23,+1.00], block-6 [+0.23,+1.01])
-  slope below       +1.14 t per unit
-  slope above      +27.30 t per unit
-  R2 kink 0.460   vs linear 0.400   n=139
-  threshold in dollars an ounce at the sample-mean gold price ($1,912): $1.96
+  threshold      +0.563 pp a year   90% CI [+0.174, +1.229]   (iid [+0.21,+1.23], block-6 [+0.17,+0.89])
+  slope below       +3.42 t per unit
+  slope above      +73.25 t per unit
+  R2 kink 0.530   vs linear 0.381   n=35
+  threshold in dollars an ounce at the sample-mean gold price ($2,540): $3.53
 
 --- dollar space (x in $/oz over 90 days) ---
-  threshold      +2.994 $/oz over 90 days   90% CI [+0.972, +5.580]   (iid [+1.09,+5.58], block-6 [+0.97,+4.97])
-  slope below       +0.23 t per unit
-  slope above       +6.49 t per unit
-  R2 kink 0.532   vs linear 0.426   n=139
+  threshold      +3.023 $/oz over 90 days   90% CI [+0.772, +10.821]   (iid [+0.81,+10.82], block-6 [+0.77,+8.25])
+  slope below       +0.51 t per unit
+  slope above       +8.26 t per unit
+  R2 kink 0.444   vs linear 0.363   n=35
 
   The two are fitted to the same y, so the sums of squares compare directly:
-    rate space   SSR     62,518   R2 0.460
-    dollar space SSR     54,156   R2 0.532
-    -> dollar space fits better by 13.4% of SSR
+    rate space   SSR     31,465   R2 0.530
+    dollar space SSR     37,191   R2 0.444
+    -> rate space fits better by 15.4% of SSR
+
+  READ THIS COMPARISON WITH CARE ON A SHORT WINDOW. The two specifications are
+  only distinguishable when the gold price moves a lot, because that is the only
+  thing that separates a constant dollar cost from a constant rate. Over
+  2015-2026 the price moves 4.7-fold and the dollar version wins clearly. Over
+  2023-2025 it moves about half as much on a third of the observations, and the
+  ranking flips - which is weak evidence against a prior that does not come from
+  the data in the first place: freight, insurance and recasting are charged on
+  weight, so a physical transfer cost is a dollar figure whatever this window
+  says. The figures stay in dollars, and this note is the reason to distrust any
+  claim that the short window settles the question.
 
 ==============================================================================
 Robustness of the dollar-space threshold
 ==============================================================================
-  drop the three largest months (Jan 2025, Feb 2025, May 2020):  threshold +2.69
-  log tonnes instead of levels:                         threshold -0.36
-  exclude the whole tariff episode (pre-2024 only, n=108):  threshold +3.58
+  drop the three largest months (Jan 2025, Feb 2025, Mar 2025):  threshold +4.72
+  log tonnes instead of levels:                         threshold +0.99
+  the full 2015-2026 series (n=139), which the window excludes:  threshold +2.99, 90% CI [+1.15, +5.39]
+  -> the two windows agree on the point estimate almost exactly. The
+     restriction costs precision, not the result.
+
+==============================================================================
+The eastward leg, same window, same specification
+==============================================================================
+  straight line R2 0.000, correlation +0.019
+  kink R2 0.240 at g=-1.98, slope below -10.21, above +1.11
+  The apparent below-kink slope is carried by the only two months in the
+  window with a premium below -$2, and it is steep because one of them is also
+  the largest eastward shipment on record:
+    Oct 2025  premium  -6.61/oz   eastward  79.4 t
+    Jan 2024  premium  -5.38/oz   eastward  30.9 t
+  Two observations are not a threshold, so no fitted line is drawn on
+  that panel. The absence of structure is the point it makes.
 
 wrote kink_estimates.csv and kink_fit.csv
