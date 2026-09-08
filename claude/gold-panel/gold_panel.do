@@ -60,6 +60,7 @@ graph drop _all
 global USE_GRC1LEG2 0        // 1 restores the centred shared legend
 global TAB_GLYPH    "███"    // "" drops the red masthead tab
 global MAKE_PDF     1        // 0 exports PNG only
+global PNG_WIDTH    2800     // try 1400 if the PNG export is what dies
 
 * Stata does not inherit the caller's working directory.
 cd "C:/Users/smoor/GitHub/GOLD"
@@ -71,6 +72,18 @@ global PROJ "claude/gold-panel"
 global OUT  "$PROJ/figures"
 cap mkdir "$PROJ"
 cap mkdir "$OUT"
+
+* A crash in the GUI leaves nothing behind, which is why this has been hard to
+* pin down. Open our own log so the next one names the last step that finished.
+* text format, not SMCL, so it is readable without Stata.
+cap log close _all
+log using "$PROJ/gold_panel_run.log", replace text name(runlog)
+* c(edition_real), not c(flavor): the latter is a legacy macro that reports "IC"
+* on this machine even though the install is MP, which would send anyone reading
+* a crash log after the wrong thing.
+di as txt "START  " c(current_date) " " c(current_time)
+di as txt "       Stata " c(stata_version) " " c(edition_real) " " c(bit) "-bit, " ///
+    c(processors) " cores, memory " c(memory) ", max_memory " c(max_memory)
 
 * grc1leg2 is optional now. It gives a single legend centred over both panels;
 * without it the key sits above the left panel instead, which is where it was
@@ -336,6 +349,7 @@ twoway ///
   subtitle("100 most-traded HS4 headings; gold in colour", ///
       size(vsmall) color("`SOFT'") position(11) justification(left)) ///
   name(gLeft, replace) nodraw
+di as txt "STEP  left panel built"
 
 *------------------------------------------------------------ right panel
 use `part', clear
@@ -359,6 +373,7 @@ twoway ///
   subtitle("5 largest bilateral gold partners; Switzerland in colour", ///
       size(vsmall) color("`SOFT'") position(11) justification(left)) ///
   name(gRight, replace) nodraw
+di as txt "STEP  right panel built"
 
 *-------------------------------------------------------------- combine
 * Header order is the masthead's: red tab, bold headline, plain deck, key,
@@ -387,17 +402,28 @@ if $USE_GRC1LEG2 {
 else {
     graph combine gLeft gRight, cols(2) `HEADER'
 }
+di as txt "STEP  panels combined and drawn"
 
 * A nodraw graph cannot be exported - graph export needs a current Graph
 * window, and fails r(693) without one even when given name(). So the combined
 * graph is drawn, and that is unavoidable rather than an oversight.
-if $MAKE_PDF graph export "$OUT/gold_panel.pdf", replace
-graph export "$OUT/gold_panel.png", replace width(2800)
-di as txt "wrote $OUT/gold_panel.png"
-if $MAKE_PDF di as txt "wrote $OUT/gold_panel.pdf"
+* The two exports are separated by breadcrumbs because they are different code
+* paths - PDF embeds the font as vectors, PNG rasterises through the Windows
+* graphics layer at PNG_WIDTH/xsize dpi - and the report is that the crash comes
+* immediately after the final graph appears, which is exactly here.
+if $MAKE_PDF {
+    di as txt "STEP  starting PDF export"
+    graph export "$OUT/gold_panel.pdf", replace
+    di as txt "STEP  PDF written"
+}
+di as txt "STEP  starting PNG export at width $PNG_WIDTH"
+graph export "$OUT/gold_panel.png", replace width($PNG_WIDTH)
+di as txt "STEP  PNG written"
 
 *----------------------------------------------------------------- put it back
 * Leave the session as it was found: no graphs in memory, factory graph font.
 graph drop _all
 graph set window fontface "$RESTORE_FONT"
-di as txt "graph window font restored to $RESTORE_FONT; graphs dropped"
+di as txt "STEP  font restored to $RESTORE_FONT, graphs dropped"
+di as txt "DONE  " c(current_date) " " c(current_time)
+cap log close runlog
