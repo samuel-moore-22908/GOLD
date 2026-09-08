@@ -27,6 +27,21 @@
 *!         claude/gold-panel/partner_monthly.csv   (see export_partner_panel.py)
 *! Writes  claude/gold-panel/figures/gold_panel.pdf and .png
 *!
+*! THE PNG IS NOT MADE BY STATA. graph export ... .png on this figure kills
+*! Stata 18/MP on Windows outright - a process death, not an error, so nothing
+*! reaches the log and the session is gone. Confirmed by breadcrumb: the run dies
+*! between "starting PNG export" and "PNG written", while the PDF export of the
+*! same graph immediately before it succeeds every time. Ruled out first: the
+*! U+2588 tab glyph (present in Arial Narrow, Arial and Times New Roman), the
+*! font substitution that would imply, and grc1leg2. It is the Windows
+*! rasteriser.
+*!
+*! So Stata writes the PDF and pdf_to_png.py renders the PNG from it with MuPDF,
+*! at the same pixel dimensions. That is also the better artefact: rasterising
+*! from vectors gives cleaner text and hairlines than Stata's display list at the
+*! same pixel count, and the width can be changed later without re-running
+*! Stata. PNG_IN_STATA 1 restores the old behaviour if you want to retest it.
+*!
 *! STABILITY. This was written and tested only in batch, through run_do.py,
 *! which starts a fresh Stata per run and exits. Run interactively it had three
 *! ways of making a GUI session unstable, all now fixed or switchable:
@@ -59,8 +74,9 @@ graph drop _all
 * Bisection switches - see STABILITY above.
 global USE_GRC1LEG2 0        // 1 restores the centred shared legend
 global TAB_GLYPH    "███"    // "" drops the red masthead tab
-global MAKE_PDF     1        // 0 exports PNG only
-global PNG_WIDTH    2800     // try 1400 if the PNG export is what dies
+global MAKE_PDF     1        // 0 skips the PDF (the PNG then needs PNG_IN_STATA 1)
+global PNG_WIDTH    2800     // pixel width of the PNG
+global PNG_IN_STATA 0        // 1 uses Stata's own PNG export - SEE BELOW
 
 * Stata does not inherit the caller's working directory.
 cd "C:/Users/smoor/GitHub/GOLD"
@@ -416,9 +432,29 @@ if $MAKE_PDF {
     graph export "$OUT/gold_panel.pdf", replace
     di as txt "STEP  PDF written"
 }
-di as txt "STEP  starting PNG export at width $PNG_WIDTH"
-graph export "$OUT/gold_panel.png", replace width($PNG_WIDTH)
-di as txt "STEP  PNG written"
+if $PNG_IN_STATA {
+    * The crashing path, kept only so the fault can be re-tested.
+    di as txt "STEP  starting PNG export IN STATA at width $PNG_WIDTH"
+    graph export "$OUT/gold_panel.png", replace width($PNG_WIDTH)
+    di as txt "STEP  PNG written by Stata"
+}
+else {
+    di as txt "STEP  rasterising PDF to PNG outside Stata"
+    cap confirm file ".venv/Scripts/python.exe"
+    if _rc {
+        di as err "  .venv not found. Make the PNG yourself with:"
+        di as err "    python claude/stata-console/code/pdf_to_png.py " ///
+                  "$OUT/gold_panel.pdf --width $PNG_WIDTH"
+    }
+    else {
+        * shell, not winexec: winexec returns immediately and the confirm below
+        * would race it.
+        shell .venv\Scripts\python.exe claude\stata-console\code\pdf_to_png.py "$OUT/gold_panel.pdf" --width $PNG_WIDTH
+        cap confirm file "$OUT/gold_panel.png"
+        if _rc di as err "  PNG not produced - run pdf_to_png.py by hand"
+        else di as txt "STEP  PNG written from PDF"
+    }
+}
 
 *----------------------------------------------------------------- put it back
 * Leave the session as it was found: no graphs in memory, factory graph font.

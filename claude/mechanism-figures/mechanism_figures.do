@@ -47,6 +47,26 @@ cap mkdir "$OUT"
 global RESTORE_FONT "Times New Roman"
 graph set window fontface "Arial Narrow"
 
+* PNGs are NOT made by Stata here. graph export ... .png kills Stata 18/MP on
+* Windows on figures this size - see the long note in claude/gold-panel/
+* gold_panel.do for how that was pinned down. Stata writes the PDF and MuPDF
+* rasterises it at the same pixel width, which is also the cleaner artefact.
+cap program drop pngfrompdf
+program define pngfrompdf
+    args stem width
+    cap confirm file ".venv/Scripts/python.exe"
+    if _rc {
+        di as err "  .venv not found; rasterise `stem'.pdf by hand with" ///
+                  " claude/stata-console/code/pdf_to_png.py"
+        exit
+    }
+    * shell, not winexec: winexec returns immediately and the confirm races it.
+    shell .venv\Scripts\python.exe claude\stata-console\code\pdf_to_png.py "`stem'.pdf" --width `width'
+    cap confirm file "`stem'.png"
+    if _rc  di as err  "  PNG not produced for `stem'"
+    else    di as txt  "  PNG written from PDF: `stem'.png"
+end
+
 * The Economist's published palette. RED carries the tariff episode and the read
 * line; BLUE carries the two earlier location shocks, which are the reason the
 * hinge is not a story about tariffs.
@@ -156,7 +176,7 @@ twoway ///
   ysize(5.6) xsize(9.2) name(f2, replace)
 
 graph export "$OUT/fig2_dislocation.pdf", replace
-graph export "$OUT/fig2_dislocation.png", replace width(2400)
+pngfrompdf "$OUT/fig2_dislocation" 2400
 di as txt "wrote $OUT/fig2_dislocation.png"
 
 *==============================================================================
@@ -329,7 +349,7 @@ graph combine f3a f3b, cols(2) ycommon ///
     name(f3, replace) ysize(5.8) xsize(11.4)
 
 graph export "$OUT/fig3_two_legs.pdf", replace
-graph export "$OUT/fig3_two_legs.png", replace width(2800)
+pngfrompdf "$OUT/fig3_two_legs" 2800
 di as txt "wrote $OUT/fig3_two_legs.png"
 
 *==============================================================================
@@ -386,7 +406,7 @@ twoway ///
   ysize(5.4) xsize(9.6) name(f4, replace)
 
 graph export "$OUT/fig4_monthly_path.pdf", replace
-graph export "$OUT/fig4_monthly_path.png", replace width(2400)
+pngfrompdf "$OUT/fig4_monthly_path" 2400
 di as txt "wrote $OUT/fig4_monthly_path.png"
 
 *----------------------------------------------------------------- put it back
