@@ -27,12 +27,39 @@
 *!         claude/gold-panel/partner_monthly.csv   (see export_partner_panel.py)
 *! Writes  claude/gold-panel/figures/gold_panel.pdf and .png
 *!
+*! STABILITY. This was written and tested only in batch, through run_do.py,
+*! which starts a fresh Stata per run and exits. Run interactively it had three
+*! ways of making a GUI session unstable, all now fixed or switchable:
+*!
+*!   - it set the graph window font GLOBALLY and never put it back, so every
+*!     graph drawn afterwards in any project inherited Arial Narrow;
+*!   - it left gLeft, gRight and gPanel in memory, which accumulate across runs;
+*!   - it hard-required grc1leg2, a third-party command that rebuilds .gph files
+*!     and is the least predictable thing in the file.
+*!
+*! Three switches below let a crash be bisected without editing the body:
+*! USE_GRC1LEG2 (default 0, plain graph combine instead), TAB_GLYPH (set empty
+*! to drop the U+2588 block, which is the one exotic glyph being rendered) and
+*! MAKE_PDF (set 0 to test PNG alone; PDF embeds the font and is a separate
+*! code path). If it still crashes, run it through run_do.py, which never opens
+*! a Graph window.
+*!
 *! Run:  .venv\Scripts\python.exe claude\stata-console\code\run_do.py ///
 *!           claude\gold-panel\gold_panel.do --log claude\gold-panel\gold_panel.log
 
 version 18
 clear all
 set more off
+
+* Leftover graphs are the usual reason a GUI session degrades over repeated
+* runs of the same do-file. clear all drops them, but say it explicitly so the
+* intent survives anyone removing the clear.
+graph drop _all
+
+* Bisection switches - see STABILITY above.
+global USE_GRC1LEG2 0        // 1 restores the centred shared legend
+global TAB_GLYPH    "███"    // "" drops the red masthead tab
+global MAKE_PDF     1        // 0 exports PNG only
 
 * Stata does not inherit the caller's working directory.
 cd "C:/Users/smoor/GitHub/GOLD"
@@ -45,10 +72,16 @@ global OUT  "$PROJ/figures"
 cap mkdir "$PROJ"
 cap mkdir "$OUT"
 
-cap which grc1leg2
-if _rc {
-    di as err "grc1leg2 not installed:  ssc install grc1leg2"
-    exit 111
+* grc1leg2 is optional now. It gives a single legend centred over both panels;
+* without it the key sits above the left panel instead, which is where it was
+* being drawn anyway, and no third-party code runs.
+if $USE_GRC1LEG2 {
+    cap which grc1leg2
+    if _rc {
+        di as err "grc1leg2 not installed:  ssc install grc1leg2"
+        di as err "or set global USE_GRC1LEG2 0 to use plain graph combine"
+        exit 111
+    }
 }
 
 *=================================================================== presentation
@@ -56,6 +89,14 @@ if _rc {
 * humanist, condensed, same job - and the condensing is worth something on its
 * own here, since it is point labels running into each other that we are trying
 * to stop.
+* This is a GLOBAL, PERSISTENT Stata setting, not a per-graph option - Stata
+* offers no other way to choose a graph font. It is put back at the bottom of
+* the file. Stata exposes no c() macro holding the current value, so the restore
+* target is the documented factory default rather than whatever was there
+* before; if you have deliberately set your own, change RESTORE_FONT.
+* If the do-file dies before the end, put it back by hand with:
+*     graph set window fontface "Times New Roman"
+global RESTORE_FONT "Times New Roman"
 graph set window fontface "Arial Narrow"
 
 * The Economist's published palette, not an approximation of it.
@@ -252,11 +293,27 @@ local TITLES xtitle("US exports, {c $|}bn per month", size(vsmall)            //
                 color("`SOFT'") margin(r=2))
 local REGION graphregion(color(white) lcolor(white))                          ///
             plotregion(color(white) lstyle(none) margin(medium))
-local LEG   legend(order(6 "baseline  Nov 23-Oct 24"                          ///
-                         7 "surge  Nov 24-Mar 25"                             ///
-                         8 "reversal  Apr-Nov 25")                            ///
+* With grc1leg2 the legend is stripped from both panels and redrawn centred,
+* so both carry it. Without it, only the left panel does and the right is told
+* to draw none - two legends side by side would be the same key printed twice.
+* The legend CONTENTS are defined once; where it is placed differs by route, so
+* the wrapper legend(...) is built twice rather than appended to. position() is
+* a legend suboption - bolting it on after the closing paren makes it a twoway
+* option, which does not exist, and Stata answers "option position() not
+* allowed".
+local LEGBODY order(6 "baseline  Nov 23-Oct 24"                               ///
+                    7 "surge  Nov 24-Mar 25"                                  ///
+                    8 "reversal  Apr-Nov 25")                                 ///
             cols(3) size(vsmall) region(lcolor(none) color(white))            ///
-            symxsize(4) bmargin(zero))
+            symxsize(4) bmargin(zero)
+if $USE_GRC1LEG2 {
+    local LEG  legend(`LEGBODY')
+    local LEGR legend(`LEGBODY')
+}
+else {
+    local LEG  legend(`LEGBODY' position(12) ring(1))
+    local LEGR legend(off)
+}
 
 *------------------------------------------------------------- left panel
 use `comm', clear
@@ -296,7 +353,7 @@ twoway ///
   (scatter ms xs if hl,  `MS' mcolor("`RED'") msize(small)) ///
   (scatter mr xr if hl,  `MR' mcolor("`RED'") msize(medium) ///
       mlabel(lbl) `MLAB' mlabcolor("`RED'") mlabvposition(mlpos)) ///
-  , `AXES2' `TITLES' `REGION' `LEG' ///
+  , `AXES2' `TITLES' `REGION' `LEGR' ///
   title("By partner", size(medsmall) color("`INK'") position(11) ///
       justification(left)) ///
   subtitle("5 largest bilateral gold partners; Switzerland in colour", ///
@@ -307,9 +364,9 @@ twoway ///
 * Header order is the masthead's: red tab, bold headline, plain deck, key,
 * charts, source. title() and subtitle() are the only two header slots that
 * take separate colours, which is why the tab occupies one of them outright.
-grc1leg2 gLeft gRight, cols(2) legendfrom(gLeft) position(11) ring(1) ///
+local HEADER ///
     graphregion(color(white) lcolor(white)) imargin(small) iscale(*0.92) ///
-    title("███", size(vsmall) color("`RED'") ///
+    title("$TAB_GLYPH", size(vsmall) color("`RED'") ///
         position(11) justification(left)) ///
     subtitle("{bf:Gold went in, then came back out}" ///
         "US trade on the balance plane, monthly average within each phase." ///
@@ -323,6 +380,24 @@ grc1leg2 gLeft gRight, cols(2) legendfrom(gLeft) position(11) ring(1) ///
         size(tiny) color("`SOFT'") position(7) justification(left)) ///
     name(gPanel, replace) ysize(7.4) xsize(13)
 
-graph export "$OUT/gold_panel.pdf", replace
+if $USE_GRC1LEG2 {
+    grc1leg2 gLeft gRight, cols(2) legendfrom(gLeft) position(11) ring(1) ///
+        `HEADER'
+}
+else {
+    graph combine gLeft gRight, cols(2) `HEADER'
+}
+
+* A nodraw graph cannot be exported - graph export needs a current Graph
+* window, and fails r(693) without one even when given name(). So the combined
+* graph is drawn, and that is unavoidable rather than an oversight.
+if $MAKE_PDF graph export "$OUT/gold_panel.pdf", replace
 graph export "$OUT/gold_panel.png", replace width(2800)
-di as txt "wrote $OUT/gold_panel.pdf and .png"
+di as txt "wrote $OUT/gold_panel.png"
+if $MAKE_PDF di as txt "wrote $OUT/gold_panel.pdf"
+
+*----------------------------------------------------------------- put it back
+* Leave the session as it was found: no graphs in memory, factory graph font.
+graph drop _all
+graph set window fontface "$RESTORE_FONT"
+di as txt "graph window font restored to $RESTORE_FONT; graphs dropped"
