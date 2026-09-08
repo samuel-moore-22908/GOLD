@@ -42,3 +42,4 @@ output/
 # Exploratory scratch work is retained as a record
 !exploratory/*.csv
 !exploratory/*.png
+claude/gold-panel/gold_panel_run.log
