@@ -65,6 +65,27 @@ Notes:
 > py)
 . *! Writes  claude/gold-panel/figures/gold_panel.pdf and .png
 . *!
+. *! THE PNG IS NOT MADE BY STATA. graph export ... .png on this figure kills
+. *! Stata 18/MP on Windows outright - a process death, not an error, so nothin
+> g
+. *! reaches the log and the session is gone. Confirmed by breadcrumb: the run 
+> dies
+. *! between "starting PNG export" and "PNG written", while the PDF export of t
+> he
+. *! same graph immediately before it succeeds every time. Ruled out first: the
+. *! U+2588 tab glyph (present in Arial Narrow, Arial and Times New Roman), the
+. *! font substitution that would imply, and grc1leg2. It is the Windows
+. *! rasteriser.
+. *!
+. *! So Stata writes the PDF and pdf_to_png.py renders the PNG from it with MuP
+> DF,
+. *! at the same pixel dimensions. That is also the better artefact: rasterisin
+> g
+. *! from vectors gives cleaner text and hairlines than Stata's display list at
+>  the
+. *! same pixel count, and the width can be changed later without re-running
+. *! Stata. PNG_IN_STATA 1 restores the old behaviour if you want to retest it.
+. *!
 . *! STABILITY. This was written and tested only in batch, through run_do.py,
 . *! which starts a fresh Stata per run and exits. Run interactively it had thr
 > ee
@@ -111,9 +132,12 @@ Notes:
 
 . global TAB_GLYPH    "███"    // "" drops the red masthead tab
 
-. global MAKE_PDF     1        // 0 exports PNG only
+. global MAKE_PDF     1        // 0 skips the PDF (the PNG then needs PNG_IN_ST
+> ATA 1)
 
-. global PNG_WIDTH    2800     // try 1400 if the PNG export is what dies
+. global PNG_WIDTH    2800     // pixel width of the PNG
+
+. global PNG_IN_STATA 0        // 1 uses Stata's own PNG export - SEE BELOW
 
 . 
 . * Stata does not inherit the caller's working directory.
@@ -146,7 +170,7 @@ C:\Users\smoor\GitHub\GOLD
       name:  runlog
        log:  C:\Users\smoor\GitHub\GOLD\claude/gold-panel/gold_panel_run.log
   log type:  text
- opened on:   8 Sep 2026, 17:09:19
+ opened on:   8 Sep 2026, 17:15:39
 
 . * c(edition_real), not c(flavor): the latter is a legacy macro that reports "
 > IC"
@@ -154,7 +178,7 @@ C:\Users\smoor\GitHub\GOLD
 > ing
 . * a crash log after the wrong thing.
 . di as txt "START  " c(current_date) " " c(current_time)
-START   8 Sep 2026 17:09:19
+START   8 Sep 2026 17:15:39
 
 . di as txt "       Stata " c(stata_version) " " c(edition_real) " " c(bit) "-b
 > it, " ///
@@ -342,8 +366,8 @@ xij variables:
 . keep series hl lbl mlpos mb ms mr xb xs xr
 
 . save `comm', replace
-(file C:\Users\smoor\AppData\Local\Temp\ST_9460_000001.tmp not found)
-file C:\Users\smoor\AppData\Local\Temp\ST_9460_000001.tmp saved as .dta
+(file C:\Users\smoor\AppData\Local\Temp\ST_4fa0_000001.tmp not found)
+file C:\Users\smoor\AppData\Local\Temp\ST_4fa0_000001.tmp saved as .dta
     format
 
 . di as txt "commodities: " as res _N as txt " series"
@@ -448,8 +472,8 @@ xij variables:
 . keep iso3 hl lbl mlpos mb ms mr xb xs xr
 
 . save `part', replace
-(file C:\Users\smoor\AppData\Local\Temp\ST_9460_000002.tmp not found)
-file C:\Users\smoor\AppData\Local\Temp\ST_9460_000002.tmp saved as .dta
+(file C:\Users\smoor\AppData\Local\Temp\ST_4fa0_000002.tmp not found)
+file C:\Users\smoor\AppData\Local\Temp\ST_4fa0_000002.tmp saved as .dta
     format
 
 . di as txt "partners: " as res _N as txt " series"
@@ -715,14 +739,35 @@ file claude/gold-panel/figures/gold_panel.pdf saved as PDF format
 STEP  PDF written
 . }
 
-. di as txt "STEP  starting PNG export at width $PNG_WIDTH"
-STEP  starting PNG export at width 2800
+. if $PNG_IN_STATA {
+.     * The crashing path, kept only so the fault can be re-tested.
+.     di as txt "STEP  starting PNG export IN STATA at width $PNG_WIDTH"
+.     graph export "$OUT/gold_panel.png", replace width($PNG_WIDTH)
+.     di as txt "STEP  PNG written by Stata"
+. }
 
-. graph export "$OUT/gold_panel.png", replace width($PNG_WIDTH)
-file claude/gold-panel/figures/gold_panel.png saved as PNG format
-
-. di as txt "STEP  PNG written"
-STEP  PNG written
+. else {
+.     di as txt "STEP  rasterising PDF to PNG outside Stata"
+STEP  rasterising PDF to PNG outside Stata
+.     cap confirm file ".venv/Scripts/python.exe"
+.     if _rc {
+.         di as err "  .venv not found. Make the PNG yourself with:"
+.         di as err "    python claude/stata-console/code/pdf_to_png.py " ///
+>                   "$OUT/gold_panel.pdf --width $PNG_WIDTH"
+.     }
+.     else {
+.         * shell, not winexec: winexec returns immediately and the confirm bel
+> ow
+.         * would race it.
+.         shell .venv\Scripts\python.exe claude\stata-console\code\pdf_to_png.p
+> y "$OUT/gold_panel.pdf" --width $PNG_WIDTH
+  gold_panel.pdf -> gold_panel.png  2800x1594
+.         cap confirm file "$OUT/gold_panel.png"
+.         if _rc di as err "  PNG not produced - run pdf_to_png.py by hand"
+.         else di as txt "STEP  PNG written from PDF"
+STEP  PNG written from PDF
+.     }
+. }
 
 . 
 . *----------------------------------------------------------------- put it bac
@@ -736,7 +781,7 @@ STEP  PNG written
 STEP  font restored to Times New Roman, graphs dropped
 
 . di as txt "DONE  " c(current_date) " " c(current_time)
-DONE   8 Sep 2026 17:09:31
+DONE   8 Sep 2026 17:15:53
 
 . cap log close runlog
 

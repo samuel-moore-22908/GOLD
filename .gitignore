@@ -43,3 +43,5 @@ output/
 !exploratory/*.csv
 !exploratory/*.png
 claude/gold-panel/gold_panel_run.log
+claude/gold-panel/probe/
+claude/*/[a-z_]*_run.log

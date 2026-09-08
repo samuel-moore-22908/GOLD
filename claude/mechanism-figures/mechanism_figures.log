@@ -92,6 +92,31 @@ C:\Users\smoor\GitHub\GOLD
 . graph set window fontface "Arial Narrow"
 
 . 
+. * PNGs are NOT made by Stata here. graph export ... .png kills Stata 18/MP on
+. * Windows on figures this size - see the long note in claude/gold-panel/
+. * gold_panel.do for how that was pinned down. Stata writes the PDF and MuPDF
+. * rasterises it at the same pixel width, which is also the cleaner artefact.
+. cap program drop pngfrompdf
+
+. program define pngfrompdf
+  1.     args stem width
+  2.     cap confirm file ".venv/Scripts/python.exe"
+  3.     if _rc {
+  4.         di as err "  .venv not found; rasterise `stem'.pdf by hand with" /
+> //
+>                   " claude/stata-console/code/pdf_to_png.py"
+  5.         exit
+  6.     }
+  7.     * shell, not winexec: winexec returns immediately and the confirm race
+> s it.
+.     shell .venv\Scripts\python.exe claude\stata-console\code\pdf_to_png.py "`
+> stem'.pdf" --width `width'
+  8.     cap confirm file "`stem'.png"
+  9.     if _rc  di as err  "  PNG not produced for `stem'"
+ 10.     else    di as txt  "  PNG written from PDF: `stem'.png"
+ 11. end
+
+. 
 . * The Economist's published palette. RED carries the tariff episode and the r
 > ead
 . * line; BLUE carries the two earlier location shocks, which are the reason th
@@ -265,9 +290,9 @@ figure 2: 41 of 389 daily values fall outside the frame
 file claude/mechanism-figures/figures/fig2_dislocation.pdf saved as PDF
     format
 
-. graph export "$OUT/fig2_dislocation.png", replace width(2400)
-file claude/mechanism-figures/figures/fig2_dislocation.png saved as PNG
-    format
+. pngfrompdf "$OUT/fig2_dislocation" 2400
+  fig2_dislocation.pdf -> fig2_dislocation.png  2400x1461
+  PNG written from PDF: claude/mechanism-figures/figures/fig2_dislocation.png
 
 . di as txt "wrote $OUT/fig2_dislocation.png"
 wrote claude/mechanism-figures/figures/fig2_dislocation.png
@@ -338,7 +363,7 @@ west: g= 3.77 CI [ 0.83, 10.25]   east: g=-0.17 slope below -2.99
 . gen byte ishinge = 1
 
 . save `hingeE'
-file C:\Users\smoor\AppData\Local\Temp\ST_5928_000001.tmp saved as .dta
+file C:\Users\smoor\AppData\Local\Temp\ST_1f78_000001.tmp saved as .dta
     format
 
 . 
@@ -360,7 +385,7 @@ file C:\Users\smoor\AppData\Local\Temp\ST_5928_000001.tmp saved as .dta
     -----------------------------------------
 
 . save `hinge'
-file C:\Users\smoor\AppData\Local\Temp\ST_5928_000002.tmp saved as .dta
+file C:\Users\smoor\AppData\Local\Temp\ST_1f78_000002.tmp saved as .dta
     format
 
 . 
@@ -376,7 +401,7 @@ file C:\Users\smoor\AppData\Local\Temp\ST_5928_000002.tmp saved as .dta
 . tempfile monthly
 
 . save `monthly'
-file C:\Users\smoor\AppData\Local\Temp\ST_5928_000003.tmp saved as .dta
+file C:\Users\smoor\AppData\Local\Temp\ST_1f78_000003.tmp saved as .dta
     format
 
 . 
@@ -566,8 +591,9 @@ file C:\Users\smoor\AppData\Local\Temp\ST_5928_000003.tmp saved as .dta
 . graph export "$OUT/fig3_two_legs.pdf", replace
 file claude/mechanism-figures/figures/fig3_two_legs.pdf saved as PDF format
 
-. graph export "$OUT/fig3_two_legs.png", replace width(2800)
-file claude/mechanism-figures/figures/fig3_two_legs.png saved as PNG format
+. pngfrompdf "$OUT/fig3_two_legs" 2800
+  fig3_two_legs.pdf -> fig3_two_legs.png  2800x1425
+  PNG written from PDF: claude/mechanism-figures/figures/fig3_two_legs.png
 
 . di as txt "wrote $OUT/fig3_two_legs.png"
 wrote claude/mechanism-figures/figures/fig3_two_legs.png
@@ -655,9 +681,9 @@ wrote claude/mechanism-figures/figures/fig3_two_legs.png
 file claude/mechanism-figures/figures/fig4_monthly_path.pdf saved as PDF
     format
 
-. graph export "$OUT/fig4_monthly_path.png", replace width(2400)
-file claude/mechanism-figures/figures/fig4_monthly_path.png saved as PNG
-    format
+. pngfrompdf "$OUT/fig4_monthly_path" 2400
+  fig4_monthly_path.pdf -> fig4_monthly_path.png  2400x1350
+  PNG written from PDF: claude/mechanism-figures/figures/fig4_monthly_path.png
 
 . di as txt "wrote $OUT/fig4_monthly_path.png"
 wrote claude/mechanism-figures/figures/fig4_monthly_path.png

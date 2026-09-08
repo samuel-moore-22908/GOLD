@@ -3,3 +3,4 @@ numpy==2.5.2
 matplotlib==3.11.1
 requests==2.34.2
 pypdf==6.16.1
+pymupdf==1.28.2
