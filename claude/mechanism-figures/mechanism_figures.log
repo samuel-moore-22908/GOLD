@@ -70,6 +70,11 @@ Notes:
 C:\Users\smoor\GitHub\GOLD
 
 . 
+. * Leftover graphs accumulate across runs and are the usual reason an
+. * interactive session degrades. clear all drops them; say so explicitly.
+. graph drop _all
+
+. 
 . global PROJ "claude/mechanism-figures"
 
 . global OUT  "$PROJ/figures"
@@ -77,6 +82,13 @@ C:\Users\smoor\GitHub\GOLD
 . cap mkdir "$OUT"
 
 . 
+. * GLOBAL, PERSISTENT Stata setting - there is no per-graph font option. It is
+. * put back at the bottom of this file. Stata exposes no c() macro holding the
+. * current value, so the restore target is the factory default rather than
+. * whatever was there before. If this file dies early, restore by hand with:
+. *     graph set window fontface "Times New Roman"
+. global RESTORE_FONT "Times New Roman"
+
 . graph set window fontface "Arial Narrow"
 
 . 
@@ -326,7 +338,7 @@ west: g= 3.77 CI [ 0.83, 10.25]   east: g=-0.17 slope below -2.99
 . gen byte ishinge = 1
 
 . save `hingeE'
-file C:\Users\smoor\AppData\Local\Temp\ST_95ac_000001.tmp saved as .dta
+file C:\Users\smoor\AppData\Local\Temp\ST_5928_000001.tmp saved as .dta
     format
 
 . 
@@ -348,7 +360,7 @@ file C:\Users\smoor\AppData\Local\Temp\ST_95ac_000001.tmp saved as .dta
     -----------------------------------------
 
 . save `hinge'
-file C:\Users\smoor\AppData\Local\Temp\ST_95ac_000002.tmp saved as .dta
+file C:\Users\smoor\AppData\Local\Temp\ST_5928_000002.tmp saved as .dta
     format
 
 . 
@@ -364,7 +376,7 @@ file C:\Users\smoor\AppData\Local\Temp\ST_95ac_000002.tmp saved as .dta
 . tempfile monthly
 
 . save `monthly'
-file C:\Users\smoor\AppData\Local\Temp\ST_95ac_000003.tmp saved as .dta
+file C:\Users\smoor\AppData\Local\Temp\ST_5928_000003.tmp saved as .dta
     format
 
 . 
@@ -649,6 +661,17 @@ file claude/mechanism-figures/figures/fig4_monthly_path.png saved as PNG
 
 . di as txt "wrote $OUT/fig4_monthly_path.png"
 wrote claude/mechanism-figures/figures/fig4_monthly_path.png
+
+. 
+. *----------------------------------------------------------------- put it bac
+> k
+. * Leave the session as it was found: no graphs in memory, factory graph font.
+. graph drop _all
+
+. graph set window fontface "$RESTORE_FONT"
+
+. di as txt "graph window font restored to $RESTORE_FONT; graphs dropped"
+graph window font restored to Times New Roman; graphs dropped
 
 . 
 end of do-file

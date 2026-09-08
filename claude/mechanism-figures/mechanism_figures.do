@@ -31,10 +31,20 @@ set more off
 
 cd "C:/Users/smoor/GitHub/GOLD"
 
+* Leftover graphs accumulate across runs and are the usual reason an
+* interactive session degrades. clear all drops them; say so explicitly.
+graph drop _all
+
 global PROJ "claude/mechanism-figures"
 global OUT  "$PROJ/figures"
 cap mkdir "$OUT"
 
+* GLOBAL, PERSISTENT Stata setting - there is no per-graph font option. It is
+* put back at the bottom of this file. Stata exposes no c() macro holding the
+* current value, so the restore target is the factory default rather than
+* whatever was there before. If this file dies early, restore by hand with:
+*     graph set window fontface "Times New Roman"
+global RESTORE_FONT "Times New Roman"
 graph set window fontface "Arial Narrow"
 
 * The Economist's published palette. RED carries the tariff episode and the read
@@ -378,3 +388,9 @@ twoway ///
 graph export "$OUT/fig4_monthly_path.pdf", replace
 graph export "$OUT/fig4_monthly_path.png", replace width(2400)
 di as txt "wrote $OUT/fig4_monthly_path.png"
+
+*----------------------------------------------------------------- put it back
+* Leave the session as it was found: no graphs in memory, factory graph font.
+graph drop _all
+graph set window fontface "$RESTORE_FONT"
+di as txt "graph window font restored to $RESTORE_FONT; graphs dropped"
