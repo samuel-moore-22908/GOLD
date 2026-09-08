@@ -27,6 +27,21 @@
 *!         claude/gold-panel/partner_monthly.csv   (see export_partner_panel.py)
 *! Writes  claude/gold-panel/figures/gold_panel.pdf and .png
 *!
+*! IF THIS CRASHES ON A MACHINE THAT IS NOT THE ONE IT WAS WRITTEN ON, TRY THE
+*! FONT FIRST. Set FONTFACE to "" below and run again.
+*!
+*! The file asks Windows for "Arial Narrow", which is a separate font family
+*! rather than a weight of Arial, and is not on every machine. Stata has no way
+*! to test whether a face exists - graph set window fontface accepts any string
+*! and the failure, if there is one, surfaces later inside the renderer. Both
+*! panels are built nodraw, so the combined graph is THE FIRST THING ACTUALLY
+*! PAINTED: a missing or unresolvable font would first bite exactly where the
+*! crash is reported, immediately after the final graph appears, and would
+*! survive removing grc1leg2 and removing the export, which it has.
+*!
+*! FONTFACE "" leaves the graph font alone entirely and costs nothing but the
+*! condensed look.
+*!
 *! THE PNG IS NOT MADE BY STATA. graph export ... .png on this figure kills
 *! Stata 18/MP on Windows outright - a process death, not an error, so nothing
 *! reaches the log and the session is gone. Confirmed by breadcrumb: the run dies
@@ -93,8 +108,19 @@ global FIGW      13          // canvas inches. 9 x 5.1 keeps the aspect ratio
 global FIGH      7.4         //   and cuts the rendered area by half
 global NSERIES   100         // commodity headings. 50 halves the object count
 
-* Stata does not inherit the caller's working directory.
-cd "C:/Users/smoor/GitHub/GOLD"
+* Stata does not inherit the caller's working directory, so it has to be set -
+* but not to one machine's path. Try the author's location, and otherwise assume
+* the session is already sitting in the repo, which is what happens when the
+* do-file is opened from it. Fail loudly rather than running against whatever
+* directory happens to be current.
+cap cd "C:/Users/smoor/GitHub/GOLD"
+cap confirm file "claude/gold-panel/gold_panel.do"
+if _rc {
+    di as err "Not in the GOLD repo. cd there first, then run this again."
+    di as err "  current directory: `c(pwd)'"
+    exit 170
+}
+di as txt "STEP  working directory `c(pwd)'"
 
 * Directories in globals, never locals: a local dies with the do-file or with
 * any quietly{} block it is read inside, and an empty path fails somewhere far
@@ -141,7 +167,20 @@ if $USE_GRC1LEG2 {
 * If the do-file dies before the end, put it back by hand with:
 *     graph set window fontface "Times New Roman"
 global RESTORE_FONT "Times New Roman"
-graph set window fontface "Arial Narrow"
+
+* "" leaves the font alone. See the note at the top: this is the first thing to
+* try on a machine where the figure crashes, because Arial Narrow is a separate
+* family on Windows, is not universally installed, and cannot be tested for
+* from inside Stata.
+global FONTFACE "Arial Narrow"
+
+if "$FONTFACE" != "" {
+    graph set window fontface "$FONTFACE"
+    di as txt "STEP  graph font set to $FONTFACE"
+}
+else {
+    di as txt "STEP  graph font left as found"
+}
 
 * The Economist's published palette, not an approximation of it.
 local RED   "227 18 11"       // #E3120B  the masthead red, used for the tab

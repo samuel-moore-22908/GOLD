@@ -65,6 +65,24 @@ Notes:
 > py)
 . *! Writes  claude/gold-panel/figures/gold_panel.pdf and .png
 . *!
+. *! IF THIS CRASHES ON A MACHINE THAT IS NOT THE ONE IT WAS WRITTEN ON, TRY TH
+> E
+. *! FONT FIRST. Set FONTFACE to "" below and run again.
+. *!
+. *! The file asks Windows for "Arial Narrow", which is a separate font family
+. *! rather than a weight of Arial, and is not on every machine. Stata has no w
+> ay
+. *! to test whether a face exists - graph set window fontface accepts any stri
+> ng
+. *! and the failure, if there is one, surfaces later inside the renderer. Both
+. *! panels are built nodraw, so the combined graph is THE FIRST THING ACTUALLY
+. *! PAINTED: a missing or unresolvable font would first bite exactly where the
+. *! crash is reported, immediately after the final graph appears, and would
+. *! survive removing grc1leg2 and removing the export, which it has.
+. *!
+. *! FONTFACE "" leaves the graph font alone entirely and costs nothing but the
+. *! condensed look.
+. *!
 . *! THE PNG IS NOT MADE BY STATA. graph export ... .png on this figure kills
 . *! Stata 18/MP on Windows outright - a process death, not an error, so nothin
 > g
@@ -163,9 +181,25 @@ Notes:
 > t
 
 . 
-. * Stata does not inherit the caller's working directory.
-. cd "C:/Users/smoor/GitHub/GOLD"
-C:\Users\smoor\GitHub\GOLD
+. * Stata does not inherit the caller's working directory, so it has to be set 
+> -
+. * but not to one machine's path. Try the author's location, and otherwise ass
+> ume
+. * the session is already sitting in the repo, which is what happens when the
+. * do-file is opened from it. Fail loudly rather than running against whatever
+. * directory happens to be current.
+. cap cd "C:/Users/smoor/GitHub/GOLD"
+
+. cap confirm file "claude/gold-panel/gold_panel.do"
+
+. if _rc {
+.     di as err "Not in the GOLD repo. cd there first, then run this again."
+.     di as err "  current directory: `c(pwd)'"
+.     exit 170
+. }
+
+. di as txt "STEP  working directory `c(pwd)'"
+STEP  working directory C:\Users\smoor\GitHub\GOLD
 
 . 
 . * Directories in globals, never locals: a local dies with the do-file or with
@@ -193,7 +227,7 @@ C:\Users\smoor\GitHub\GOLD
       name:  runlog
        log:  C:\Users\smoor\GitHub\GOLD\claude/gold-panel/gold_panel_run.log
   log type:  text
- opened on:   8 Sep 2026, 17:48:41
+ opened on:   8 Sep 2026, 17:55:53
 
 . * c(edition_real), not c(flavor): the latter is a legacy macro that reports "
 > IC"
@@ -201,7 +235,7 @@ C:\Users\smoor\GitHub\GOLD
 > ing
 . * a crash log after the wrong thing.
 . di as txt "START  " c(current_date) " " c(current_time)
-START   8 Sep 2026 17:48:41
+START   8 Sep 2026 17:55:53
 
 . di as txt "       Stata " c(stata_version) " " c(edition_real) " " c(bit) "-b
 > it, " ///
@@ -242,7 +276,25 @@ START   8 Sep 2026 17:48:41
 . *     graph set window fontface "Times New Roman"
 . global RESTORE_FONT "Times New Roman"
 
-. graph set window fontface "Arial Narrow"
+. 
+. * "" leaves the font alone. See the note at the top: this is the first thing 
+> to
+. * try on a machine where the figure crashes, because Arial Narrow is a separa
+> te
+. * family on Windows, is not universally installed, and cannot be tested for
+. * from inside Stata.
+. global FONTFACE "Arial Narrow"
+
+. 
+. if "$FONTFACE" != "" {
+.     graph set window fontface "$FONTFACE"
+.     di as txt "STEP  graph font set to $FONTFACE"
+STEP  graph font set to Arial Narrow
+. }
+
+. else {
+.     di as txt "STEP  graph font left as found"
+. }
 
 . 
 . * The Economist's published palette, not an approximation of it.
@@ -389,8 +441,8 @@ xij variables:
 . keep series hl lbl mlpos mb ms mr xb xs xr
 
 . save `comm', replace
-(file C:\Users\smoor\AppData\Local\Temp\ST_8864_000001.tmp not found)
-file C:\Users\smoor\AppData\Local\Temp\ST_8864_000001.tmp saved as .dta
+(file C:\Users\smoor\AppData\Local\Temp\ST_9ce8_000001.tmp not found)
+file C:\Users\smoor\AppData\Local\Temp\ST_9ce8_000001.tmp saved as .dta
     format
 
 . di as txt "commodities: " as res _N as txt " series"
@@ -495,8 +547,8 @@ xij variables:
 . keep iso3 hl lbl mlpos mb ms mr xb xs xr
 
 . save `part', replace
-(file C:\Users\smoor\AppData\Local\Temp\ST_8864_000002.tmp not found)
-file C:\Users\smoor\AppData\Local\Temp\ST_8864_000002.tmp saved as .dta
+(file C:\Users\smoor\AppData\Local\Temp\ST_9ce8_000002.tmp not found)
+file C:\Users\smoor\AppData\Local\Temp\ST_9ce8_000002.tmp saved as .dta
     format
 
 . di as txt "partners: " as res _N as txt " series"
@@ -838,7 +890,7 @@ STEP  PNG written from PDF
 STEP  font restored to Times New Roman, graphs dropped
 
 . di as txt "DONE  " c(current_date) " " c(current_time)
-DONE   8 Sep 2026 17:48:55
+DONE   8 Sep 2026 17:56:07
 
 . cap log close runlog
 

@@ -66,8 +66,18 @@ Notes:
 . set more off
 
 . 
-. cd "C:/Users/smoor/GitHub/GOLD"
-C:\Users\smoor\GitHub\GOLD
+. * Not hardcoded to one machine: try the author's path, otherwise assume the
+. * session is already in the repo, and fail loudly rather than running against
+. * whatever directory happens to be current.
+. cap cd "C:/Users/smoor/GitHub/GOLD"
+
+. cap confirm file "claude/gold-panel/gold_panel.do"
+
+. if _rc {
+.     di as err "Not in the GOLD repo. cd there first, then run this again."
+.     di as err "  current directory: `c(pwd)'"
+.     exit 170
+. }
 
 . 
 . * Leftover graphs accumulate across runs and are the usual reason an
@@ -89,7 +99,20 @@ C:\Users\smoor\GitHub\GOLD
 . *     graph set window fontface "Times New Roman"
 . global RESTORE_FONT "Times New Roman"
 
-. graph set window fontface "Arial Narrow"
+. * "" leaves the graph font alone. Arial Narrow is a separate family on Window
+> s
+. * and is not on every machine; Stata cannot test whether a face exists, so a
+. * missing one surfaces later inside the renderer. See the note at the top of
+. * claude/gold-panel/gold_panel.do.
+. global FONTFACE "Arial Narrow"
+
+. if "$FONTFACE" != "" {
+.     graph set window fontface "$FONTFACE"
+.     di as txt "font set to $FONTFACE"
+font set to Arial Narrow
+. }
+
+. else di as txt "graph font left as found"
 
 . 
 . * PNGs are NOT made by Stata here. graph export ... .png kills Stata 18/MP on
@@ -363,7 +386,7 @@ west: g= 3.77 CI [ 0.83, 10.25]   east: g=-0.17 slope below -2.99
 . gen byte ishinge = 1
 
 . save `hingeE'
-file C:\Users\smoor\AppData\Local\Temp\ST_1f78_000001.tmp saved as .dta
+file C:\Users\smoor\AppData\Local\Temp\ST_5b00_000001.tmp saved as .dta
     format
 
 . 
@@ -385,7 +408,7 @@ file C:\Users\smoor\AppData\Local\Temp\ST_1f78_000001.tmp saved as .dta
     -----------------------------------------
 
 . save `hinge'
-file C:\Users\smoor\AppData\Local\Temp\ST_1f78_000002.tmp saved as .dta
+file C:\Users\smoor\AppData\Local\Temp\ST_5b00_000002.tmp saved as .dta
     format
 
 . 
@@ -401,7 +424,7 @@ file C:\Users\smoor\AppData\Local\Temp\ST_1f78_000002.tmp saved as .dta
 . tempfile monthly
 
 . save `monthly'
-file C:\Users\smoor\AppData\Local\Temp\ST_1f78_000003.tmp saved as .dta
+file C:\Users\smoor\AppData\Local\Temp\ST_5b00_000003.tmp saved as .dta
     format
 
 . 

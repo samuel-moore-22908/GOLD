@@ -29,7 +29,16 @@ version 18
 clear all
 set more off
 
-cd "C:/Users/smoor/GitHub/GOLD"
+* Not hardcoded to one machine: try the author's path, otherwise assume the
+* session is already in the repo, and fail loudly rather than running against
+* whatever directory happens to be current.
+cap cd "C:/Users/smoor/GitHub/GOLD"
+cap confirm file "claude/gold-panel/gold_panel.do"
+if _rc {
+    di as err "Not in the GOLD repo. cd there first, then run this again."
+    di as err "  current directory: `c(pwd)'"
+    exit 170
+}
 
 * Leftover graphs accumulate across runs and are the usual reason an
 * interactive session degrades. clear all drops them; say so explicitly.
@@ -45,7 +54,16 @@ cap mkdir "$OUT"
 * whatever was there before. If this file dies early, restore by hand with:
 *     graph set window fontface "Times New Roman"
 global RESTORE_FONT "Times New Roman"
-graph set window fontface "Arial Narrow"
+* "" leaves the graph font alone. Arial Narrow is a separate family on Windows
+* and is not on every machine; Stata cannot test whether a face exists, so a
+* missing one surfaces later inside the renderer. See the note at the top of
+* claude/gold-panel/gold_panel.do.
+global FONTFACE "Arial Narrow"
+if "$FONTFACE" != "" {
+    graph set window fontface "$FONTFACE"
+    di as txt "font set to $FONTFACE"
+}
+else di as txt "graph font left as found"
 
 * PNGs are NOT made by Stata here. graph export ... .png kills Stata 18/MP on
 * Windows on figures this size - see the long note in claude/gold-panel/
