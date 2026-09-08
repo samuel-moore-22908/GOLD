@@ -132,12 +132,35 @@ Notes:
 
 . global TAB_GLYPH    "███"    // "" drops the red masthead tab
 
-. global MAKE_PDF     1        // 0 skips the PDF (the PNG then needs PNG_IN_ST
-> ATA 1)
+. global MAKE_PDF     1        // 0 skips the PDF export entirely
 
 . global PNG_WIDTH    2800     // pixel width of the PNG
 
-. global PNG_IN_STATA 0        // 1 uses Stata's own PNG export - SEE BELOW
+. global PNG_MODE     "pdf"    // "pdf"   rasterise the PDF outside Stata
+
+.                              // "stata" Stata's own PNG export (the crashing 
+> one)
+.                              // "none"  no PNG at all - use when bisecting
+. global DRAW_COMBINED 1       // 0 builds the combined graph nodraw, so nothin
+> g
+
+.                              //   is ever painted to the Graph window. THE
+.                              //   DECISIVE TEST: if the crash goes away at 0,
+.                              //   it is the window render, not the data, the
+.                              //   export or the shell. Forces PNG_MODE none,
+.                              //   because a nodraw graph cannot be exported.
+. 
+. * Rendering cost. The crash survives removing grc1leg2 and removing the expor
+> t,
+. * which leaves drawing the graph itself. These three are the levers on how mu
+> ch
+. * there is to draw, in the order worth trying:
+. global FIGW      13          // canvas inches. 9 x 5.1 keeps the aspect ratio
+
+. global FIGH      7.4         //   and cuts the rendered area by half
+
+. global NSERIES   100         // commodity headings. 50 halves the object coun
+> t
 
 . 
 . * Stata does not inherit the caller's working directory.
@@ -170,7 +193,7 @@ C:\Users\smoor\GitHub\GOLD
       name:  runlog
        log:  C:\Users\smoor\GitHub\GOLD\claude/gold-panel/gold_panel_run.log
   log type:  text
- opened on:   8 Sep 2026, 17:15:39
+ opened on:   8 Sep 2026, 17:48:41
 
 . * c(edition_real), not c(flavor): the latter is a legacy macro that reports "
 > IC"
@@ -178,7 +201,7 @@ C:\Users\smoor\GitHub\GOLD
 > ing
 . * a crash log after the wrong thing.
 . di as txt "START  " c(current_date) " " c(current_time)
-START   8 Sep 2026 17:15:39
+START   8 Sep 2026 17:48:41
 
 . di as txt "       Stata " c(stata_version) " " c(edition_real) " " c(bit) "-b
 > it, " ///
@@ -353,7 +376,7 @@ xij variables:
 
 . gen long rk = _n
 
-. keep if rk <= 100 | series == "GOLD"
+. keep if rk <= $NSERIES | series == "GOLD"
 (881 observations deleted)
 
 . gen byte hl = series == "GOLD"
@@ -366,8 +389,8 @@ xij variables:
 . keep series hl lbl mlpos mb ms mr xb xs xr
 
 . save `comm', replace
-(file C:\Users\smoor\AppData\Local\Temp\ST_4fa0_000001.tmp not found)
-file C:\Users\smoor\AppData\Local\Temp\ST_4fa0_000001.tmp saved as .dta
+(file C:\Users\smoor\AppData\Local\Temp\ST_8864_000001.tmp not found)
+file C:\Users\smoor\AppData\Local\Temp\ST_8864_000001.tmp saved as .dta
     format
 
 . di as txt "commodities: " as res _N as txt " series"
@@ -472,8 +495,8 @@ xij variables:
 . keep iso3 hl lbl mlpos mb ms mr xb xs xr
 
 . save `part', replace
-(file C:\Users\smoor\AppData\Local\Temp\ST_4fa0_000002.tmp not found)
-file C:\Users\smoor\AppData\Local\Temp\ST_4fa0_000002.tmp saved as .dta
+(file C:\Users\smoor\AppData\Local\Temp\ST_8864_000002.tmp not found)
+file C:\Users\smoor\AppData\Local\Temp\ST_8864_000002.tmp saved as .dta
     format
 
 . di as txt "partners: " as res _N as txt " series"
@@ -542,6 +565,10 @@ panel 2 range:   0.0009 ..    35.17
 . 
 . *================================================= formatting, defined ONCE
 . * Everything below is shared verbatim by both panels.
+. * pci, not function. twoway function evaluates at n(300) points by default,
+. * so the 45-degree reference cost 300 line segments per panel. On a log-log
+. * plane y = x is straight, so two points are exact - 598 fewer segments to
+. * render, for a line that is identical.
 . local DIAG  lcolor("`INK'%40") lpattern(dash) lwidth(thin)
 
 . local OARROW lwidth(vthin) msize(vtiny) lcolor("`GREY'%55") ///
@@ -631,7 +658,7 @@ panel 2 range:   0.0009 ..    35.17
 . use `comm', clear
 
 . twoway ///
->   (function y = x, range(`LO1' `HI1') `DIAG') ///
+>   (pci `LO1' `LO1' `HI1' `HI1', `DIAG') ///
 >   (pcarrow mb xb ms xs if !hl, `OARROW') ///
 >   (pcarrow ms xs mr xr if !hl, `OARROW') ///
 >   (pcarrow mb xb ms xs if hl,  `HARROW') ///
@@ -646,7 +673,7 @@ panel 2 range:   0.0009 ..    35.17
 >   , `AXES1' `TITLES' `REGION' `LEG' ///
 >   title("By commodity", size(medsmall) color("`INK'") position(11) ///
 >       justification(left)) ///
->   subtitle("100 most-traded HS4 headings; gold in colour", ///
+>   subtitle("$NSERIES most-traded HS4 headings; gold in colour", ///
 >       size(vsmall) color("`SOFT'") position(11) justification(left)) ///
 >   name(gLeft, replace) nodraw
 
@@ -658,7 +685,7 @@ STEP  left panel built
 . use `part', clear
 
 . twoway ///
->   (function y = x, range(`LO2' `HI2') `DIAG') ///
+>   (pci `LO2' `LO2' `HI2' `HI2', `DIAG') ///
 >   (pcarrow mb xb ms xs if !hl, `OARROW') ///
 >   (pcarrow ms xs mr xr if !hl, `OARROW') ///
 >   (pcarrow mb xb ms xs if hl,  `HARROW') ///
@@ -704,7 +731,8 @@ STEP  right panel built
 >         "Source: US Census Bureau, monthly HS4 trade, November 2023-November 
 > 2025", ///
 >         size(tiny) color("`SOFT'") position(7) justification(left)) ///
->     name(gPanel, replace) ysize(7.4) xsize(13)
+>     name(gPanel, replace) ysize($FIGH) xsize($FIGW) ///
+>     `= cond($DRAW_COMBINED, "", "nodraw")'
 
 . 
 . if $USE_GRC1LEG2 {
@@ -730,6 +758,16 @@ STEP  panels combined and drawn
 . * graphics layer at PNG_WIDTH/xsize dpi - and the report is that the crash co
 > mes
 . * immediately after the final graph appears, which is exactly here.
+. * A nodraw graph cannot be exported at all - graph export needs a current
+. * Graph window and fails r(693) without one, even when handed name(). So
+. * turning the drawing off necessarily turns the exporting off with it.
+. if !$DRAW_COMBINED {
+.     di as txt "STEP  DRAW_COMBINED 0: nothing drawn, nothing exported"
+.     global MAKE_PDF 0
+.     global PNG_MODE "none"
+. }
+
+. 
 . if $MAKE_PDF {
 .     di as txt "STEP  starting PDF export"
 STEP  starting PDF export
@@ -739,34 +777,53 @@ file claude/gold-panel/figures/gold_panel.pdf saved as PDF format
 STEP  PDF written
 . }
 
-. if $PNG_IN_STATA {
-.     * The crashing path, kept only so the fault can be re-tested.
+. 
+. if "$PNG_MODE" == "stata" {
+.     * The path that dies. Kept only so the fault can be re-tested.
 .     di as txt "STEP  starting PNG export IN STATA at width $PNG_WIDTH"
 .     graph export "$OUT/gold_panel.png", replace width($PNG_WIDTH)
 .     di as txt "STEP  PNG written by Stata"
 . }
 
-. else {
-.     di as txt "STEP  rasterising PDF to PNG outside Stata"
-STEP  rasterising PDF to PNG outside Stata
-.     cap confirm file ".venv/Scripts/python.exe"
+. else if "$PNG_MODE" == "pdf" {
+.     * Guarded on the PDF existing. The earlier version ran this branch whenev
+> er
+.     * PNG_IN_STATA was 0, including when MAKE_PDF was 0 - so switching the
+.     * export off still shelled out to cmd.exe on a file that was never writte
+> n,
+.     * and any bisection that relied on "exports are off now" was not testing
+.     * what it claimed to. shell from the GUI is itself a candidate, so it has
+.     * to be genuinely skippable.
+.     cap confirm file "$OUT/gold_panel.pdf"
 .     if _rc {
-.         di as err "  .venv not found. Make the PNG yourself with:"
-.         di as err "    python claude/stata-console/code/pdf_to_png.py " ///
->                   "$OUT/gold_panel.pdf --width $PNG_WIDTH"
+.         di as txt "STEP  no PDF to rasterise, skipping PNG"
 .     }
 .     else {
-.         * shell, not winexec: winexec returns immediately and the confirm bel
-> ow
-.         * would race it.
-.         shell .venv\Scripts\python.exe claude\stata-console\code\pdf_to_png.p
-> y "$OUT/gold_panel.pdf" --width $PNG_WIDTH
+.         di as txt "STEP  shelling out to rasterise PDF to PNG"
+STEP  shelling out to rasterise PDF to PNG
+.         cap confirm file ".venv/Scripts/python.exe"
+.         if _rc {
+.             di as err "  .venv not found. Make the PNG yourself with:"
+.             di as err "    python claude/stata-console/code/pdf_to_png.py " /
+> //
+>                       "$OUT/gold_panel.pdf --width $PNG_WIDTH"
+.         }
+.         else {
+.             * shell, not winexec: winexec returns immediately and the confirm
+.             * below would race it.
+.             shell .venv\Scripts\python.exe claude\stata-console\code\pdf_to_p
+> ng.py "$OUT/gold_panel.pdf" --width $PNG_WIDTH
   gold_panel.pdf -> gold_panel.png  2800x1594
-.         cap confirm file "$OUT/gold_panel.png"
-.         if _rc di as err "  PNG not produced - run pdf_to_png.py by hand"
-.         else di as txt "STEP  PNG written from PDF"
+.             cap confirm file "$OUT/gold_panel.png"
+.             if _rc di as err "  PNG not produced - run pdf_to_png.py by hand"
+.             else di as txt "STEP  PNG written from PDF"
 STEP  PNG written from PDF
+.         }
 .     }
+. }
+
+. else {
+.     di as txt "STEP  PNG_MODE none, no PNG made"
 . }
 
 . 
@@ -781,7 +838,7 @@ STEP  PNG written from PDF
 STEP  font restored to Times New Roman, graphs dropped
 
 . di as txt "DONE  " c(current_date) " " c(current_time)
-DONE   8 Sep 2026 17:15:53
+DONE   8 Sep 2026 17:48:55
 
 . cap log close runlog
 
