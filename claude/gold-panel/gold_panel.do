@@ -172,10 +172,28 @@ drop unit          // the pull's quantity-unit column; frees the name
 gen str12 series = hs4
 replace series = "GOLD" if inlist(hs4, "7108", "7115")
 
+* Phase length is COUNTED FROM THE DATA, never restated as a literal. The
+* window macros above are the only place a phase length is declared. A hard
+* 12/5/8 here is a second, silent declaration of the same fact: move a window -
+* which is exactly what happens when this is pointed at a longer pull - and
+* every series in that phase is divided by the wrong number. Because the same
+* wrong number hits imports and exports alike, every point in the phase is
+* multiplied by one constant, so on a log-log plane the whole cloud TRANSLATES
+* diagonally and reads as growth in every commodity at once. Running the
+* reversal to 2026-06 while this said 8 shifted all 100 headings by exactly
+* 15/8 = 1.875x and put 95% of them up and to the right.
+tempfile pmonths
+preserve
+    keep phase ym
+    duplicates drop
+    gen byte one = 1
+    collapse (sum) nmonths = one, by(phase)
+    save `pmonths'
+restore
 collapse (sum) value_usd, by(series phase flow)
-gen byte months = cond(phase == "baseline", 12, cond(phase == "surge", 5, 8))
-gen double rate = value_usd / months / 1e9
-drop value_usd months
+merge m:1 phase using `pmonths', nogen
+gen double rate = value_usd / nmonths / 1e9
+drop value_usd nmonths
 
 gen str1 f = cond(flow == "imports", "m", "x")
 gen str1 p = cond(phase == "baseline", "b", cond(phase == "surge", "s", "r"))
@@ -211,10 +229,28 @@ replace phase = "surge"    if ym >= "`P2LO'" & ym <= "`P2HI'"
 replace phase = "reversal" if ym >= "`P3LO'" & ym <= "`P3HI'"
 drop if phase == ""
 
+* Phase length is COUNTED FROM THE DATA, never restated as a literal. The
+* window macros above are the only place a phase length is declared. A hard
+* 12/5/8 here is a second, silent declaration of the same fact: move a window -
+* which is exactly what happens when this is pointed at a longer pull - and
+* every series in that phase is divided by the wrong number. Because the same
+* wrong number hits imports and exports alike, every point in the phase is
+* multiplied by one constant, so on a log-log plane the whole cloud TRANSLATES
+* diagonally and reads as growth in every commodity at once. Running the
+* reversal to 2026-06 while this said 8 shifted all 100 headings by exactly
+* 15/8 = 1.875x and put 95% of them up and to the right.
+tempfile pmonths
+preserve
+    keep phase ym
+    duplicates drop
+    gen byte one = 1
+    collapse (sum) nmonths = one, by(phase)
+    save `pmonths'
+restore
 collapse (sum) value_usd, by(iso3 phase flow)
-gen byte months = cond(phase == "baseline", 12, cond(phase == "surge", 5, 8))
-gen double rate = value_usd / months / 1e9
-drop value_usd months
+merge m:1 phase using `pmonths', nogen
+gen double rate = value_usd / nmonths / 1e9
+drop value_usd nmonths
 
 gen str1 f = cond(flow == "imports", "m", "x")
 gen str1 p = cond(phase == "baseline", "b", cond(phase == "surge", "s", "r"))

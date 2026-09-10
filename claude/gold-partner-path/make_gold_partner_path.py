@@ -41,12 +41,18 @@ OUT = Path("claude/gold-partner-path")
 FIG = OUT / "figures"
 FIG.mkdir(parents=True, exist_ok=True)
 
-# Same split as the commodity figure, and the same reason: the phases are
-# 12/5/8 months, so everything is a monthly-average rate.
+# Same split as the commodity figure, and the same reason: the phases are of
+# unequal length, so everything is a monthly-average rate. The lengths are
+# counted below rather than written down.
 PHASES = {"baseline": ("2023-11", "2024-10"),
           "surge":    ("2024-11", "2025-03"),
           "reversal": ("2025-04", "2025-11")}
-MONTHS = {"baseline": 12, "surge": 5, "reversal": 8}
+# Phase length is counted from the data in phase_months(), never written as a
+# literal. PHASES above is the only place a window is declared; restating its
+# length here is a second declaration that goes stale the moment a window
+# moves, and because the same wrong divisor hits imports and exports alike it
+# translates every point on the log-log plane by one constant - which reads as
+# growth in every partner at once rather than as the bug it is.
 # A partner needs at least this much trade in *both* directions in *every*
 # phase to have a position on a log-log plane. Below it the coordinate is
 # rounding noise, and including such partners stretched the axes across seven
@@ -99,13 +105,21 @@ def load():
     p["phase"] = p["time"].map(phase)
     p = p.dropna(subset=["phase"])
 
+    # Counted, not assumed. A phase that is short of data - or a window that has
+    # been widened - divides by the months it actually has.
+    months = p.groupby("phase")["time"].nunique().to_dict()
+    missing = [k for k in PHASES if not months.get(k)]
+    if missing:
+        raise SystemExit(f"no data in phase(s): {', '.join(missing)}")
+    print("  phase months:", {k: months[k] for k in PHASES})
+
     w = (p.pivot_table(index="k", columns=["phase", "flow"], values="val",
                        aggfunc="sum")
            .fillna(0.0))
     for ph in PHASES:
         for fl in ("imports", "exports"):
             if (ph, fl) in w.columns:
-                w[(ph, fl)] = w[(ph, fl)] / MONTHS[ph] / 1e9
+                w[(ph, fl)] = w[(ph, fl)] / months[ph] / 1e9
             else:
                 w[(ph, fl)] = 0.0
     w.columns = [f"{f[0]}_{'m' if f[1] == 'imports' else 'x'}" for f in w.columns]
