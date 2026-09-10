@@ -94,6 +94,19 @@ global PNG_WIDTH    2800     // pixel width of the PNG
 global PNG_MODE     "pdf"    // "pdf"   rasterise the PDF outside Stata
                              // "stata" Stata's own PNG export (the crashing one)
                              // "none"  no PNG at all - use when bisecting
+* HOW THE TWO PANELS ARE PUT TOGETHER. This is the step that crashes: both
+* graph combine and grc1leg2 fail, so it is the operation and not the
+* implementation. Stata has to hold the left panel, the right panel AND a
+* combined copy of both at once.
+*   "stata"  combine in memory. What crashed.
+*   "disk"   save each panel to .gph, drop them, combine from the files, so
+*            only one graph object exists at a time. Cheapest fix that keeps
+*            everything in Stata.
+*   "none"   never combine. Export a header strip and the two panels as three
+*            PDFs and lay them out with MuPDF, which places finished pages
+*            without re-rendering. Nothing to hold, nothing to crash.
+global COMBINE_MODE "disk"
+
 global DRAW_COMBINED 1       // 0 builds the combined graph nodraw, so nothing
                              //   is ever painted to the Graph window. THE
                              //   DECISIVE TEST: if the crash goes away at 0,
@@ -453,6 +466,14 @@ di as txt "STEP  right panel built"
 * Header order is the masthead's: red tab, bold headline, plain deck, key,
 * charts, source. title() and subtitle() are the only two header slots that
 * take separate colours, which is why the tab occupies one of them outright.
+local HEADTITLE ///
+    title("$TAB_GLYPH", size(vsmall) color("`RED'") ///
+        position(11) justification(left)) ///
+    subtitle("{bf:Gold went in, then came back out}" ///
+        "US trade on the balance plane, monthly average within each phase." ///
+        "Above the diagonal the United States is a net importer", ///
+        size(medsmall) color("`INK'") position(11) justification(left))
+
 local HEADER ///
     graphregion(color(white) lcolor(white)) imargin(small) iscale(*0.92) ///
     title("$TAB_GLYPH", size(vsmall) color("`RED'") ///
@@ -470,14 +491,61 @@ local HEADER ///
     name(gPanel, replace) ysize($FIGH) xsize($FIGW) ///
     `= cond($DRAW_COMBINED, "", "nodraw")'
 
-if $USE_GRC1LEG2 {
-    grc1leg2 gLeft gRight, cols(2) legendfrom(gLeft) position(11) ring(1) ///
-        `HEADER'
+if "$COMBINE_MODE" == "none" {
+    *------------------------------------------- two standalone figures, no combine
+    * The zero-risk option: never call the operation that crashes. Each panel is
+    * exported on its own, carrying its own title and subtitle. Two figures side
+    * by side is normal in a paper and the document handles the layout.
+    *
+    * A header strip carrying the shared headline was tried and dropped. Stata
+    * scales text against a graph's SMALLER dimension, so a 13 x 1.5in title
+    * block renders its type about a quarter the size it has on the real figure,
+    * and fixing that means hand-tuning sizes against a geometry nothing else
+    * uses. The shared headline belongs in the figure caption instead.
+    *
+    * For one image file anyway:
+    *   python claude/stata-console/code/compose_pdf.py OUT.pdf LEFT.pdf RIGHT.pdf
+    * places finished pages without re-rendering them.
+    foreach g in gLeft gRight {
+        graph display `g'
+        graph export "$OUT/gold_panel_`g'.pdf", replace
+        di as txt "STEP  exported `g' as its own figure"
+    }
+    cap confirm file ".venv/Scripts/python.exe"
+    if !_rc {
+        shell .venv\Scripts\python.exe claude\stata-console\code\pdf_to_png.py "$OUT/gold_panel_gLeft.pdf" --width $PNG_WIDTH
+        shell .venv\Scripts\python.exe claude\stata-console\code\pdf_to_png.py "$OUT/gold_panel_gRight.pdf" --width $PNG_WIDTH
+    }
+    di as txt "STEP  two standalone figures written; nothing was combined"
+    global MAKE_PDF 0
+    global PNG_MODE "none"
+}
+else if "$COMBINE_MODE" == "disk" {
+    *------------------------------------------------- combine from .gph files
+    * graph combine accepts filenames as well as graphs held in memory. Saving
+    * the panels out and dropping them first means the combined object is the
+    * only graph in memory while it is being built, instead of the third of
+    * three.
+    graph save gLeft  "$OUT/_left.gph",  replace
+    graph save gRight "$OUT/_right.gph", replace
+    graph drop _all
+    di as txt "STEP  panels saved to disk and dropped from memory"
+    graph combine "$OUT/_left.gph" "$OUT/_right.gph", cols(2) `HEADER'
+    di as txt "STEP  panels combined from disk and drawn"
+    cap erase "$OUT/_left.gph"
+    cap erase "$OUT/_right.gph"
 }
 else {
-    graph combine gLeft gRight, cols(2) `HEADER'
+    *----------------------------------------------------- combine in memory
+    if $USE_GRC1LEG2 {
+        grc1leg2 gLeft gRight, cols(2) legendfrom(gLeft) position(11) ring(1) ///
+            `HEADER'
+    }
+    else {
+        graph combine gLeft gRight, cols(2) `HEADER'
+    }
+    di as txt "STEP  panels combined in memory and drawn"
 }
-di as txt "STEP  panels combined and drawn"
 
 * A nodraw graph cannot be exported - graph export needs a current Graph
 * window, and fails r(693) without one even when given name(). So the combined
