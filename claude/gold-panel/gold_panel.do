@@ -27,6 +27,21 @@
 *!         claude/gold-panel/partner_monthly.csv   (see export_partner_panel.py)
 *! Writes  claude/gold-panel/figures/gold_panel.pdf and .png
 *!
+*! IF THIS CRASHES ON A MACHINE THAT IS NOT THE ONE IT WAS WRITTEN ON, TRY THE
+*! FONT FIRST. Set FONTFACE to "" below and run again.
+*!
+*! The file asks Windows for "Arial Narrow", which is a separate font family
+*! rather than a weight of Arial, and is not on every machine. Stata has no way
+*! to test whether a face exists - graph set window fontface accepts any string
+*! and the failure, if there is one, surfaces later inside the renderer. Both
+*! panels are built nodraw, so the combined graph is THE FIRST THING ACTUALLY
+*! PAINTED: a missing or unresolvable font would first bite exactly where the
+*! crash is reported, immediately after the final graph appears, and would
+*! survive removing grc1leg2 and removing the export, which it has.
+*!
+*! FONTFACE "" leaves the graph font alone entirely and costs nothing but the
+*! condensed look.
+*!
 *! THE PNG IS NOT MADE BY STATA. graph export ... .png on this figure kills
 *! Stata 18/MP on Windows outright - a process death, not an error, so nothing
 *! reaches the log and the session is gone. Confirmed by breadcrumb: the run dies
@@ -74,12 +89,89 @@ graph drop _all
 * Bisection switches - see STABILITY above.
 global USE_GRC1LEG2 0        // 1 restores the centred shared legend
 global TAB_GLYPH    "███"    // "" drops the red masthead tab
-global MAKE_PDF     1        // 0 skips the PDF (the PNG then needs PNG_IN_STATA 1)
+global MAKE_PDF     1        // 0 skips the PDF export entirely
 global PNG_WIDTH    2800     // pixel width of the PNG
-global PNG_IN_STATA 0        // 1 uses Stata's own PNG export - SEE BELOW
+global PNG_MODE     "pdf"    // "pdf"   rasterise the PDF outside Stata
+                             // "stata" Stata's own PNG export (the crashing one)
+                             // "none"  no PNG at all - use when bisecting
+* HOW THE TWO PANELS ARE PUT TOGETHER. This is the step that crashes: both
+* graph combine and grc1leg2 fail, so it is the operation and not the
+* implementation. Stata has to hold the left panel, the right panel AND a
+* combined copy of both at once.
+*   "stata"  combine in memory. What crashed.
+*   "disk"   save each panel to .gph, drop them, combine from the files, so
+*            only one graph object exists at a time. Cheapest fix that keeps
+*            everything in Stata.
+*   "none"   never combine. Export a header strip and the two panels as three
+*            PDFs and lay them out with MuPDF, which places finished pages
+*            without re-rendering. Nothing to hold, nothing to crash.
+global COMBINE_MODE "disk"
 
-* Stata does not inherit the caller's working directory.
-cd "C:/Users/smoor/GitHub/GOLD"
+* RENDERING, which is what actually fails. Building the panels is fine because
+* they are nodraw; graph combine and graph export are the only two things that
+* force Stata to paint, and both die. So the question is not "why does combine
+* crash" but "what in these panels cannot be rendered on that machine".
+*
+* Two candidates, both switchable, both costing only appearance:
+*
+* USE_ALPHA. Every marker, arrow, gridline and the diagonal carries an opacity
+* suffix - colour%75 and friends. Alpha compositing goes through a different
+* path from opaque fill, it leans on the graphics stack, and it is exactly the
+* kind of thing that differs between machines. 0 makes every colour solid.
+*
+* USE_ARROWS. The left panel draws about 200 arrowheads via pcarrow. 0 swaps
+* them for pcspike, which is a plain line segment with nothing on the end.
+global USE_ALPHA  1
+global USE_ARROWS 1
+
+* THE KEY, and why the panels currently have different scales.
+*
+* grc1leg2 exists because graph combine has no shared legend: it strips the
+* legend from both panels and redraws one outside, so both keep identical plot
+* areas. Without it, putting legend() on the left panel and legend(off) on the
+* right makes the left panel RESERVE VERTICAL SPACE THE RIGHT DOES NOT, and the
+* two plot regions come out different heights - which is the wrong-scale
+* problem, not a coincidence.
+*
+*   "text"   legend(off) on BOTH panels, key drawn as glyphs in each subtitle.
+*            Identical geometry by construction, no third-party command, and it
+*            survives the panels being exported separately.
+*   "legend" the real Stata legend on the left panel only. Asymmetric scales.
+global KEY_MODE "text"
+
+* Literal glyphs, not ○ - Stata's {c ...} escape covers ASCII only and
+* prints the markup verbatim, exactly as it does for the U+2588 tab. Hollow,
+* small filled and large filled stand in for the three phase markers. All three
+* are present in Arial Narrow, Arial and Times New Roman.
+global KEYTEXT "○ baseline Nov 23-Oct 24    • surge Nov 24-Mar 25    ● reversal Apr-Nov 25"
+
+global DRAW_COMBINED 1       // 0 builds the combined graph nodraw, so nothing
+                             //   is ever painted to the Graph window. THE
+                             //   DECISIVE TEST: if the crash goes away at 0,
+                             //   it is the window render, not the data, the
+                             //   export or the shell. Forces PNG_MODE none,
+                             //   because a nodraw graph cannot be exported.
+
+* Rendering cost. The crash survives removing grc1leg2 and removing the export,
+* which leaves drawing the graph itself. These three are the levers on how much
+* there is to draw, in the order worth trying:
+global FIGW      13          // canvas inches. 9 x 5.1 keeps the aspect ratio
+global FIGH      7.4         //   and cuts the rendered area by half
+global NSERIES   100         // commodity headings. 50 halves the object count
+
+* Stata does not inherit the caller's working directory, so it has to be set -
+* but not to one machine's path. Try the author's location, and otherwise assume
+* the session is already sitting in the repo, which is what happens when the
+* do-file is opened from it. Fail loudly rather than running against whatever
+* directory happens to be current.
+cap cd "C:/Users/smoor/GitHub/GOLD"
+cap confirm file "claude/gold-panel/gold_panel.do"
+if _rc {
+    di as err "Not in the GOLD repo. cd there first, then run this again."
+    di as err "  current directory: `c(pwd)'"
+    exit 170
+}
+di as txt "STEP  working directory `c(pwd)'"
 
 * Directories in globals, never locals: a local dies with the do-file or with
 * any quietly{} block it is read inside, and an empty path fails somewhere far
@@ -126,7 +218,33 @@ if $USE_GRC1LEG2 {
 * If the do-file dies before the end, put it back by hand with:
 *     graph set window fontface "Times New Roman"
 global RESTORE_FONT "Times New Roman"
-graph set window fontface "Arial Narrow"
+
+* "" leaves the font alone. See the note at the top: this is the first thing to
+* try on a machine where the figure crashes, because Arial Narrow is a separate
+* family on Windows, is not universally installed, and cannot be tested for
+* from inside Stata.
+global FONTFACE "Arial Narrow"
+
+if "$FONTFACE" != "" {
+    graph set window fontface "$FONTFACE"
+    di as txt "STEP  graph font set to $FONTFACE"
+}
+else {
+    di as txt "STEP  graph font left as found"
+}
+
+* Opacity suffixes, blanked when USE_ALPHA is 0 so that every colour below
+* becomes solid without touching any of the plot commands.
+if $USE_ALPHA {
+    local A75 "%75"
+    local A55 "%55"
+    local A40 "%40"
+}
+else {
+    local A75 ""
+    local A55 ""
+    local A40 ""
+}
 
 * The Economist's published palette, not an approximation of it.
 local RED   "227 18 11"       // #E3120B  the masthead red, used for the tab
@@ -193,7 +311,7 @@ foreach v in mb ms mr xb xs xr {
 gen double trade = mb + xb + ms + xs + mr + xr
 gsort -trade
 gen long rk = _n
-keep if rk <= 100 | series == "GOLD"
+keep if rk <= $NSERIES | series == "GOLD"
 gen byte hl = series == "GOLD"
 gen str8 lbl = cond(hl, "GOLD", "")
 gen byte mlpos = 3
@@ -294,11 +412,27 @@ foreach f in `comm' `part' {
 
 *================================================= formatting, defined ONCE
 * Everything below is shared verbatim by both panels.
-local DIAG  lcolor("`INK'%40") lpattern(dash) lwidth(thin)
-local OARROW lwidth(vthin) msize(vtiny) lcolor("`GREY'%55") ///
-             mcolor("`GREY'%55")
-local HARROW lwidth(medthick) msize(medsmall) lcolor("`RED'") ///
-             mcolor("`RED'")
+* pci, not function. twoway function evaluates at n(300) points by default,
+* so the 45-degree reference cost 300 line segments per panel. On a log-log
+* plane y = x is straight, so two points are exact - 598 fewer segments to
+* render, for a line that is identical.
+local DIAG  lcolor("`INK'`A40'") lpattern(dash) lwidth(thin)
+
+* pcarrow takes marker options for the head; pcspike does not, and passing them
+* to it is an error rather than something it ignores. So the plot command and
+* its options are chosen together.
+if $USE_ARROWS {
+    local PCA  "pcarrow"
+    local OARROW lwidth(vthin) msize(vtiny) lcolor("`GREY'`A55'") ///
+                 mcolor("`GREY'`A55'")
+    local HARROW lwidth(medthick) msize(medsmall) lcolor("`RED'") ///
+                 mcolor("`RED'")
+}
+else {
+    local PCA  "pcspike"
+    local OARROW lwidth(vthin) lcolor("`GREY'`A55'")
+    local HARROW lwidth(medthick) lcolor("`RED'")
+}
 local MB    msymbol(Oh) msize(small)     mlwidth(medium)
 local MS    msymbol(O)  msize(vsmall)
 local MR    msymbol(O)  msize(medsmall)
@@ -335,26 +469,34 @@ local LEGBODY order(6 "baseline  Nov 23-Oct 24"                               //
                     8 "reversal  Apr-Nov 25")                                 ///
             cols(3) size(vsmall) region(lcolor(none) color(white))            ///
             symxsize(4) bmargin(zero)
-if $USE_GRC1LEG2 {
+if "$KEY_MODE" == "text" {
+    * Both panels identical, so both plot regions are identical.
+    local LEG  legend(off)
+    local LEGR legend(off)
+    local KEYLINE "$KEYTEXT"
+}
+else if $USE_GRC1LEG2 {
     local LEG  legend(`LEGBODY')
     local LEGR legend(`LEGBODY')
+    local KEYLINE ""
 }
 else {
     local LEG  legend(`LEGBODY' position(12) ring(1))
     local LEGR legend(off)
+    local KEYLINE ""
 }
 
 *------------------------------------------------------------- left panel
 use `comm', clear
 twoway ///
-  (function y = x, range(`LO1' `HI1') `DIAG') ///
-  (pcarrow mb xb ms xs if !hl, `OARROW') ///
-  (pcarrow ms xs mr xr if !hl, `OARROW') ///
-  (pcarrow mb xb ms xs if hl,  `HARROW') ///
-  (pcarrow ms xs mr xr if hl,  `HARROW') ///
-  (scatter mb xb if !hl, `MB' mcolor("`GREY'%75")) ///
-  (scatter ms xs if !hl, `MS' mcolor("`GREY'%75")) ///
-  (scatter mr xr if !hl, `MR' mcolor("`GREY'%75")) ///
+  (pci `LO1' `LO1' `HI1' `HI1', `DIAG') ///
+  (`PCA' mb xb ms xs if !hl, `OARROW') ///
+  (`PCA' ms xs mr xr if !hl, `OARROW') ///
+  (`PCA' mb xb ms xs if hl,  `HARROW') ///
+  (`PCA' ms xs mr xr if hl,  `HARROW') ///
+  (scatter mb xb if !hl, `MB' mcolor("`GREY'`A75'")) ///
+  (scatter ms xs if !hl, `MS' mcolor("`GREY'`A75'")) ///
+  (scatter mr xr if !hl, `MR' mcolor("`GREY'`A75'")) ///
   (scatter mb xb if hl,  `MB' mcolor("`RED'")) ///
   (scatter ms xs if hl,  `MS' mcolor("`RED'") msize(small)) ///
   (scatter mr xr if hl,  `MR' mcolor("`RED'") msize(medium) ///
@@ -362,7 +504,8 @@ twoway ///
   , `AXES1' `TITLES' `REGION' `LEG' ///
   title("By commodity", size(medsmall) color("`INK'") position(11) ///
       justification(left)) ///
-  subtitle("100 most-traded HS4 headings; gold in colour", ///
+  subtitle("$NSERIES most-traded HS4 headings; gold in colour" ///
+      "`KEYLINE'", ///
       size(vsmall) color("`SOFT'") position(11) justification(left)) ///
   name(gLeft, replace) nodraw
 di as txt "STEP  left panel built"
@@ -370,14 +513,14 @@ di as txt "STEP  left panel built"
 *------------------------------------------------------------ right panel
 use `part', clear
 twoway ///
-  (function y = x, range(`LO2' `HI2') `DIAG') ///
-  (pcarrow mb xb ms xs if !hl, `OARROW') ///
-  (pcarrow ms xs mr xr if !hl, `OARROW') ///
-  (pcarrow mb xb ms xs if hl,  `HARROW') ///
-  (pcarrow ms xs mr xr if hl,  `HARROW') ///
-  (scatter mb xb if !hl, `MB' mcolor("`GREY'%75")) ///
-  (scatter ms xs if !hl, `MS' mcolor("`GREY'%75")) ///
-  (scatter mr xr if !hl, `MR' mcolor("`GREY'%75") ///
+  (pci `LO2' `LO2' `HI2' `HI2', `DIAG') ///
+  (`PCA' mb xb ms xs if !hl, `OARROW') ///
+  (`PCA' ms xs mr xr if !hl, `OARROW') ///
+  (`PCA' mb xb ms xs if hl,  `HARROW') ///
+  (`PCA' ms xs mr xr if hl,  `HARROW') ///
+  (scatter mb xb if !hl, `MB' mcolor("`GREY'`A75'")) ///
+  (scatter ms xs if !hl, `MS' mcolor("`GREY'`A75'")) ///
+  (scatter mr xr if !hl, `MR' mcolor("`GREY'`A75'") ///
       mlabel(lbl) `MLAB' mlabvposition(mlpos)) ///
   (scatter mb xb if hl,  `MB' mcolor("`RED'")) ///
   (scatter ms xs if hl,  `MS' mcolor("`RED'") msize(small)) ///
@@ -386,7 +529,8 @@ twoway ///
   , `AXES2' `TITLES' `REGION' `LEGR' ///
   title("By partner", size(medsmall) color("`INK'") position(11) ///
       justification(left)) ///
-  subtitle("5 largest bilateral gold partners; Switzerland in colour", ///
+  subtitle("5 largest bilateral gold partners; Switzerland in colour" ///
+      "`KEYLINE'", ///
       size(vsmall) color("`SOFT'") position(11) justification(left)) ///
   name(gRight, replace) nodraw
 di as txt "STEP  right panel built"
@@ -395,6 +539,14 @@ di as txt "STEP  right panel built"
 * Header order is the masthead's: red tab, bold headline, plain deck, key,
 * charts, source. title() and subtitle() are the only two header slots that
 * take separate colours, which is why the tab occupies one of them outright.
+local HEADTITLE ///
+    title("$TAB_GLYPH", size(vsmall) color("`RED'") ///
+        position(11) justification(left)) ///
+    subtitle("{bf:Gold went in, then came back out}" ///
+        "US trade on the balance plane, monthly average within each phase." ///
+        "Above the diagonal the United States is a net importer", ///
+        size(medsmall) color("`INK'") position(11) justification(left))
+
 local HEADER ///
     graphregion(color(white) lcolor(white)) imargin(small) iscale(*0.92) ///
     title("$TAB_GLYPH", size(vsmall) color("`RED'") ///
@@ -409,16 +561,64 @@ local HEADER ///
         " " ///
         "Source: US Census Bureau, monthly HS4 trade, November 2023-November 2025", ///
         size(tiny) color("`SOFT'") position(7) justification(left)) ///
-    name(gPanel, replace) ysize(7.4) xsize(13)
+    name(gPanel, replace) ysize($FIGH) xsize($FIGW) ///
+    `= cond($DRAW_COMBINED, "", "nodraw")'
 
-if $USE_GRC1LEG2 {
-    grc1leg2 gLeft gRight, cols(2) legendfrom(gLeft) position(11) ring(1) ///
-        `HEADER'
+if "$COMBINE_MODE" == "none" {
+    *------------------------------------------- two standalone figures, no combine
+    * The zero-risk option: never call the operation that crashes. Each panel is
+    * exported on its own, carrying its own title and subtitle. Two figures side
+    * by side is normal in a paper and the document handles the layout.
+    *
+    * A header strip carrying the shared headline was tried and dropped. Stata
+    * scales text against a graph's SMALLER dimension, so a 13 x 1.5in title
+    * block renders its type about a quarter the size it has on the real figure,
+    * and fixing that means hand-tuning sizes against a geometry nothing else
+    * uses. The shared headline belongs in the figure caption instead.
+    *
+    * For one image file anyway:
+    *   python claude/stata-console/code/compose_pdf.py OUT.pdf LEFT.pdf RIGHT.pdf
+    * places finished pages without re-rendering them.
+    foreach g in gLeft gRight {
+        graph display `g'
+        graph export "$OUT/gold_panel_`g'.pdf", replace
+        di as txt "STEP  exported `g' as its own figure"
+    }
+    cap confirm file ".venv/Scripts/python.exe"
+    if !_rc {
+        shell .venv\Scripts\python.exe claude\stata-console\code\pdf_to_png.py "$OUT/gold_panel_gLeft.pdf" --width $PNG_WIDTH
+        shell .venv\Scripts\python.exe claude\stata-console\code\pdf_to_png.py "$OUT/gold_panel_gRight.pdf" --width $PNG_WIDTH
+    }
+    di as txt "STEP  two standalone figures written; nothing was combined"
+    global MAKE_PDF 0
+    global PNG_MODE "none"
+}
+else if "$COMBINE_MODE" == "disk" {
+    *------------------------------------------------- combine from .gph files
+    * graph combine accepts filenames as well as graphs held in memory. Saving
+    * the panels out and dropping them first means the combined object is the
+    * only graph in memory while it is being built, instead of the third of
+    * three.
+    graph save gLeft  "$OUT/_left.gph",  replace
+    graph save gRight "$OUT/_right.gph", replace
+    graph drop _all
+    di as txt "STEP  panels saved to disk and dropped from memory"
+    graph combine "$OUT/_left.gph" "$OUT/_right.gph", cols(2) `HEADER'
+    di as txt "STEP  panels combined from disk and drawn"
+    cap erase "$OUT/_left.gph"
+    cap erase "$OUT/_right.gph"
 }
 else {
-    graph combine gLeft gRight, cols(2) `HEADER'
+    *----------------------------------------------------- combine in memory
+    if $USE_GRC1LEG2 {
+        grc1leg2 gLeft gRight, cols(2) legendfrom(gLeft) position(11) ring(1) ///
+            `HEADER'
+    }
+    else {
+        graph combine gLeft gRight, cols(2) `HEADER'
+    }
+    di as txt "STEP  panels combined in memory and drawn"
 }
-di as txt "STEP  panels combined and drawn"
 
 * A nodraw graph cannot be exported - graph export needs a current Graph
 * window, and fails r(693) without one even when given name(). So the combined
@@ -427,33 +627,58 @@ di as txt "STEP  panels combined and drawn"
 * paths - PDF embeds the font as vectors, PNG rasterises through the Windows
 * graphics layer at PNG_WIDTH/xsize dpi - and the report is that the crash comes
 * immediately after the final graph appears, which is exactly here.
+* A nodraw graph cannot be exported at all - graph export needs a current
+* Graph window and fails r(693) without one, even when handed name(). So
+* turning the drawing off necessarily turns the exporting off with it.
+if !$DRAW_COMBINED {
+    di as txt "STEP  DRAW_COMBINED 0: nothing drawn, nothing exported"
+    global MAKE_PDF 0
+    global PNG_MODE "none"
+}
+
 if $MAKE_PDF {
     di as txt "STEP  starting PDF export"
     graph export "$OUT/gold_panel.pdf", replace
     di as txt "STEP  PDF written"
 }
-if $PNG_IN_STATA {
-    * The crashing path, kept only so the fault can be re-tested.
+
+if "$PNG_MODE" == "stata" {
+    * The path that dies. Kept only so the fault can be re-tested.
     di as txt "STEP  starting PNG export IN STATA at width $PNG_WIDTH"
     graph export "$OUT/gold_panel.png", replace width($PNG_WIDTH)
     di as txt "STEP  PNG written by Stata"
 }
-else {
-    di as txt "STEP  rasterising PDF to PNG outside Stata"
-    cap confirm file ".venv/Scripts/python.exe"
+else if "$PNG_MODE" == "pdf" {
+    * Guarded on the PDF existing. The earlier version ran this branch whenever
+    * PNG_IN_STATA was 0, including when MAKE_PDF was 0 - so switching the
+    * export off still shelled out to cmd.exe on a file that was never written,
+    * and any bisection that relied on "exports are off now" was not testing
+    * what it claimed to. shell from the GUI is itself a candidate, so it has
+    * to be genuinely skippable.
+    cap confirm file "$OUT/gold_panel.pdf"
     if _rc {
-        di as err "  .venv not found. Make the PNG yourself with:"
-        di as err "    python claude/stata-console/code/pdf_to_png.py " ///
-                  "$OUT/gold_panel.pdf --width $PNG_WIDTH"
+        di as txt "STEP  no PDF to rasterise, skipping PNG"
     }
     else {
-        * shell, not winexec: winexec returns immediately and the confirm below
-        * would race it.
-        shell .venv\Scripts\python.exe claude\stata-console\code\pdf_to_png.py "$OUT/gold_panel.pdf" --width $PNG_WIDTH
-        cap confirm file "$OUT/gold_panel.png"
-        if _rc di as err "  PNG not produced - run pdf_to_png.py by hand"
-        else di as txt "STEP  PNG written from PDF"
+        di as txt "STEP  shelling out to rasterise PDF to PNG"
+        cap confirm file ".venv/Scripts/python.exe"
+        if _rc {
+            di as err "  .venv not found. Make the PNG yourself with:"
+            di as err "    python claude/stata-console/code/pdf_to_png.py " ///
+                      "$OUT/gold_panel.pdf --width $PNG_WIDTH"
+        }
+        else {
+            * shell, not winexec: winexec returns immediately and the confirm
+            * below would race it.
+            shell .venv\Scripts\python.exe claude\stata-console\code\pdf_to_png.py "$OUT/gold_panel.pdf" --width $PNG_WIDTH
+            cap confirm file "$OUT/gold_panel.png"
+            if _rc di as err "  PNG not produced - run pdf_to_png.py by hand"
+            else di as txt "STEP  PNG written from PDF"
+        }
     }
+}
+else {
+    di as txt "STEP  PNG_MODE none, no PNG made"
 }
 
 *----------------------------------------------------------------- put it back
