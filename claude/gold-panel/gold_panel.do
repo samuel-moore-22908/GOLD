@@ -107,6 +107,44 @@ global PNG_MODE     "pdf"    // "pdf"   rasterise the PDF outside Stata
 *            without re-rendering. Nothing to hold, nothing to crash.
 global COMBINE_MODE "disk"
 
+* RENDERING, which is what actually fails. Building the panels is fine because
+* they are nodraw; graph combine and graph export are the only two things that
+* force Stata to paint, and both die. So the question is not "why does combine
+* crash" but "what in these panels cannot be rendered on that machine".
+*
+* Two candidates, both switchable, both costing only appearance:
+*
+* USE_ALPHA. Every marker, arrow, gridline and the diagonal carries an opacity
+* suffix - colour%75 and friends. Alpha compositing goes through a different
+* path from opaque fill, it leans on the graphics stack, and it is exactly the
+* kind of thing that differs between machines. 0 makes every colour solid.
+*
+* USE_ARROWS. The left panel draws about 200 arrowheads via pcarrow. 0 swaps
+* them for pcspike, which is a plain line segment with nothing on the end.
+global USE_ALPHA  1
+global USE_ARROWS 1
+
+* THE KEY, and why the panels currently have different scales.
+*
+* grc1leg2 exists because graph combine has no shared legend: it strips the
+* legend from both panels and redraws one outside, so both keep identical plot
+* areas. Without it, putting legend() on the left panel and legend(off) on the
+* right makes the left panel RESERVE VERTICAL SPACE THE RIGHT DOES NOT, and the
+* two plot regions come out different heights - which is the wrong-scale
+* problem, not a coincidence.
+*
+*   "text"   legend(off) on BOTH panels, key drawn as glyphs in each subtitle.
+*            Identical geometry by construction, no third-party command, and it
+*            survives the panels being exported separately.
+*   "legend" the real Stata legend on the left panel only. Asymmetric scales.
+global KEY_MODE "text"
+
+* Literal glyphs, not ○ - Stata's {c ...} escape covers ASCII only and
+* prints the markup verbatim, exactly as it does for the U+2588 tab. Hollow,
+* small filled and large filled stand in for the three phase markers. All three
+* are present in Arial Narrow, Arial and Times New Roman.
+global KEYTEXT "○ baseline Nov 23-Oct 24    • surge Nov 24-Mar 25    ● reversal Apr-Nov 25"
+
 global DRAW_COMBINED 1       // 0 builds the combined graph nodraw, so nothing
                              //   is ever painted to the Graph window. THE
                              //   DECISIVE TEST: if the crash goes away at 0,
@@ -193,6 +231,19 @@ if "$FONTFACE" != "" {
 }
 else {
     di as txt "STEP  graph font left as found"
+}
+
+* Opacity suffixes, blanked when USE_ALPHA is 0 so that every colour below
+* becomes solid without touching any of the plot commands.
+if $USE_ALPHA {
+    local A75 "%75"
+    local A55 "%55"
+    local A40 "%40"
+}
+else {
+    local A75 ""
+    local A55 ""
+    local A40 ""
 }
 
 * The Economist's published palette, not an approximation of it.
@@ -365,11 +416,23 @@ foreach f in `comm' `part' {
 * so the 45-degree reference cost 300 line segments per panel. On a log-log
 * plane y = x is straight, so two points are exact - 598 fewer segments to
 * render, for a line that is identical.
-local DIAG  lcolor("`INK'%40") lpattern(dash) lwidth(thin)
-local OARROW lwidth(vthin) msize(vtiny) lcolor("`GREY'%55") ///
-             mcolor("`GREY'%55")
-local HARROW lwidth(medthick) msize(medsmall) lcolor("`RED'") ///
-             mcolor("`RED'")
+local DIAG  lcolor("`INK'`A40'") lpattern(dash) lwidth(thin)
+
+* pcarrow takes marker options for the head; pcspike does not, and passing them
+* to it is an error rather than something it ignores. So the plot command and
+* its options are chosen together.
+if $USE_ARROWS {
+    local PCA  "pcarrow"
+    local OARROW lwidth(vthin) msize(vtiny) lcolor("`GREY'`A55'") ///
+                 mcolor("`GREY'`A55'")
+    local HARROW lwidth(medthick) msize(medsmall) lcolor("`RED'") ///
+                 mcolor("`RED'")
+}
+else {
+    local PCA  "pcspike"
+    local OARROW lwidth(vthin) lcolor("`GREY'`A55'")
+    local HARROW lwidth(medthick) lcolor("`RED'")
+}
 local MB    msymbol(Oh) msize(small)     mlwidth(medium)
 local MS    msymbol(O)  msize(vsmall)
 local MR    msymbol(O)  msize(medsmall)
@@ -406,26 +469,34 @@ local LEGBODY order(6 "baseline  Nov 23-Oct 24"                               //
                     8 "reversal  Apr-Nov 25")                                 ///
             cols(3) size(vsmall) region(lcolor(none) color(white))            ///
             symxsize(4) bmargin(zero)
-if $USE_GRC1LEG2 {
+if "$KEY_MODE" == "text" {
+    * Both panels identical, so both plot regions are identical.
+    local LEG  legend(off)
+    local LEGR legend(off)
+    local KEYLINE "$KEYTEXT"
+}
+else if $USE_GRC1LEG2 {
     local LEG  legend(`LEGBODY')
     local LEGR legend(`LEGBODY')
+    local KEYLINE ""
 }
 else {
     local LEG  legend(`LEGBODY' position(12) ring(1))
     local LEGR legend(off)
+    local KEYLINE ""
 }
 
 *------------------------------------------------------------- left panel
 use `comm', clear
 twoway ///
   (pci `LO1' `LO1' `HI1' `HI1', `DIAG') ///
-  (pcarrow mb xb ms xs if !hl, `OARROW') ///
-  (pcarrow ms xs mr xr if !hl, `OARROW') ///
-  (pcarrow mb xb ms xs if hl,  `HARROW') ///
-  (pcarrow ms xs mr xr if hl,  `HARROW') ///
-  (scatter mb xb if !hl, `MB' mcolor("`GREY'%75")) ///
-  (scatter ms xs if !hl, `MS' mcolor("`GREY'%75")) ///
-  (scatter mr xr if !hl, `MR' mcolor("`GREY'%75")) ///
+  (`PCA' mb xb ms xs if !hl, `OARROW') ///
+  (`PCA' ms xs mr xr if !hl, `OARROW') ///
+  (`PCA' mb xb ms xs if hl,  `HARROW') ///
+  (`PCA' ms xs mr xr if hl,  `HARROW') ///
+  (scatter mb xb if !hl, `MB' mcolor("`GREY'`A75'")) ///
+  (scatter ms xs if !hl, `MS' mcolor("`GREY'`A75'")) ///
+  (scatter mr xr if !hl, `MR' mcolor("`GREY'`A75'")) ///
   (scatter mb xb if hl,  `MB' mcolor("`RED'")) ///
   (scatter ms xs if hl,  `MS' mcolor("`RED'") msize(small)) ///
   (scatter mr xr if hl,  `MR' mcolor("`RED'") msize(medium) ///
@@ -433,7 +504,8 @@ twoway ///
   , `AXES1' `TITLES' `REGION' `LEG' ///
   title("By commodity", size(medsmall) color("`INK'") position(11) ///
       justification(left)) ///
-  subtitle("$NSERIES most-traded HS4 headings; gold in colour", ///
+  subtitle("$NSERIES most-traded HS4 headings; gold in colour" ///
+      "`KEYLINE'", ///
       size(vsmall) color("`SOFT'") position(11) justification(left)) ///
   name(gLeft, replace) nodraw
 di as txt "STEP  left panel built"
@@ -442,13 +514,13 @@ di as txt "STEP  left panel built"
 use `part', clear
 twoway ///
   (pci `LO2' `LO2' `HI2' `HI2', `DIAG') ///
-  (pcarrow mb xb ms xs if !hl, `OARROW') ///
-  (pcarrow ms xs mr xr if !hl, `OARROW') ///
-  (pcarrow mb xb ms xs if hl,  `HARROW') ///
-  (pcarrow ms xs mr xr if hl,  `HARROW') ///
-  (scatter mb xb if !hl, `MB' mcolor("`GREY'%75")) ///
-  (scatter ms xs if !hl, `MS' mcolor("`GREY'%75")) ///
-  (scatter mr xr if !hl, `MR' mcolor("`GREY'%75") ///
+  (`PCA' mb xb ms xs if !hl, `OARROW') ///
+  (`PCA' ms xs mr xr if !hl, `OARROW') ///
+  (`PCA' mb xb ms xs if hl,  `HARROW') ///
+  (`PCA' ms xs mr xr if hl,  `HARROW') ///
+  (scatter mb xb if !hl, `MB' mcolor("`GREY'`A75'")) ///
+  (scatter ms xs if !hl, `MS' mcolor("`GREY'`A75'")) ///
+  (scatter mr xr if !hl, `MR' mcolor("`GREY'`A75'") ///
       mlabel(lbl) `MLAB' mlabvposition(mlpos)) ///
   (scatter mb xb if hl,  `MB' mcolor("`RED'")) ///
   (scatter ms xs if hl,  `MS' mcolor("`RED'") msize(small)) ///
@@ -457,7 +529,8 @@ twoway ///
   , `AXES2' `TITLES' `REGION' `LEGR' ///
   title("By partner", size(medsmall) color("`INK'") position(11) ///
       justification(left)) ///
-  subtitle("5 largest bilateral gold partners; Switzerland in colour", ///
+  subtitle("5 largest bilateral gold partners; Switzerland in colour" ///
+      "`KEYLINE'", ///
       size(vsmall) color("`SOFT'") position(11) justification(left)) ///
   name(gRight, replace) nodraw
 di as txt "STEP  right panel built"
