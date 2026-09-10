@@ -46,11 +46,27 @@ drop if phase == ""
 * the same shipments as 7115. The split is bookkeeping, not economics.
 replace hs4 = "7108+7115" if inlist(hs4, "7108", "7115")
 
-collapse (sum) value_usd, by(hs4 phase flow)
+* Phase length is COUNTED FROM THE DATA, never restated as a literal. The
+* window definitions above are the only place a phase length is declared. A
+* hard 12/5/8 here is a second, silent declaration of the same fact: move a
+* window - which is what happens when this is pointed at a longer pull - and
+* every series in that phase is divided by the wrong number. The same wrong
+* number hits imports and exports alike, so every point in the phase is
+* multiplied by one constant and, on a log-log plane, the whole cloud
+* TRANSLATES diagonally and reads as growth in every commodity at once.
+tempfile pmonths
+preserve
+    keep phase ym
+    duplicates drop
+    gen byte one = 1
+    collapse (sum) nmonths = one, by(phase)
+    save `pmonths'
+restore
 
-gen byte months = cond(phase == "baseline", 12, cond(phase == "surge", 5, 8))
-gen double rate = value_usd / months / 1e9        // $bn per month
-drop value_usd months
+collapse (sum) value_usd, by(hs4 phase flow)
+merge m:1 phase using `pmonths', nogen
+gen double rate = value_usd / nmonths / 1e9       // $bn per month
+drop value_usd nmonths
 
 *--------------------------------------------------------------- reshape
 * m = imports, x = exports; b/s/r = baseline/surge/reversal.
