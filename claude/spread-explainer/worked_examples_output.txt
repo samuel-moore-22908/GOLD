@@ -1,0 +1,92 @@
+﻿
+==============================================================================
+1  Version 1, front month: the worked example
+==============================================================================
+active_contract                 GCJ5
+comex_settle                  2793.5
+lbma_pm_usd                   2756.3
+days_to_first_notice              61
+short_rate                    0.0435
+carry_rate                     0.046
+basis_usd                       37.2
+implied_rate                0.080757
+dislocation                 0.034757
+carry_implied_basis_usd    21.189528
+excess_basis_usd           16.010472
+F/S - 1 = 1.350%
+pure carry at 61 days: $21.19/oz
+pure carry at 10 days: $3.47/oz
+
+==============================================================================
+2  A constant premium, annualised at different horizons
+==============================================================================
+08 Aug 2025: excess $49.24 on $3,394.15 = 1.45% of spot, tau = 112
+  read at 112 days: 4.7% a year
+  read at  30 days: 17.7% a year
+  read at  10 days: 53.0% a year
+
+==============================================================================
+3  Roll timing and what the joins and filters drop
+==============================================================================
+tau of outgoing contract on its last day:  {'count': 59.0, '50%': 10.0, 'min': 7.0, 'max': 16.0}
+tau of incoming contract on its first day: {'count': 59.0, '50%': 70.0, 'min': 64.0, 'max': 135.0}
+share of days with tau < 20: 13.8%
+weekdays 3035, rows 2857, dropped by the join 178
+most common dropped dates: {'25 Dec': 8, '01 Jan': 8, '04 Jul': 8, '26 Dec': 8, '24 Dec': 7, '31 Dec': 7, '19 Jun': 4, '25 May': 3}
+
+==============================================================================
+4  Noise is a level, so annualising amplifies it (calm 2019)
+==============================================================================
+tau   7-19  n= 38  sd excess $4.59  sd dislocation 9.4 pp
+tau  20-39  n= 66  sd excess $5.77  sd dislocation 5.5 pp
+tau  40-69  n= 98  sd excess $5.59  sd dislocation 2.6 pp
+tau  70-130 n= 45  sd excess $7.59  sd dislocation 2.1 pp
+
+==============================================================================
+5  Version 2, constant maturity: the same days by hand
+==============================================================================
+contracts per day in the fit: {'50%': 6.0, 'min': 4.0, 'max': 9.0}
+
+29 Jan 2025, contracts in the fit:
+symbol  days_to_first_notice  settle  open_interest
+  GCH5                    30  2781.5        10232.0
+  GCJ5                    61  2793.5       346145.0
+  GCM5                   121  2818.7        52333.0
+  GCQ5                   183  2842.9        20068.0
+  GCV5                   244  2867.2         3754.0
+  GCZ5                   303  2890.9        12905.0
+exp(a) = $2,769.38   b = 1.4292e-04/day (5.22% a year)
+F90 = $2,805.23   F90/S - 1 = 1.775%   implied 7.20%   carry 4.60%   dislocation 2.60 pp   excess $17.66/oz over 90 days
+split: level $13.08 (0.47%) -> 1.92 pp; slope +0.62 pp; cross-term +0.06 pp
+constant_maturity() says: disloc_pp 2.60, 10-session mean 3.56
+
+03 Jun 2019, contracts in the fit:
+symbol  days_to_first_notice  settle  open_interest
+  GCG0                   242  1344.7        27175.0
+  GCJ0                   302  1348.9         9089.0
+  GCM0                   361  1353.4         5532.0
+  GCN9                    25  1324.9         1559.0
+  GCQ9                    58  1327.9       348673.0
+  GCV9                   119  1333.7         5663.0
+  GCZ9                   179  1339.3        62838.0
+exp(a) = $1,322.80   b = 6.7104e-05/day (2.45% a year)
+F90 = $1,330.82   F90/S - 1 = 1.041%   implied 4.22%   carry 2.65%   dislocation 1.57 pp   excess $5.11/oz over 90 days
+split: level $5.70 (0.43%) -> 1.75 pp; slope -0.20 pp; cross-term +0.02 pp
+constant_maturity() says: disloc_pp 1.57, 10-session mean 0.60
+
+==============================================================================
+6  The two versions over the tariff episode, monthly means, pp a year
+==============================================================================
+            version_1_front_month  version_2_90_day
+date                                               
+2024-11-30                   0.32             -0.03
+2024-12-31                   1.24              0.74
+2025-01-31                   4.05              2.83
+2025-02-28                   1.26              1.06
+2025-03-31                  -0.58              1.17
+2025-04-30                  -0.37             -0.39
+
+==============================================================================
+7  Day count
+==============================================================================
+SOFR 4.35% on ACT/360 is 4.41% on ACT/365
