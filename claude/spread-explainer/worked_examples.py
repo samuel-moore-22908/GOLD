@@ -1,5 +1,5 @@
 """
-Print every number quoted in SPREAD_EXPLAINED.md.
+Print every number quoted in SPREAD_EXPLAINED.html.
 
 Reads only what is already on disk - data/processed/efp_dislocation_v2.csv and
 data/processed/comex_contract_daily.csv - and imports the constant-maturity

@@ -1,0 +1,783 @@
+<meta charset="utf-8">
+<title>The COMEX–London Gold Spread</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+  :root {
+    --ground: #F7F8F6;
+    --surface: #ECEFEB;
+    --ink: #1A1E22;
+    --ink-2: #3A424A;
+    --muted: #5D6771;
+    --rule: #D6DBD6;
+    --ny: #8E5F00;
+    --ny-soft: #EFE2C2;
+    --ldn: #2E5E86;
+    --ldn-soft: #D9E5EF;
+    --revise-bg: #F2EAD6;
+    --revise-ink: #6B4800;
+    --shade: rgba(93, 103, 113, 0.11);
+    --serif: "Source Serif 4", "Source Serif Pro", Georgia, "Times New Roman", serif;
+    --sans: "IBM Plex Sans", "Segoe UI", system-ui, -apple-system, sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #131619;
+      --surface: #1C2024;
+      --ink: #E3E6E2;
+      --ink-2: #C2C8C3;
+      --muted: #949EA6;
+      --rule: #2C3238;
+      --ny: #DDAF4C;
+      --ny-soft: #3A301C;
+      --ldn: #86B3D9;
+      --ldn-soft: #1D2A36;
+      --revise-bg: #28221A;
+      --revise-ink: #E5C27C;
+      --shade: rgba(148, 158, 166, 0.13);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #131619;
+    --surface: #1C2024;
+    --ink: #E3E6E2;
+    --ink-2: #C2C8C3;
+    --muted: #949EA6;
+    --rule: #2C3238;
+    --ny: #DDAF4C;
+    --ny-soft: #3A301C;
+    --ldn: #86B3D9;
+    --ldn-soft: #1D2A36;
+    --revise-bg: #28221A;
+    --revise-ink: #E5C27C;
+    --shade: rgba(148, 158, 166, 0.13);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 17px;
+    line-height: 1.62;
+    padding-inline: 20px;
+    padding-block: 48px 96px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page {
+    display: grid;
+    grid-template-columns: minmax(0, 44rem);
+    justify-content: center;
+    gap: 56px;
+  }
+  @media (min-width: 1100px) {
+    .page { grid-template-columns: 13rem minmax(0, 44rem); }
+  }
+
+  /* ---------- contents ---------- */
+  nav.toc {
+    font-family: var(--sans);
+    font-size: 0.84rem;
+    line-height: 1.4;
+  }
+  nav.toc p {
+    margin: 0 0 10px;
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+  }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+  nav.toc a { color: var(--ink-2); text-decoration: none; display: flex; gap: 10px; }
+  nav.toc a:hover { color: var(--ny); }
+  nav.toc a span { font-family: var(--mono); color: var(--muted); min-width: 1.4em; }
+  @media (min-width: 1100px) {
+    nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 32px); align-self: start; padding-top: 12px; }
+  }
+  @media (max-width: 1099px) {
+    nav.toc { display: none; }
+  }
+
+  /* ---------- header ---------- */
+  header { border-bottom: 1px solid var(--rule); padding-bottom: 28px; margin-bottom: 8px; }
+  .eyebrow {
+    font-family: var(--sans);
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+  h1, h2, h3 { font-family: var(--sans); text-wrap: balance; color: var(--ink); }
+  h1 {
+    font-weight: 600;
+    font-size: clamp(2rem, 1.4rem + 2.4vw, 2.75rem);
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    margin: 0 0 18px;
+  }
+  .dek { font-size: 1.14rem; line-height: 1.55; color: var(--ink-2); margin: 0 0 20px; }
+  .key {
+    display: flex; flex-wrap: wrap; gap: 8px 18px;
+    font-family: var(--sans); font-size: 0.84rem; color: var(--muted);
+    margin: 0;
+  }
+  .key span { display: inline-flex; align-items: center; gap: 7px; }
+  .chip { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .chip.ny { background: var(--ny); }
+  .chip.ldn { background: var(--ldn); }
+
+  /* ---------- body text ---------- */
+  main > section { padding-top: 40px; }
+  h2 {
+    font-weight: 600;
+    font-size: 1.5rem;
+    line-height: 1.22;
+    margin: 0 0 16px;
+    display: flex; gap: 14px; align-items: baseline;
+  }
+  h2 .num { font-family: var(--mono); font-weight: 400; font-size: 0.95rem; color: var(--ny); }
+  h3 { font-weight: 600; font-size: 1.08rem; margin: 30px 0 10px; }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 16px; padding-left: 1.3em; }
+  li { margin-bottom: 7px; }
+  li > ul { margin-top: 7px; }
+  strong { font-weight: 600; }
+  a { color: var(--ldn); }
+  a:focus-visible, nav.toc a:focus-visible { outline: 2px solid var(--ny); outline-offset: 3px; border-radius: 2px; }
+  code {
+    font-family: var(--mono);
+    font-size: 0.82em;
+    background: var(--surface);
+    padding: 0.08em 0.34em;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .ny { color: var(--ny); }
+  .ldn { color: var(--ldn); }
+  i.ny, i.ldn, i.sym { font-style: italic; font-weight: 600; }
+
+  .where {
+    font-family: var(--sans);
+    font-size: 0.86rem;
+    color: var(--muted);
+    display: grid; gap: 3px;
+    margin: -4px 0 18px;
+  }
+  .where b { font-weight: 500; color: var(--ink-2); }
+
+  .lead { font-size: 1.04rem; }
+
+  /* ---------- equations ---------- */
+  .eq {
+    overflow-x: auto;
+    padding-block: 14px;
+    margin: 4px 0 18px;
+    border-block: 1px solid var(--rule);
+  }
+  math { font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", math; font-size: 1.18em; }
+  math .ny { color: var(--ny); }
+  math .ldn { color: var(--ldn); }
+
+  /* ---------- tables ---------- */
+  .table-wrap { overflow-x: auto; margin: 6px 0 20px; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: var(--sans);
+    font-size: 0.9rem;
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums;
+  }
+  th {
+    text-align: left;
+    font-weight: 500;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    border-bottom: 1px solid var(--ink-2);
+    padding: 8px 12px 7px 0;
+    vertical-align: bottom;
+  }
+  td { border-bottom: 1px solid var(--rule); padding: 8px 12px 8px 0; vertical-align: top; }
+  td.n, th.n { text-align: right; }
+  td.n, td.m { font-family: var(--mono); font-size: 0.86rem; }
+  td.label { color: var(--ink-2); }
+  tr.total td { border-bottom-color: var(--ink-2); font-weight: 600; }
+  table.ledger td:first-child { width: 36%; color: var(--ink-2); }
+  table.ledger td:last-child { font-family: var(--mono); font-size: 0.86rem; }
+
+  /* ---------- revision notes ---------- */
+  aside.revise {
+    background: var(--revise-bg);
+    padding: 16px 20px 6px;
+    margin: 22px 0;
+    border-radius: 2px;
+  }
+  aside.revise .tag {
+    font-family: var(--sans);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    font-weight: 600;
+    color: var(--revise-ink);
+    margin: 0 0 6px;
+  }
+  aside.revise p { font-size: 0.97rem; }
+
+  /* ---------- figures ---------- */
+  figure.chart { margin: 26px 0 28px; }
+  .chart-scroll { overflow-x: auto; }
+  figure.chart svg { display: block; width: 100%; min-width: 520px; height: auto; }
+  figure.chart figcaption {
+    font-family: var(--sans);
+    font-size: 0.84rem;
+    line-height: 1.5;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+  figure.chart figcaption b { color: var(--ink-2); font-weight: 600; }
+  .swatch { display: inline-block; width: 16px; height: 0; border-top: 2.5px solid; vertical-align: middle; margin: 0 4px 2px 0; }
+  .swatch.ny { border-color: var(--ny); }
+  .swatch.raw { border-color: var(--muted); border-top-width: 1.5px; }
+
+  svg text { font-family: var(--sans); font-size: 11px; }
+  svg .tick, svg .axlab { fill: var(--muted); }
+  svg .note { fill: var(--ink-2); }
+  svg .note.strong { fill: var(--ink); font-weight: 600; }
+  svg .note.ny { fill: var(--ny); font-weight: 500; }
+  svg .note.ldn { fill: var(--ldn); font-weight: 500; }
+  svg .grid { stroke: var(--rule); stroke-width: 1; fill: none; }
+  svg .axis { stroke: var(--muted); stroke-width: 1; fill: none; }
+  svg .line-raw { stroke: var(--muted); stroke-width: 1; stroke-opacity: 0.6; fill: none; stroke-linejoin: round; }
+  svg .line-ny { stroke: var(--ny); stroke-width: 2.2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+  svg .roll { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; fill: none; }
+  svg .shade { fill: var(--shade); stroke: none; }
+  svg .dot-ny { fill: var(--ny); stroke: var(--ground); stroke-width: 1.5; }
+  svg .dot-ldn { fill: var(--ldn); stroke: var(--ground); stroke-width: 1.5; }
+  svg .ring-ny { fill: var(--ground); stroke: var(--ny); stroke-width: 2; }
+  svg .dot-contract { fill: var(--ny-soft); stroke: var(--ny); stroke-width: 1.5; }
+  svg .gap { stroke: var(--ink); stroke-width: 1.5; fill: none; }
+
+  pre {
+    font-family: var(--mono);
+    font-size: 0.84rem;
+    background: var(--surface);
+    padding: 12px 14px;
+    border-radius: 3px;
+    overflow-x: auto;
+  }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    font-family: var(--sans);
+    font-size: 0.84rem;
+    color: var(--muted);
+  }
+
+  @media (max-width: 520px) {
+    body { font-size: 16px; padding-block: 28px 64px; }
+    h2 { font-size: 1.3rem; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+</style>
+
+<div class="page">
+  <nav class="toc" aria-label="Contents">
+    <p>Contents</p>
+    <ol>
+      <li><a href="#data"><span>1</span>The data</a></li>
+      <li><a href="#carry"><span>2</span>Why it isn’t zero</a></li>
+      <li><a href="#raw"><span>3</span>Why not F − S</a></li>
+      <li><a href="#v1"><span>4</span>Version 1: front month</a></li>
+      <li><a href="#v2"><span>5</span>Version 2: 90-day</a></li>
+      <li><a href="#timing"><span>6</span>Timing issues</a></li>
+      <li><a href="#limits"><span>7</span>What it measures</a></li>
+      <li><a href="#cheat"><span>8</span>Cheat sheet</a></li>
+    </ol>
+  </nav>
+
+  <main>
+    <header>
+      <p class="eyebrow">GOLD project · methods note</p>
+      <h1>The COMEX–London gold spread, from scratch</h1>
+      <p class="dek">Gold trades in two places at once. London prices it for delivery now. New York prices it for delivery in a few months. The New York price should be higher by exactly the cost of financing and storing gold until then. The <em>spread</em> is how far New York actually sits above London. The <em>dislocation</em> is what is left after taking out that financing cost. When the leftover is big enough to pay for flying metal across the Atlantic, metal moves. That is the link to the trade data.</p>
+      <p class="key">
+        <span><i class="chip ldn"></i>London price, <i class="ldn sym">S</i></span>
+        <span><i class="chip ny"></i>New York futures price, <i class="ny sym">F</i></span>
+        <span>Every number below is printed by <code>worked_examples.py</code></span>
+      </p>
+    </header>
+
+    <!-- ============================================================ 1 -->
+    <section id="data">
+      <h2><span class="num">§1</span>The data: three prices and an assumption</h2>
+
+      <h3>London: the LBMA Gold Price PM <span class="ldn">(<i>S</i>)</span></h3>
+      <ul>
+        <li>A daily auction for the London Bullion Market Association (LBMA), run by ICE Benchmark Administration. The project uses the afternoon auction, set at <strong>15:00 London</strong>.</li>
+        <li>Priced in USD per troy ounce, for <strong>“loco London” unallocated</strong> gold. “Unallocated” means a claim on a bank’s pooled metal in London vaults, much like a bank deposit denominated in gold. No specific bars are yours.</li>
+        <li>Pulled live from <code>prices.lbma.org.uk/json/gold_pm.json</code>. One number per London business day. Column <code>lbma_pm_usd</code>.</li>
+      </ul>
+
+      <h3>New York: COMEX gold futures <span class="ny">(<i>F</i>)</span></h3>
+      <ul>
+        <li>A <strong>futures contract</strong> fixes a price today for 100 troy ounces that change hands in a named future month. Both the money and the metal move then, not now. The metal comes as a <strong>warrant</strong>, a title document for specific bars in a New York vault approved by CME, the exchange group that runs COMEX.</li>
+        <li>Many contracts trade at once, one per delivery month. Each is named by root, month letter and year digit: <code>GCJ5</code> = April 2025. The heavily traded months are G&nbsp;Feb, J&nbsp;Apr, M&nbsp;Jun, Q&nbsp;Aug, V&nbsp;Oct, Z&nbsp;Dec.</li>
+        <li>Two numbers are taken per contract per day:
+          <ul>
+            <li><strong>Settlement price.</strong> The official end-of-day price CME calculates from trading around <strong>13:30 New York</strong>, and uses to mark every position to market. It is not the last trade. Column <code>settle</code>, or <code>comex_settle</code> once one contract has been chosen.</li>
+            <li><strong>Open interest.</strong> How many contracts are outstanding. It shows which contract the market is actually using.</li>
+          </ul>
+        </li>
+        <li>Source: Databento’s CME feed (<code>GLBX.MDP3</code>), two zips downloaded by hand into <code>data/databento/</code>. In the statistics stream, <code>stat_type = 3</code> is settlement and <code>9</code> is open interest.</li>
+      </ul>
+
+      <h3>The dollar interest rate (<i class="sym">r</i>)</h3>
+      <ul>
+        <li><strong>SOFR</strong> (Secured Overnight Financing Rate) is the overnight rate on loans backed by Treasuries. Think of it as the cost of borrowing dollars against safe collateral. It comes from FRED and starts on 3 Apr 2018. Before that date the effective fed funds rate (<code>DFF</code>) is spliced in. FRED reports percent, so values are divided by 100. Column <code>short_rate</code>.</li>
+      </ul>
+
+      <h3>Storage (<i class="sym">s</i>)</h3>
+      <ul>
+        <li>A flat <strong>0.25% a year</strong> for vaulting and insurance. <strong>This is an assumption, not data</strong>, because no free public series exists. Column <code>storage_rate_assumed</code>.</li>
+      </ul>
+
+      <h3>Three calendar terms</h3>
+      <ul>
+        <li><strong>First notice day (FND):</strong> the last business day of the month <em>before</em> the delivery month. From that day, anyone still holding a contract to buy can be handed metal. Financial holders who do not want metal close out before it.</li>
+        <li><strong>Roll:</strong> selling the contract that is about to expire and buying the next one. This is how a position stays open past FND.</li>
+        <li><strong><i class="sym">τ</i> (tau):</strong> calendar days from today to the contract’s FND. Column <code>days_to_first_notice</code>.</li>
+      </ul>
+    </section>
+
+    <!-- ============================================================ 2 -->
+    <section id="carry">
+      <h2><span class="num">§2</span>Why the spread is not zero even when nothing is wrong</h2>
+      <p>There are two ways to own gold in New York <i class="sym">τ</i> days from now:</p>
+      <ol>
+        <li>Borrow <i class="ldn sym">S</i> dollars today, buy London gold, store it, and wait. Cost at <i class="sym">τ</i>: <i class="ldn sym">S</i>&nbsp;·&nbsp;(1&nbsp;+&nbsp;(<i>r</i>&nbsp;+&nbsp;<i>s</i>)&nbsp;·&nbsp;<i>τ</i>/365).</li>
+        <li>Buy a futures contract today at <i class="ny sym">F</i>, and pay <i class="ny sym">F</i> at <i class="sym">τ</i>.</li>
+      </ol>
+      <p>If these cost different amounts, someone earns riskless profit. So</p>
+      <div class="eq">
+        <math display="block"><mi class="ny">F</mi><mo>=</mo><mi class="ldn">S</mi><mrow><mo>(</mo><mn>1</mn><mo>+</mo><mo stretchy="false">(</mo><mi>r</mi><mo>+</mo><mi>s</mi><mo>−</mo><mi>ℓ</mi><mo stretchy="false">)</mo><mfrac><mi>τ</mi><mn>365</mn></mfrac><mo>)</mo></mrow><mo>+</mo><mi>P</mi></math>
+      </div>
+      <p>This adds two terms to the textbook formula:</p>
+      <ul>
+        <li><strong><i>ℓ</i>, the gold lease rate.</strong> Someone who owns gold can lend it out and earn <i>ℓ</i>, which lowers their cost of holding it. <strong>This is covered interest parity with gold as the foreign currency and <i>ℓ</i> as its interest rate.</strong> When London runs short of physical metal, <i>ℓ</i> rises.</li>
+        <li><strong><i>P</i>, the premium for being in New York rather than London</strong>, in dollars. <i>P</i> bundles three things:
+          <ul>
+            <li><strong>place:</strong> location risk, or tariff risk;</li>
+            <li><strong>form:</strong> COMEX takes 100-oz or kilo bars, London trades 400-oz bars;</li>
+            <li><strong>trust:</strong> an exchange warrant versus a claim on a bank.</li>
+          </ul>
+          In calm markets, arbitrage holds <i>P</i> near zero.
+        </li>
+      </ul>
+      <p class="lead"><strong>The thing to hold onto: <i>P</i> is a level, paid once, not a rate paid each year.</strong> A tariff risk does not care whether a contract expires in 10 days or 100. Carry does. Sections 4 and 5 turn on this distinction.</p>
+      <p>The project has no lease-rate series. GOFO, the published benchmark, was discontinued in 2015. So <i>ℓ</i> is never observed and ends up inside whatever gets measured.</p>
+    </section>
+
+    <!-- ============================================================ 3 -->
+    <section id="raw">
+      <h2><span class="num">§3</span>Why <span class="ny">F</span>&nbsp;−&nbsp;<span class="ldn">S</span> can’t be used directly</h2>
+      <p><code>basis_usd = F − S</code> is the number traders quote. Two things contaminate it.</p>
+      <p><strong>It scales with the gold price.</strong> Gold went from about $1,160 in 2015 to over $4,500 in 2026. The same proportional gap is roughly four times as many dollars at the end of the sample as at the start.</p>
+      <p><strong>It saws up and down with the delivery calendar.</strong> Every day the contract being priced moves closer to expiry. Then the market rolls into a later contract. In the data:</p>
+      <ul>
+        <li>the roll happens a median <strong>10 days</strong> before FND (range 7–16);</li>
+        <li>the new contract starts with a median <strong>70 days</strong> left (range 64–135; the long ones are when October is skipped).</li>
+      </ul>
+      <p>Carry is proportional to <i class="sym">τ</i>. On 29 Jan 2025 (<i class="ldn sym">S</i> = $2,756, carry 4.60%), pure carry was <strong>$21.19/oz at 61 days</strong> but only <strong>$3.47 at 10 days</strong>. The swing comes from nothing but the calendar, and it is as large as the episodes the project is trying to measure.</p>
+
+      <figure class="chart">
+        <div class="chart-scroll">
+<!-- chart:sawtooth -->
+<svg viewBox="0 0 640 270" role="img" aria-label="Raw COMEX minus London spread and pure carry, September 2024 to April 2025">
+  <line class="grid" x1="56" x2="616" y1="214.3" y2="214.3"/>
+  <text class="tick" x="48" y="218.3" text-anchor="end">−$40</text>
+  <line class="grid" x1="56" x2="616" y1="182.9" y2="182.9"/>
+  <text class="tick" x="48" y="186.9" text-anchor="end">−$20</text>
+  <line class="grid" x1="56" x2="616" y1="151.5" y2="151.5"/>
+  <text class="tick" x="48" y="155.5" text-anchor="end">$0</text>
+  <line class="grid" x1="56" x2="616" y1="120.2" y2="120.2"/>
+  <text class="tick" x="48" y="124.2" text-anchor="end">$20</text>
+  <line class="grid" x1="56" x2="616" y1="88.8" y2="88.8"/>
+  <text class="tick" x="48" y="92.8" text-anchor="end">$40</text>
+  <line class="grid" x1="56" x2="616" y1="57.4" y2="57.4"/>
+  <text class="tick" x="48" y="61.4" text-anchor="end">$60</text>
+  <line class="axis" x1="56.0" x2="56.0" y1="230" y2="235"/>
+  <text class="tick" x="56.0" y="249" text-anchor="middle">Sep 2024</text>
+  <line class="axis" x1="125.7" x2="125.7" y1="230" y2="235"/>
+  <text class="tick" x="125.7" y="249" text-anchor="middle">Oct</text>
+  <line class="axis" x1="197.7" x2="197.7" y1="230" y2="235"/>
+  <text class="tick" x="197.7" y="249" text-anchor="middle">Nov</text>
+  <line class="axis" x1="267.5" x2="267.5" y1="230" y2="235"/>
+  <text class="tick" x="267.5" y="249" text-anchor="middle">Dec</text>
+  <line class="axis" x1="339.5" x2="339.5" y1="230" y2="235"/>
+  <text class="tick" x="339.5" y="249" text-anchor="middle">Jan 2025</text>
+  <line class="axis" x1="411.5" x2="411.5" y1="230" y2="235"/>
+  <text class="tick" x="411.5" y="249" text-anchor="middle">Feb</text>
+  <line class="axis" x1="476.6" x2="476.6" y1="230" y2="235"/>
+  <text class="tick" x="476.6" y="249" text-anchor="middle">Mar</text>
+  <line class="axis" x1="548.6" x2="548.6" y1="230" y2="235"/>
+  <text class="tick" x="548.6" y="249" text-anchor="middle">Apr</text>
+  <line class="axis" x1="56" x2="616" y1="230" y2="230"/>
+  <text class="axlab" x="56" y="14">$ per troy ounce</text>
+  <text class="axlab" x="616" y="267" text-anchor="end">date</text>
+  <path class="line-raw" d="M60.6,83.7 L63.0,91.8 L65.3,98.9 L67.6,122.6 L74.6,99.8 L76.9,93.8 L79.2,97.2 L81.6,97.2 L83.9,95.7 L90.9,112.5 L93.2,123.5 L95.5,106.8 L97.8,89.9 L100.1,88.2 L107.1,116.2 L109.4,87.1 L111.8,115.1 L114.1,102.7 L116.4,141.7 L123.4,105.3 L125.7,115.8 L128.0,137.8 L130.4,102.0 L132.7,123.7 L139.7,112.2 L142.0,158.6 L144.3,127.5 L146.6,135.3 L148.9,108.4 L155.9,134.7 L158.2,104.7 L160.6,126.4 L162.9,122.3 L165.2,124.1 L172.2,147.7 L174.5,115.0 L176.8,162.6 L179.2,125.0 L181.5,115.2 L188.4,129.4 L190.8,132.8 L193.1,115.4 L195.4,127.8 L197.7,143.8 L204.7,145.9 L207.0,140.3 L209.4,126.3 L211.7,129.9 L214.0,145.8 L221.0,162.6 L223.3,152.4 L225.6,170.8 L228.0,142.8 L230.3,154.2 L237.2,139.4 L239.6,139.3 L241.9,96.5 L244.2,98.2 L246.5,85.2 L253.5,140.2 L255.8,113.6 L258.2,114.0 L260.5,115.5 L262.8,104.5 L269.8,125.9 L272.1,108.8 L274.4,108.3 L276.7,138.6 L279.1,116.5 L286.0,129.7 L288.4,106.3 L290.7,71.1 L293.0,112.2 L295.3,125.3 L302.3,126.7 L304.6,111.3 L307.0,123.8 L309.3,127.0 L311.6,106.6 L318.6,128.9 L327.9,126.5 L334.8,137.4 L341.8,115.9 L344.1,139.1 L351.1,129.5 L353.4,128.7 L355.8,131.5 L358.1,126.1 L360.4,108.3 L367.4,137.3 L369.7,127.5 L372.0,88.6 L374.3,97.6 L376.7,99.0 L386.0,118.0 L388.3,121.6 L390.6,119.0 L392.9,104.8 L399.9,114.2 L402.2,84.5 L404.5,93.2 L406.9,60.6 L409.2,115.5 L416.2,102.9 L418.5,100.9 L420.8,117.3 L423.1,92.3 L425.5,131.2 L432.4,104.5 L434.8,93.2 L437.1,93.2 L439.4,104.3 L441.7,183.8 L451.0,117.2 L453.3,152.7 L455.7,113.8 L458.0,121.6 L465.0,102.4 L467.3,174.2 L469.6,105.1 L471.9,127.8 L474.3,129.6 L481.2,119.5 L483.6,128.5 L485.9,131.5 L488.2,144.6 L490.5,178.3 L497.5,168.5 L499.8,145.3 L502.1,117.0 L504.5,124.5 L506.8,115.4 L513.8,136.5 L516.1,128.0 L518.4,130.1 L520.7,142.7 L523.1,139.5 L530.0,94.7 L532.3,105.9 L534.7,90.3 L537.0,97.6 L539.3,84.5 L546.3,96.3 L548.6,132.2 L550.9,78.6 L553.3,145.9 L555.6,181.5 L562.6,216.1 L564.9,191.1 L567.2,145.4 L569.5,97.6 L571.9,129.4 L578.8,116.9 L581.1,118.9 L583.5,114.7 L585.8,115.8 L597.4,173.7 L599.7,102.7 L602.1,98.4 L604.4,118.4 L611.4,70.9 L613.7,106.7 L616.0,124.8"/>
+  <path class="line-ny" d="M60.6,99.7 L63.0,100.0 L65.3,100.2 L67.6,100.9 L74.6,102.9 L76.9,103.4 L79.2,104.1 L81.6,103.9 L83.9,104.0 L90.9,105.3 L93.2,106.0 L95.5,107.1 L97.8,111.7 L100.1,111.7 L107.1,113.1 L109.4,113.5 L111.8,113.7 L114.1,114.3 L116.4,114.8 L123.4,116.2 L125.7,115.7 L128.0,117.2 L130.4,118.4 L132.7,119.1 L139.7,121.0 L142.0,121.5 L144.3,122.5 L146.6,122.9 L148.9,123.3 L155.9,125.0 L158.2,125.3 L160.6,125.7 L162.9,126.2 L165.2,126.6 L172.2,128.3 L174.5,128.8 L176.8,129.4 L179.2,130.1 L181.5,130.7 L188.4,132.4 L190.8,132.8 L193.1,133.4 L195.4,134.0 L197.7,134.7 L204.7,136.6 L207.0,137.2 L209.4,138.2 L211.7,138.6 L214.0,139.8 L221.0,141.7 L223.3,142.3 L225.6,142.9 L228.0,143.5 L230.3,144.1 L237.2,145.6 L239.6,146.1 L241.9,112.2 L244.2,112.3 L246.5,112.4 L253.5,114.9 L255.8,115.6 L258.2,116.0 L260.5,116.5 L262.8,116.8 L269.8,118.2 L272.1,118.8 L274.4,119.6 L276.7,120.2 L279.1,120.7 L286.0,121.8 L288.4,122.1 L290.7,122.6 L293.0,123.4 L295.3,124.4 L302.3,125.8 L304.6,126.7 L307.0,127.5 L309.3,129.7 L311.6,130.0 L318.6,131.6 L327.9,133.0 L334.8,135.0 L341.8,136.2 L344.1,137.0 L351.1,138.7 L353.4,139.2 L355.8,139.6 L358.1,140.0 L360.4,140.5 L367.4,142.2 L369.7,142.7 L372.0,143.2 L374.3,143.6 L376.7,144.1 L386.0,146.2 L388.3,146.7 L390.6,147.2 L392.9,115.4 L399.9,117.4 L402.2,117.8 L404.5,118.3 L406.9,118.4 L409.2,118.5 L416.2,120.2 L418.5,120.7 L420.8,121.0 L423.1,121.7 L425.5,122.0 L432.4,123.4 L434.8,124.1 L437.1,124.8 L439.4,125.1 L441.7,125.7 L451.0,127.7 L453.3,128.3 L455.7,129.0 L458.0,129.5 L465.0,131.3 L467.3,131.9 L469.6,132.7 L471.9,133.3 L474.3,134.0 L481.2,135.7 L483.6,136.1 L485.9,136.6 L488.2,137.1 L490.5,137.7 L497.5,139.5 L499.8,140.1 L502.1,140.6 L504.5,141.1 L506.8,141.6 L513.8,143.3 L516.1,143.8 L518.4,144.4 L520.7,145.0 L523.1,145.6 L530.0,112.0 L532.3,112.2 L534.7,112.8 L537.0,112.8 L539.3,113.4 L546.3,114.1 L548.6,114.7 L550.9,115.6 L553.3,116.1 L555.6,117.7 L562.6,120.1 L564.9,120.2 L567.2,120.0 L569.5,120.3 L571.9,120.4 L578.8,122.5 L581.1,122.8 L583.5,122.9 L585.8,123.6 L597.4,126.0 L599.7,128.0 L602.1,128.2 L604.4,129.0 L611.4,130.6 L613.7,131.2 L616.0,131.7"/>
+  <line class="roll" x1="241.9" x2="241.9" y1="26" y2="230"/>
+  <text class="note" x="246.9" y="37">roll to GCG5, 72 days left</text>
+  <line class="roll" x1="392.9" x2="392.9" y1="26" y2="230"/>
+  <text class="note" x="397.9" y="37">roll to GCJ5, 66 days left</text>
+  <line class="roll" x1="530.0" x2="530.0" y1="26" y2="230"/>
+  <text class="note" x="535.0" y="37">roll to GCM5, 67 days left</text>
+</svg>
+<!-- /chart:sawtooth -->
+        </div>
+        <figcaption><b>Figure 1.</b> <span class="swatch ny"></span>pure carry, <i>S</i>·(<i>r</i>+<i>s</i>)·<i>τ</i>/365, for whichever contract is active, and <span class="swatch raw"></span>the raw spread <i>F</i>&nbsp;−&nbsp;<i>S</i>, September 2024 to April 2025. Carry jumps to about $25 at each roll and decays towards $4 before the next one. That sawtooth is the calendar, not the market. Source: <code>efp_dislocation_v2.csv</code>.</figcaption>
+      </figure>
+
+      <p>The project has two fixes. Version 1 is older and still feeds some outputs. Version 2 is newer and feeds the mechanism figures and the kink estimate.</p>
+    </section>
+
+    <!-- ============================================================ 4 -->
+    <section id="v1">
+      <h2><span class="num">§4</span>Version 1: the front-month implied rate</h2>
+      <div class="where">
+        <span><b>Code</b> <code>src/build_efp_from_databento.py</code> → <code>data/processed/efp_dislocation_v2.csv</code></span>
+        <span><b>Used by</b> <code>src/analysis_tariff_episode.py</code> (the episode table) and <code>src/make_paper_figures.py</code> (<code>fig2_basis</code>, <code>fig6_kink</code>)</span>
+      </div>
+
+      <h3>Steps</h3>
+      <ol>
+        <li><strong>Contract-by-day table.</strong> Parse each symbol into its delivery month. Set FND to the last weekday of the month before (exchange holidays are ignored). Compute <i>τ</i>. Drop spread symbols such as <code>GCJ5-GCV5</code>.</li>
+        <li><strong>One contract per day.</strong> Among contracts with <i>τ</i> &gt; 0 and a settlement, keep the one with the most open interest. This puts the roll wherever the market actually rolls, rather than on a date chosen by hand.</li>
+        <li><strong>Line up the dates.</strong> Inner-join to the LBMA price, so both markets must be open. This drops <strong>178 of 3,035 weekdays</strong>, mostly Christmas, New Year, 4 July and Juneteenth. Left-join the rate and carry it forward across non-publication days.</li>
+        <li><strong>Compute the six columns below.</strong></li>
+        <li><strong>Downstream.</strong> Drop days with <i>τ</i> &lt; 20, which is <strong>14% of the sample</strong>. Then take episode means (<code>analysis_tariff_episode.py</code>) or calendar-month means (<code>make_paper_figures.py</code>).</li>
+      </ol>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Column</th><th>Formula</th><th>Meaning</th></tr></thead>
+          <tbody>
+            <tr><td><code>basis_usd</code></td><td class="m"><span class="ny">F</span> − <span class="ldn">S</span></td><td>raw spread, $/oz</td></tr>
+            <tr><td><code>implied_rate</code></td><td class="m">(<span class="ny">F</span>/<span class="ldn">S</span> − 1) · 365/τ</td><td>the annual financing rate the spread implies</td></tr>
+            <tr><td><code>carry_rate</code></td><td class="m">r + 0.0025</td><td>what that rate should be</td></tr>
+            <tr><td><code>dislocation</code></td><td class="m">implied_rate − carry_rate</td><td>what is left, per year (decimal)</td></tr>
+            <tr><td><code>carry_implied_basis_usd</code></td><td class="m"><span class="ldn">S</span> · carry_rate · τ/365</td><td>pure carry in $/oz</td></tr>
+            <tr><td><code>excess_basis_usd</code></td><td class="m">basis − carry_implied_basis</td><td>what is left, in $/oz</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>Worked example: 29 Jan 2025, contract GCJ5</h3>
+      <div class="table-wrap">
+        <table class="ledger">
+          <tbody>
+            <tr><td><span class="ny">F</span>, COMEX settlement</td><td class="ny">$2,793.50</td></tr>
+            <tr><td><span class="ldn">S</span>, LBMA PM</td><td class="ldn">$2,756.30</td></tr>
+            <tr><td>τ</td><td>61 days</td></tr>
+            <tr><td>basis</td><td>2,793.50 − 2,756.30 = <strong>$37.20</strong></td></tr>
+            <tr><td>F/S − 1</td><td>37.20 / 2,756.30 = 1.350%</td></tr>
+            <tr><td>implied rate</td><td>1.350% × 365/61 = <strong>8.08%</strong></td></tr>
+            <tr><td>carry</td><td>4.35% SOFR + 0.25% storage = <strong>4.60%</strong></td></tr>
+            <tr><td>dislocation</td><td>8.08% − 4.60% = <strong>3.48 pp a year</strong></td></tr>
+            <tr><td>carry in dollars</td><td>2,756.30 × 4.60% × 61/365 = $21.19</td></tr>
+            <tr><td>excess basis</td><td>37.20 − 21.19 = <strong>$16.01/oz</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>What this fixes, and what it breaks</h3>
+      <p>Plug the §2 identity into the formula:</p>
+      <div class="eq">
+        <math display="block"><mtext>dislocation</mtext><mo>=</mo><mfrac><mrow><mi class="ny">F</mi><mo>/</mo><mi class="ldn">S</mi><mo>−</mo><mn>1</mn></mrow><mrow><mi>τ</mi><mo>/</mo><mn>365</mn></mrow></mfrac><mo>−</mo><mo stretchy="false">(</mo><mi>r</mi><mo>+</mo><mi>s</mi><mo stretchy="false">)</mo><mo>=</mo><mfrac><mi>P</mi><mi class="ldn">S</mi></mfrac><mo>·</mo><mfrac><mn>365</mn><mi>τ</mi></mfrac><mo>−</mo><mi>ℓ</mi></math>
+      </div>
+      <ul>
+        <li><strong>Carry cancels exactly.</strong> Carry no longer produces a sawtooth, and the zero-rate years compare cleanly with the 5% years. This part works.</li>
+        <li><strong>The premium gets multiplied by 365/<i>τ</i>.</strong> Annualising only makes sense for something that builds up over time, and <i>P</i> does not. A <em>constant</em> premium therefore recreates the sawtooth, pointing the other way, and blows up as <i>τ</i> → 0. On 8 Aug 2025 the excess was $49.24 on a $3,394 spot, or <strong>1.45% of spot</strong>. At that day’s <i>τ</i> of 112 it reads as a 4.7% dislocation. The same premium would read <strong>17.7% at 30 days and 53% at 10</strong>.</li>
+        <li><strong>Measurement noise behaves the same way.</strong> The noise from the clock mismatch (§6) is a dollar level too. In calm 2019, the day-to-day standard deviation of the dollar excess is about the same at every <i>τ</i> ($4.6–7.6). The standard deviation of the dislocation falls from <strong>9.4 pp at <i>τ</i> = 7–19 to 2.1 pp at <i>τ</i> = 70–130</strong>. <code>FIGURE_PLAN.md</code> records a 42% implied rate on 12 Nov 2025 at <i>τ</i> = 16. That number comes from this divisor, not from the market.</li>
+      </ul>
+
+      <figure class="chart">
+        <div class="chart-scroll">
+<!-- chart:premium -->
+<svg viewBox="0 0 640 270" role="img" aria-label="The same 1.45 percent premium read as an annual rate at horizons from 10 to 130 days">
+  <line class="grid" x1="56" x2="616" y1="230.0" y2="230.0"/>
+  <text class="tick" x="48" y="234.0" text-anchor="end">0%</text>
+  <line class="grid" x1="56" x2="616" y1="179.0" y2="179.0"/>
+  <text class="tick" x="48" y="183.0" text-anchor="end">15%</text>
+  <line class="grid" x1="56" x2="616" y1="128.0" y2="128.0"/>
+  <text class="tick" x="48" y="132.0" text-anchor="end">30%</text>
+  <line class="grid" x1="56" x2="616" y1="77.0" y2="77.0"/>
+  <text class="tick" x="48" y="81.0" text-anchor="end">45%</text>
+  <line class="grid" x1="56" x2="616" y1="26.0" y2="26.0"/>
+  <text class="tick" x="48" y="30.0" text-anchor="end">60%</text>
+  <line class="axis" x1="56.0" x2="56.0" y1="230" y2="235"/>
+  <text class="tick" x="56.0" y="249" text-anchor="middle">0</text>
+  <line class="axis" x1="142.2" x2="142.2" y1="230" y2="235"/>
+  <text class="tick" x="142.2" y="249" text-anchor="middle">20</text>
+  <line class="axis" x1="228.3" x2="228.3" y1="230" y2="235"/>
+  <text class="tick" x="228.3" y="249" text-anchor="middle">40</text>
+  <line class="axis" x1="314.5" x2="314.5" y1="230" y2="235"/>
+  <text class="tick" x="314.5" y="249" text-anchor="middle">60</text>
+  <line class="axis" x1="400.6" x2="400.6" y1="230" y2="235"/>
+  <text class="tick" x="400.6" y="249" text-anchor="middle">80</text>
+  <line class="axis" x1="486.8" x2="486.8" y1="230" y2="235"/>
+  <text class="tick" x="486.8" y="249" text-anchor="middle">100</text>
+  <line class="axis" x1="572.9" x2="572.9" y1="230" y2="235"/>
+  <text class="tick" x="572.9" y="249" text-anchor="middle">120</text>
+  <line class="axis" x1="56" x2="616" y1="230" y2="230"/>
+  <text class="axlab" x="56" y="14">annualised reading of a 1.45% premium</text>
+  <text class="axlab" x="616" y="267" text-anchor="end">days to first notice (τ)</text>
+  <rect class="shade" x="56.0" y="26" width="86.2" height="204"/>
+  <text class="note" x="62.0" y="38">τ &lt; 20 dropped</text>
+  <path class="line-ny" d="M99.1,50.0 L103.4,66.3 L107.7,80.0 L112.0,91.5 L116.3,101.4 L120.6,110.0 L124.9,117.5 L129.2,124.1 L133.5,130.0 L137.8,135.2 L142.2,140.0 L146.5,144.3 L150.8,148.2 L155.1,151.7 L159.4,155.0 L163.7,158.0 L168.0,160.8 L172.3,163.3 L176.6,165.7 L180.9,167.9 L185.2,170.0 L189.5,171.9 L193.8,173.7 L198.2,175.4 L202.5,177.0 L206.8,178.6 L211.1,180.0 L215.4,181.3 L219.7,182.6 L224.0,183.8 L228.3,185.0 L232.6,186.1 L236.9,187.1 L241.2,188.1 L245.5,189.1 L249.8,190.0 L254.2,190.9 L258.5,191.7 L262.8,192.5 L267.1,193.3 L271.4,194.0 L275.7,194.7 L280.0,195.4 L284.3,196.0 L288.6,196.7 L292.9,197.3 L297.2,197.8 L301.5,198.4 L305.8,199.0 L310.2,199.5 L314.5,200.0 L318.8,200.5 L323.1,201.0 L327.4,201.4 L331.7,201.9 L336.0,202.3 L340.3,202.7 L344.6,203.1 L348.9,203.5 L353.2,203.9 L357.5,204.3 L361.8,204.6 L366.2,205.0 L370.5,205.3 L374.8,205.7 L379.1,206.0 L383.4,206.3 L387.7,206.6 L392.0,206.9 L396.3,207.2 L400.6,207.5 L404.9,207.8 L409.2,208.0 L413.5,208.3 L417.8,208.6 L422.2,208.8 L426.5,209.1 L430.8,209.3 L435.1,209.5 L439.4,209.8 L443.7,210.0 L448.0,210.2 L452.3,210.4 L456.6,210.6 L460.9,210.8 L465.2,211.0 L469.5,211.2 L473.8,211.4 L478.2,211.6 L482.5,211.8 L486.8,212.0 L491.1,212.2 L495.4,212.3 L499.7,212.5 L504.0,212.7 L508.3,212.9 L512.6,213.0 L516.9,213.2 L521.2,213.3 L525.5,213.5 L529.8,213.6 L534.2,213.8 L538.5,213.9 L542.8,214.1 L547.1,214.2 L551.4,214.3 L555.7,214.5 L560.0,214.6 L564.3,214.7 L568.6,214.9 L572.9,215.0 L577.2,215.1 L581.5,215.2 L585.8,215.4 L590.2,215.5 L594.5,215.6 L598.8,215.7 L603.1,215.8 L607.4,215.9 L611.7,216.0 L616.0,216.2"/>
+  <circle class="dot-ny" cx="538.5" cy="213.9" r="4"/>
+  <text class="note strong" x="542.5" y="191.9" text-anchor="end">4.7%, the actual reading at τ = 112</text>
+  <circle class="dot-ny" cx="185.2" cy="170.0" r="4"/>
+  <text class="note strong" x="193.2" y="162.0" text-anchor="start">17.7% at 30 days</text>
+  <circle class="dot-ny" cx="99.1" cy="50.0" r="4"/>
+  <text class="note strong" x="109.1" y="54.0" text-anchor="start">53.0% at 10 days</text>
+</svg>
+<!-- /chart:premium -->
+        </div>
+        <figcaption><b>Figure 2.</b> The 8 Aug 2025 excess, 1.45% of spot, divided by <i>τ</i>/365 at every horizon. Nothing about the market changes along this curve, only the horizon it is read at. The shaded band is what the <i>τ</i> ≥ 20 filter removes.</figcaption>
+      </figure>
+
+      <p>Dropping days with <i>τ</i> &lt; 20 hides the worst of the symptom but leaves the scaling in place.</p>
+
+      <aside class="revise">
+        <p class="tag">Qualifies an instruction in CLAUDE.md</p>
+        <p>The rule “never regress on the raw dollar spread; convert to an implied rate” is right for the carry part of the spread and wrong for the premium part. Annualising removes one calendar artefact and adds another. Three outputs are built on the version 1 <code>dislocation</code> column and inherit the problem: the episode table in <code>analysis_tariff_episode.py</code>, the lower panel of <code>fig2_basis</code>, and that figure’s “tariff episode: mean 1.2% p.a.” annotation. Their episode rankings should be rechecked against version 2.</p>
+      </aside>
+    </section>
+
+    <!-- ============================================================ 5 -->
+    <section id="v2">
+      <h2><span class="num">§5</span>Version 2: the constant-maturity 90-day spread</h2>
+      <div class="where">
+        <span><b>Code</b> <code>constant_maturity()</code> in <code>claude/mechanism-figures/validate_mechanism.py</code></span>
+        <span><b>Used by</b> <code>build_figure_data.py</code> (mechanism Figures 2–4) and <code>estimate_kink.py</code></span>
+      </div>
+      <p><strong>The idea.</strong> On any day, the contracts together trace out a term structure: a yield curve for New York gold. Version 1 reads one point on that curve, and that point’s maturity keeps drifting. Version 2 fits the whole curve and always reads it at <strong>the same maturity, 90 days</strong>. With <i>τ</i> fixed, neither calendar artefact can appear.</p>
+
+      <h3>Steps</h3>
+      <ol>
+        <li><strong>Pick the contracts for the fit.</strong> Keep contracts with 15 ≤ <i>τ</i> ≤ 400, at least 1,000 contracts of open interest, and a settlement. A contract with under 15 days left is in its delivery scramble. Far-dated or thinly held contracts have stale settlements. What remains is a median of <strong>6 contracts a day</strong> (range 4–9).</li>
+        <li><strong>Fit a straight line in logs</strong> by weighted least squares, weighting each contract by √(open interest):
+          <div class="eq">
+            <math display="block"><mi>ln</mi><msub><mi class="ny">F</mi><mi>i</mi></msub><mo>=</mo><mi>a</mi><mo>+</mo><mi>b</mi><mspace width="0.1em"></mspace><msub><mi>τ</mi><mi>i</mi></msub></math>
+          </div>
+          Logs are used because with continuous compounding <i>F</i>(<i>τ</i>) = <i>F</i>₀·exp(<i>cτ</i>), so ln <i>F</i> is linear in <i>τ</i>. exp(<i>a</i>) is the curve’s New York “spot” price and <i>b</i> is New York’s daily carry rate. The weights stop a thinly traded contract from tilting the line.
+        </li>
+        <li><strong>Read the curve at 90 days:</strong> <span class="ny"><i>F</i>₉₀</span> = exp(<i>a</i> + 90<i>b</i>).</li>
+        <li><strong>Apply the same algebra as version 1, with <i>τ</i> fixed at 90:</strong>
+          <ul>
+            <li><code>implied_rate</code> = (<i class="ny">F</i>₉₀/<i class="ldn">S</i> − 1) · 365/90</li>
+            <li><code>disloc</code> = implied_rate − (<i>r</i> + <i>s</i>), and <code>disloc_pp</code> = disloc × 100</li>
+            <li><code>excess_usd</code> = disloc · 90/365 · <i class="ldn">S</i>, which is what is left in $/oz over the 90 days</li>
+          </ul>
+        </li>
+        <li><strong>Smooth for plotting.</strong> <code>disloc_pp_10d</code> is a 10-session rolling mean that needs at least 6 sessions. It is the line readers follow in the mechanism Figure 2.</li>
+        <li><strong>Go monthly.</strong> Take calendar-month means of the <em>unsmoothed</em> daily <code>disloc_pp</code> and <code>excess_usd</code>. Merge them with Swiss customs tonnes shipped to the US (<code>swiss_tonnes()</code>). This monthly panel feeds the hinge buckets and the kink regression.</li>
+      </ol>
+
+      <h3>Worked example: 29 Jan 2025 again</h3>
+      <p>These contracts go into the fit:</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Contract</th><th class="n">τ (days)</th><th class="n">Settle</th><th class="n">Open interest</th></tr></thead>
+          <tbody>
+            <tr><td class="m">GCH5</td><td class="n">30</td><td class="n">2,781.5</td><td class="n">10,232</td></tr>
+            <tr><td class="m">GCJ5</td><td class="n">61</td><td class="n">2,793.5</td><td class="n">346,145</td></tr>
+            <tr><td class="m">GCM5</td><td class="n">121</td><td class="n">2,818.7</td><td class="n">52,333</td></tr>
+            <tr><td class="m">GCQ5</td><td class="n">183</td><td class="n">2,842.9</td><td class="n">20,068</td></tr>
+            <tr><td class="m">GCV5</td><td class="n">244</td><td class="n">2,867.2</td><td class="n">3,754</td></tr>
+            <tr><td class="m">GCZ5</td><td class="n">303</td><td class="n">2,890.9</td><td class="n">12,905</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Left out: GCG5, which has 128k contracts open but <i>τ</i> = 2 and is already in delivery; GCG6, with only 489 contracts; and every later contract.</p>
+
+      <figure class="chart">
+        <div class="chart-scroll">
+<!-- chart:curve -->
+<svg viewBox="0 0 640 270" role="img" aria-label="COMEX settlement prices by days to first notice on 29 January 2025, with the fitted curve read at 90 days">
+  <line class="grid" x1="56" x2="616" y1="217.2" y2="217.2"/>
+  <text class="tick" x="48" y="221.2" text-anchor="end">$2,750</text>
+  <line class="grid" x1="56" x2="616" y1="153.5" y2="153.5"/>
+  <text class="tick" x="48" y="157.5" text-anchor="end">$2,800</text>
+  <line class="grid" x1="56" x2="616" y1="89.8" y2="89.8"/>
+  <text class="tick" x="48" y="93.8" text-anchor="end">$2,850</text>
+  <line class="grid" x1="56" x2="616" y1="26.0" y2="26.0"/>
+  <text class="tick" x="48" y="30.0" text-anchor="end">$2,900</text>
+  <line class="axis" x1="144.4" x2="144.4" y1="230" y2="235"/>
+  <text class="tick" x="144.4" y="249" text-anchor="middle">0</text>
+  <line class="axis" x1="277.1" x2="277.1" y1="230" y2="235"/>
+  <text class="tick" x="277.1" y="249" text-anchor="middle">90</text>
+  <line class="axis" x1="409.7" x2="409.7" y1="230" y2="235"/>
+  <text class="tick" x="409.7" y="249" text-anchor="middle">180</text>
+  <line class="axis" x1="542.3" x2="542.3" y1="230" y2="235"/>
+  <text class="tick" x="542.3" y="249" text-anchor="middle">270</text>
+  <line class="axis" x1="56" x2="616" y1="230" y2="230"/>
+  <text class="axlab" x="56" y="14">29 Jan 2025, $ per troy ounce</text>
+  <text class="axlab" x="616" y="267" text-anchor="end">days to first notice (τ)</text>
+  <path class="line-ny" d="M144.4,192.5 L147.4,191.5 L150.3,190.5 L153.3,189.5 L156.2,188.5 L159.2,187.5 L162.1,186.5 L165.1,185.5 L168.0,184.5 L170.9,183.5 L173.9,182.4 L176.8,181.4 L179.8,180.4 L182.7,179.4 L185.7,178.4 L188.6,177.4 L191.6,176.4 L194.5,175.3 L197.5,174.3 L200.4,173.3 L203.4,172.3 L206.3,171.3 L209.3,170.3 L212.2,169.3 L215.2,168.2 L218.1,167.2 L221.1,166.2 L224.0,165.2 L226.9,164.2 L229.9,163.2 L232.8,162.1 L235.8,161.1 L238.7,160.1 L241.7,159.1 L244.6,158.1 L247.6,157.0 L250.5,156.0 L253.5,155.0 L256.4,154.0 L259.4,153.0 L262.3,151.9 L265.3,150.9 L268.2,149.9 L271.2,148.9 L274.1,147.9 L277.1,146.8 L280.0,145.8 L282.9,144.8 L285.9,143.8 L288.8,142.7 L291.8,141.7 L294.7,140.7 L297.7,139.7 L300.6,138.6 L303.6,137.6 L306.5,136.6 L309.5,135.6 L312.4,134.5 L315.4,133.5 L318.3,132.5 L321.3,131.5 L324.2,130.4 L327.2,129.4 L330.1,128.4 L333.1,127.4 L336.0,126.3 L338.9,125.3 L341.9,124.3 L344.8,123.2 L347.8,122.2 L350.7,121.2 L353.7,120.2 L356.6,119.1 L359.6,118.1 L362.5,117.1 L365.5,116.0 L368.4,115.0 L371.4,114.0 L374.3,112.9 L377.3,111.9 L380.2,110.9 L383.2,109.8 L386.1,108.8 L389.1,107.8 L392.0,106.7 L394.9,105.7 L397.9,104.7 L400.8,103.6 L403.8,102.6 L406.7,101.6 L409.7,100.5 L412.6,99.5 L415.6,98.5 L418.5,97.4 L421.5,96.4 L424.4,95.4 L427.4,94.3 L430.3,93.3 L433.3,92.2 L436.2,91.2 L439.2,90.2 L442.1,89.1 L445.1,88.1 L448.0,87.0 L450.9,86.0 L453.9,85.0 L456.8,83.9 L459.8,82.9 L462.7,81.8 L465.7,80.8 L468.6,79.8 L471.6,78.7 L474.5,77.7 L477.5,76.6 L480.4,75.6 L483.4,74.6 L486.3,73.5 L489.3,72.5 L492.2,71.4 L495.2,70.4 L498.1,69.3 L501.1,68.3 L504.0,67.2 L506.9,66.2 L509.9,65.2 L512.8,64.1 L515.8,63.1 L518.7,62.0 L521.7,61.0 L524.6,59.9 L527.6,58.9 L530.5,57.8 L533.5,56.8 L536.4,55.7 L539.4,54.7 L542.3,53.6 L545.3,52.6 L548.2,51.5 L551.2,50.5 L554.1,49.4 L557.1,48.4 L560.0,47.3 L562.9,46.3 L565.9,45.2 L568.8,44.2 L571.8,43.1 L574.7,42.1 L577.7,41.0 L580.6,40.0 L583.6,38.9 L586.5,37.9 L589.5,36.8 L592.4,35.8 L595.4,34.7 L598.3,33.6 L601.3,32.6"/>
+  <line class="roll" x1="277.1" x2="277.1" y1="146.8" y2="230"/>
+  <circle class="dot-contract" cx="188.6" cy="177.1" r="4.0"/>
+  <text class="note" x="188.6" y="168.1" text-anchor="middle">GCH5</text>
+  <circle class="dot-contract" cx="234.3" cy="161.8" r="9.0"/>
+  <text class="note" x="234.3" y="147.8" text-anchor="middle">GCJ5</text>
+  <circle class="dot-contract" cx="322.7" cy="129.7" r="5.3"/>
+  <text class="note" x="322.7" y="119.3" text-anchor="middle">GCM5</text>
+  <circle class="dot-contract" cx="414.1" cy="98.8" r="4.4"/>
+  <text class="note" x="414.1" y="89.4" text-anchor="middle">GCQ5</text>
+  <circle class="dot-contract" cx="504.0" cy="67.8" r="3.6"/>
+  <text class="note" x="504.0" y="59.2" text-anchor="middle">GCV5</text>
+  <circle class="dot-contract" cx="590.9" cy="37.6" r="4.2"/>
+  <text class="note" x="590.9" y="28.4" text-anchor="middle">GCZ5</text>
+  <line class="gap" x1="144.4" x2="144.4" y1="209.2" y2="192.5"/>
+  <circle class="dot-ldn" cx="144.4" cy="209.2" r="5"/>
+  <circle class="ring-ny" cx="144.4" cy="192.5" r="5"/>
+  <text class="note ny" x="134.4" y="196.5" text-anchor="end">curve at 0: $2,769.38</text>
+  <text class="note strong" x="153.4" y="207.2">+$13.08</text>
+  <text class="note ldn" x="153.4" y="225.2">London $2,756.30</text>
+  <circle class="dot-ny" cx="277.1" cy="146.8" r="4.5"/>
+  <text class="note strong" x="287.1" y="163.8">F₉₀ = $2,805.23</text>
+</svg>
+<!-- /chart:curve -->
+        </div>
+        <figcaption><b>Figure 3.</b> The six contracts in the fit on 29 Jan 2025 (larger dots carry more open interest), the weighted log-linear curve through them, and its reading at 90 days. At <i>τ</i> = 0 the curve sits $13.08 above the <span class="ldn">London price</span>. That gap is the level part of the dislocation, unpacked below.</figcaption>
+      </figure>
+
+      <div class="table-wrap">
+        <table class="ledger">
+          <tbody>
+            <tr><td>fitted line</td><td>exp(a) = $2,769.38; b = 0.0001429 a day (<strong>5.22% a year</strong>)</td></tr>
+            <tr><td><span class="ny">F₉₀</span></td><td>2,769.38 × exp(90 × 0.0001429) = <strong class="ny">$2,805.23</strong></td></tr>
+            <tr><td>F₉₀/S − 1</td><td>2,805.23 / 2,756.30 − 1 = 1.775%</td></tr>
+            <tr><td>implied rate</td><td>1.775% × 365/90 = <strong>7.20%</strong></td></tr>
+            <tr><td>dislocation</td><td>7.20% − 4.60% = <strong>2.60 pp</strong></td></tr>
+            <tr><td>excess</td><td>2.60% × 90/365 × 2,756.30 = <strong>$17.66/oz</strong> over 90 days</td></tr>
+            <tr><td>10-session mean that day</td><td>3.56 pp</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Version 1 gave 3.48 pp for the same day.</p>
+
+      <h3>Why this works, in the same algebra</h3>
+      <div class="eq">
+        <math display="block"><mtext>disloc</mtext><mo>≈</mo><mfrac><mi>P</mi><mi class="ldn">S</mi></mfrac><mo>·</mo><mfrac><mn>365</mn><mn>90</mn></mfrac><mo>−</mo><mi>ℓ</mi></math>
+      </div>
+      <p>The multiplier on <i>P</i> is now a constant, 4.06, so <i>P</i> no longer creates a sawtooth. A dislocation of 1 pp simply means a New York premium of about 0.25% of spot, net of the lease rate.</p>
+
+      <h3>A free extra: the fit separates level from slope</h3>
+      <p>The two fitted numbers line up with the two kinds of wedge in §2. The intercept is a level gap; the slope is excess carry.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th></th><th class="n">29 Jan 2025</th><th class="n">3 Jun 2019 (calm)</th></tr></thead>
+          <tbody>
+            <tr><td class="label"><strong>Level:</strong> exp(a) − S</td><td class="n">$13.08 (0.47% of spot) → 1.92 pp</td><td class="n">$5.70 (0.43%) → 1.75 pp</td></tr>
+            <tr><td class="label"><strong>Slope:</strong> 365·b − carry</td><td class="n">5.22% − 4.60% = +0.62 pp</td><td class="n">2.45% − 2.65% = −0.20 pp</td></tr>
+            <tr><td class="label">compounding cross-term</td><td class="n">+0.06 pp</td><td class="n">+0.02 pp</td></tr>
+            <tr class="total"><td>dislocation</td><td class="n">2.60 pp</td><td class="n">1.57 pp</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>The code does not use this split yet. The calm-day column is a warning. A $5.70 “premium” on a day when nothing happened is the clock mismatch from §6 showing up in the data. One day’s intercept is noisy, which is why the figures rely on multi-day means.</p>
+
+      <h3>The two versions through the tariff episode</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Month</th><th class="n">Version 1 (τ ≥ 20)</th><th class="n">Version 2 (90-day)</th></tr></thead>
+          <tbody>
+            <tr><td>Nov 2024</td><td class="n">0.32</td><td class="n">−0.03</td></tr>
+            <tr><td>Dec 2024</td><td class="n">1.24</td><td class="n">0.74</td></tr>
+            <tr><td>Jan 2025</td><td class="n">4.05</td><td class="n">2.83</td></tr>
+            <tr><td>Feb 2025</td><td class="n">1.26</td><td class="n">1.06</td></tr>
+            <tr><td><strong>Mar 2025</strong></td><td class="n"><strong>−0.58</strong></td><td class="n"><strong>1.17</strong></td></tr>
+            <tr><td>Apr 2025</td><td class="n">−0.37</td><td class="n">−0.39</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Monthly means, pp a year. The two versions have opposite signs in March 2025. That is the month to check first when anyone reruns results built on version 1.</p>
+    </section>
+
+    <!-- ============================================================ 6 -->
+    <section id="timing">
+      <h2><span class="num">§6</span>Timing issues, in one place</h2>
+      <ol>
+        <li><strong>The two prices are not taken at the same moment.</strong> The LBMA PM is set at 15:00 London. COMEX settles at 13:30 New York, which is 18:30 London most of the year (17:30 in the few weeks when the US and UK change clocks on different dates). <strong>The gap is about 3.5 hours.</strong> Any move in gold during that window shows up as spread. At the 90-day horizon, a 1% intraday move adds 1% × 365/90 ≈ <strong>4 pp</strong> of false dislocation for that day.
+          <aside class="revise">
+            <p class="tag">Correction</p>
+            <p><code>RESEARCH_DOSSIER.md</code> §6 and the “Timestamp mismatch” item in <code>gold_tariff_episode.tex</code> put this gap at “roughly ninety minutes”. That is wrong. The later notes in <code>claude/mechanism-figures/</code> have it right. The fix is item 1 in <code>NEXT_STEPS.md</code> and costs nothing: take the COMEX intraday price at 15:00 London, which Databento already supplies, instead of the settlement.</p>
+          </aside>
+        </li>
+        <li><strong>Day-count mismatch.</strong> The implied rate uses a 365-day year. SOFR is quoted on a 360-day year, so on the same basis it is about 365/360 higher: 4.35% becomes 4.41%. This overstates the dislocation by roughly <strong>0.06 pp</strong> at 2025 rates and by almost nothing at zero rates. It is not corrected, and it is small next to the episodes.</li>
+        <li><strong>Horizon mismatch in the rate.</strong> Carry uses <em>overnight</em> SOFR against a 90-day (or <i>τ</i>-day) horizon. When markets expect rate cuts, the 90-day rate sits below the overnight rate. Carry is then overstated and the dislocation understated by the difference. This is neither corrected nor measured here. Using a term rate of matching maturity would fix it.</li>
+        <li><strong>FND ignores exchange holidays.</strong> <i>τ</i> can be off by 1–2 days. This only matters for version 1 at short <i>τ</i>.</li>
+        <li><strong>Holidays are dropped, not filled.</strong> Charts must show them as gaps. <code>build_figure_data.py</code> inserts break markers wherever a gap exceeds 7 days.</li>
+        <li><strong>Monthly alignment.</strong> Each month is a calendar-month mean of daily values, matched to the customs month in which the shipment was recorded. <code>validate_mechanism.py</code> finds that same-month correlation beats a one-month lag. That fits a Zurich–New York shipment being recorded when it leaves.</li>
+      </ol>
+    </section>
+
+    <!-- ============================================================ 7 -->
+    <section id="limits">
+      <h2><span class="num">§7</span>What the dislocation does and does not measure</h2>
+      <ul>
+        <li><strong>It nets two forces with opposite signs.</strong> Dislocation ≈ New York premium − London lease rate. A rich New York pushes it up. A London short of metal raises <i>ℓ</i> and pushes it down. The dossier quotes secondary-source lease rates rising from 0.08% to 4.5% in January 2025. If those figures are right, both forces were at work, and <strong>the measured dislocation understated New York’s premium by up to the lease rate.</strong> The two cannot be separated without a lease-rate series. This point follows from the algebra, not the data, but it matters for any reading of the tariff episode as “a small dislocation”.</li>
+        <li><strong>The three parts of <i>P</i> are not separated.</strong> Place, form and trust all sit inside <i>P</i>. <code>CLAUDE.md</code> already concedes that trust is not separately identifiable.</li>
+        <li><strong>It is a proxy, not a real Exchange for Physical (EFP).</strong> An EFP is a privately negotiated swap of a futures position for London metal. Dealers quote EFPs on entitlement-gated Bloomberg pages. This series is a settlement price minus an auction price, built to stand in for one.</li>
+        <li><strong>The unit of the flow threshold is still open.</strong> Freight and insurance cost dollars per ounce, which argues for measuring the threshold in <code>excess_usd</code>. <code>estimate_kink.py</code> fits both units. Over its 2023–26 estimation window the rate version fits better (R² 0.52 vs 0.38). The full-sample comparison is in <code>claude/mechanism-figures/kink_output.txt</code>.</li>
+      </ul>
+    </section>
+
+    <!-- ============================================================ 8 -->
+    <section id="cheat">
+      <h2><span class="num">§8</span>Cheat sheet</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Symbol</th><th>What it is</th><th>Column</th><th>Source</th></tr></thead>
+          <tbody>
+            <tr><td><i class="ldn sym">S</i></td><td>London price, 15:00 London</td><td><code>lbma_pm_usd</code></td><td>LBMA JSON</td></tr>
+            <tr><td><i class="ny sym">F</i></td><td>COMEX settlement, 13:30 New York</td><td><code>settle</code> / <code>comex_settle</code></td><td>Databento, stat 3</td></tr>
+            <tr><td>OI</td><td>open interest</td><td><code>open_interest</code></td><td>Databento, stat 9</td></tr>
+            <tr><td><i class="sym">τ</i></td><td>days to first notice</td><td><code>days_to_first_notice</code></td><td>from the contract symbol</td></tr>
+            <tr><td><i class="sym">r</i></td><td>SOFR (DFF before Apr 2018)</td><td><code>short_rate</code></td><td>FRED</td></tr>
+            <tr><td><i class="sym">s</i></td><td>storage, 0.25%/yr</td><td><code>storage_rate_assumed</code></td><td>assumption</td></tr>
+            <tr><td><i class="ny sym">F₉₀</i></td><td>fitted curve at 90 days</td><td><code>f90</code></td><td>version 2</td></tr>
+            <tr><td>—</td><td>dislocation</td><td><code>dislocation</code> (v1, decimal) · <code>disloc_pp</code> (v2, pp)</td><td>derived</td></tr>
+            <tr><td>—</td><td>what is left over carry, $/oz</td><td><code>excess_basis_usd</code> (v1) · <code>excess_usd</code> (v2, over 90 days)</td><td>derived</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>Reproduce every number and redraw the figures, from the repo root:</p>
+<pre>.venv/Scripts/python.exe claude/spread-explainer/worked_examples.py
+.venv/Scripts/python.exe claude/spread-explainer/make_charts.py</pre>
+    </section>
+
+    <footer>
+      Numbers: <code>worked_examples.py</code>, output saved in <code>worked_examples_output.txt</code>. Figures: <code>make_charts.py</code>, from the same files in <code>data/processed/</code>. Where this note disagrees with earlier project text, it says so in a tinted note.
+    </footer>
+  </main>
+</div>
