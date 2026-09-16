@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>The COMEX–London spread: horizon, timing, lease rate, model</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+<style>
+  /* Print document: one visual world, sized for A4. Colours are the same
+     London-blue / New-York-ochre pair the HTML explainer uses. */
+  @page { size: A4; margin: 19mm 18mm 17mm; }
+
+  :root {
+    --ink: #16191C;
+    --ink-2: #33393F;
+    --muted: #5A646E;
+    --rule: #C9CFC9;
+    --rule-soft: #E2E6E2;
+    --ny: #8A5C00;
+    --ldn: #2B5A82;
+    --surface: #F1F3EF;
+    --serif: "Source Serif 4", "Source Serif Pro", Georgia, serif;
+    --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+    --mono: "IBM Plex Mono", Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { background: #FFFFFF; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--serif);
+    font-size: 10.4pt;
+    line-height: 1.46;
+  }
+
+  h1, h2, h3, h4 { font-family: var(--sans); color: var(--ink); text-wrap: balance; }
+  h1 {
+    font-size: 19pt;
+    line-height: 1.14;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0 0 8pt;
+  }
+  h2 {
+    font-size: 12.4pt;
+    font-weight: 600;
+    margin: 18pt 0 7pt;
+    padding-bottom: 3pt;
+    border-bottom: 0.7pt solid var(--rule);
+    break-after: avoid;
+  }
+  h3 { font-size: 10.8pt; font-weight: 600; margin: 12pt 0 5pt; break-after: avoid; }
+  p { margin: 0 0 7pt; orphans: 3; widows: 3; }
+  ul, ol { margin: 0 0 8pt; padding-left: 15pt; }
+  li { margin-bottom: 4pt; }
+  strong { font-weight: 600; }
+  em { font-style: italic; }
+  .ny { color: var(--ny); }
+  .ldn { color: var(--ldn); }
+
+  /* ---------- masthead ---------- */
+  header { border-bottom: 1.4pt solid var(--ink); padding-bottom: 9pt; margin-bottom: 4pt; }
+  .eyebrow {
+    font-family: var(--sans);
+    font-size: 7.6pt;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin: 0 0 7pt;
+  }
+  .standfirst { font-size: 10.6pt; color: var(--ink-2); margin: 0 0 7pt; }
+  .meta { font-family: var(--sans); font-size: 8pt; color: var(--muted); margin: 0; }
+  .meta a { color: var(--ldn); text-decoration: none; }
+
+  /* ---------- tables ---------- */
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    font-family: var(--sans);
+    font-size: 8.6pt;
+    line-height: 1.34;
+    font-variant-numeric: tabular-nums;
+    margin: 4pt 0 9pt;
+    break-inside: avoid;
+  }
+  th {
+    text-align: left;
+    font-weight: 500;
+    font-size: 7.2pt;
+    text-transform: uppercase;
+    letter-spacing: 0.055em;
+    color: var(--muted);
+    border-bottom: 0.7pt solid var(--ink-2);
+    padding: 4pt 7pt 3pt 0;
+    vertical-align: bottom;
+  }
+  td { border-bottom: 0.5pt solid var(--rule-soft); padding: 4pt 7pt 4pt 0; vertical-align: top; }
+  td.n, th.n { text-align: right; }
+  td.n { font-family: var(--mono); font-size: 8.2pt; }
+  tr.pick td { background: #F6EFDC; font-weight: 600; }
+
+  /* ---------- the equation system ---------- */
+  pre {
+    font-family: var(--mono);
+    font-size: 7.9pt;
+    line-height: 1.5;
+    background: var(--surface);
+    border-left: 2pt solid var(--ny);
+    padding: 8pt 10pt;
+    margin: 6pt 0 9pt;
+    white-space: pre;
+    break-inside: avoid;
+  }
+  code { font-family: var(--mono); font-size: 0.87em; }
+
+  .keep { break-inside: avoid; }
+
+  footer {
+    margin-top: 16pt;
+    padding-top: 7pt;
+    border-top: 0.7pt solid var(--rule);
+    font-family: var(--sans);
+    font-size: 7.8pt;
+    color: var(--muted);
+  }
+  footer a { color: var(--ldn); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <p class="eyebrow">GOLD project · methods note · 16 September 2026</p>
+  <h1>The COMEX–London spread: the 90-day horizon, the timing fix, the lease rate, and a model</h1>
+  <p class="standfirst">Four questions about how the gold spread is built, answered from the data already in <code>data/processed/</code>. Every figure here is printed by <code>spread_model_checks.py</code> or <code>worked_examples.py</code>.</p>
+  <p class="meta">Companion to <span class="ldn">SPREAD_EXPLAINED.html</span> in <code>claude/spread-explainer/</code>. Web version: <a href="https://claude.ai/artifact/TZVZv6zUggSBP6BxvCLWhb">claude.ai/artifact/TZVZv6zUggSBP6BxvCLWhb</a></p>
+</header>
+
+<h2>1. Why 90 days</h2>
+<p>The code’s only justification was a one-line comment. Here are three criteria measured over all 2,857 daily fits (<code>spread_model_checks.py</code>):</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Horizon</th>
+      <th class="n">Reads below the shortest contract</th>
+      <th class="n">Fit variance vs. minimum</th>
+      <th class="n">Cost of assuming a straight line</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>30 days</td><td class="n">48.3% of days</td><td class="n">1.99×</td><td class="n">$0.46/oz</td></tr>
+    <tr><td>60 days</td><td class="n">11.4%</td><td class="n">1.23×</td><td class="n">—</td></tr>
+    <tr class="pick"><td>90 days</td><td class="n">0.0%</td><td class="n">1.00×</td><td class="n">$0.33/oz</td></tr>
+    <tr><td>180 days</td><td class="n">0.0%</td><td class="n">3.47×</td><td class="n">$0.40/oz</td></tr>
+    <tr><td>270 days</td><td class="n">0.0%</td><td class="n">10.68×</td><td class="n">—</td></tr>
+  </tbody>
+</table>
+
+<ul>
+  <li><strong>Support.</strong> The shortest contract in the daily fit is a median of 30 days out, and at the extreme 77. So <strong>any horizon of 77 days or more is inside the observed contracts on every single day of the sample</strong>, while a 30-day reading is an extrapolation of a fitted line on half of them.</li>
+  <li><strong>Precision.</strong> In weighted least squares the fitted value is most precise at the weighted centre of mass of the contracts, and variance grows with the square of the distance from it. That centre averages 82 days (median 78, middle half 66–94). On a 20-to-270-day grid, <strong>90 is the variance-minimising horizon.</strong></li>
+  <li><strong>Specification.</strong> Allowing a quadratic term moves the reading least, in dollars, near 90 days.</li>
+  <li><strong>Convention.</strong> 90 days is the three-month tenor at which the CIP and cross-currency-basis literature quotes everything.</li>
+</ul>
+
+<p><strong>What the horizon still decides.</strong> Reading at <code>T</code> multiplies the level premium by 365/T (12.2 at 30 days, 4.06 at 90, 2.03 at 180) and leaves the slope alone. January 2025 reads 6.90 pp at 30 days, 2.83 at 90, 1.84 at 180. Rankings barely move; levels move fourfold. <strong>So the horizon is defensible but the summary statistic is not, which is what the model below fixes.</strong></p>
+
+<h2>2. Fixing the clock mismatch</h2>
+<p>It is measurable, and the most useful part is already measured.</p>
+<p><strong>The error is a common shift, so it lands in the intercept and not the slope.</strong> All contracts settle at the same instant, so a gold move between 15:00 London and the settlement shifts every log price equally. Testing that:</p>
+
+<table>
+  <thead><tr><th>Regression</th><th class="n">Coefficient</th><th class="n">Predicted</th></tr></thead>
+  <tbody>
+    <tr><td>fitted <strong>level</strong> on the day’s London-to-London return</td><td class="n"><strong>+0.193</strong> (s.e. 0.015)</td><td class="n">0.146 = 3.5/24</td></tr>
+    <tr><td>fitted <strong>slope</strong> on the same return</td><td class="n"><strong>−0.012</strong> (s.e. 0.011)</td><td class="n">0</td></tr>
+    <tr><td>placebo: level on the <em>previous</em> day’s return</td><td class="n">+0.049 (s.e. 0.017)</td><td class="n">0</td></tr>
+  </tbody>
+</table>
+
+<p>So a 3.5-hour window explains the level’s noise at about the magnitude a random walk implies, slightly more — consistent with the US morning carrying more than a time-proportional share of the day’s move. <strong>Anything resting on the slope needs no timing fix at all.</strong> In size: the daily standard deviation of the London fix is 1.01%, implying 0.39% of spot ($7.44/oz) of noise in one day’s level, against a measured 0.50% — so the clock gap is roughly 60% of the daily variance (47% in 2019).</p>
+
+<p><strong>The real fix, one Databento job.</strong> Only <code>ohlcv-1d</code> and <code>statistics</code> are on disk, so this needs a pull: <code>GLBX.MDP3</code>, schema <code>ohlcv-1m</code>, <code>symbols=GC.FUT</code>, <code>stype_in=parent</code>, 2015→date — the same query as the existing jobs at a finer schema. Then per date, convert 15:00 <code>Europe/London</code> to <code>America/New_York</code> with a timezone-aware library (usually 10:00 New York, 11:00 in the weeks the clocks disagree — exactly what a fixed offset gets wrong), take each contract’s VWAP over 15:00–15:05 London because the auction runs in rounds, and refit. Settlements and open interest still come from <code>statistics</code> and still choose the roll. The by-product is the distribution of the 15:00-to-settlement return: its mean is the bias, its variance the noise, both measured rather than assumed.</p>
+
+<p><strong>Until then:</strong> the drift bias is at least <strong>$0.31/oz</strong> (uniform-slice lower bound); the monthly level has reliability <strong>0.80</strong>, so a kink slope estimated on it is attenuated by a fifth and should be divided by 0.80 (<strong>1.25×</strong>).</p>
+
+<h2>3. The lease rate</h2>
+<p>The lease rate is interest on metal rather than money: lend 100 ounces for three months, get 100 back plus interest, quoted as %/yr on the gold.</p>
+<ul>
+  <li><strong>The macro analogue is exact.</strong> ℓ is gold’s own-rate of interest, i.e. the foreign nominal rate in covered interest parity: <code>F/S = (1 + r + s)/(1 + ℓ)</code>. Gold’s forward curve is a currency forward curve with storage bolted on.</li>
+  <li><strong>Borrowers</strong> need metal in hand now: dealers short of metal, refiners financing work in progress, market-makers. <strong>Lenders</strong> are holders content to part with it: central banks, some allocated holders, miners.</li>
+  <li><strong>It used to be quoted.</strong> GOFO was the dollar rate on a gold-collateralised dollar loan, so GOFO ≈ r − ℓ and the lease rate was read off as r − GOFO. The LBMA stopped publishing GOFO in <strong>January 2015</strong> — exactly when this sample starts. Since then it is implied, not quoted.</li>
+  <li><strong>Normally under 0.5%/yr</strong>, because above-ground gold is enormous relative to borrowing demand. It spikes when metal is needed in a <em>place</em>: vault queues, refining bottlenecks. Silver’s hit 35–39% in October 2025.</li>
+  <li><strong>There are two, and only one is in your data.</strong> The COMEX curve is a New York object: its slope identifies New York’s storage minus New York’s lease rate. <strong>London’s lease rate never enters the COMEX curve</strong> — it enters the cost of shipping, equation (5). A London squeeze and a New York premium are different objects, which is precisely why the single ℓ breaks during the episode.</li>
+  <li><strong>Sign:</strong> a high lease rate makes forwards cheap relative to spot, pushing the measured dislocation <em>down</em> and masking a New York premium.</li>
+</ul>
+
+<h2>4. The system</h2>
+<pre>(1)   F_t(τ)  =  V_t(τ) · exp[ (r_t + s_N − ℓN_t) · τ/365 ]
+
+(2)   V_t(τ)  =  S_t · [ 1 + p_t + Λ_t(τ)·θ_t ]
+
+(3)   Λ_t(τ)  =  1 − exp(−h_t·τ/365)  ≈  h_t·τ/365 − ½·(h_t·τ/365)²
+
+(4)   −κ(N→L)_t  ≤  p_t·S_t  ≤  κ(L→N)_t          unless capacity binds
+
+(5)   κ(L→N)_t  =  c_freight + c_insurance + c_recast
+                     + (r_t + ℓL_t)·(d_transit/365)·S_t
+
+(6)   F̂_t(τ)  =  F_t(τ)·exp(ε_t),   E[ε_t] = μ,  Var[ε_t] = σ²
+                                      ε_t common to all contracts on date t
+
+(7)   Q_t  =  min{ Q̄ ,  β·max(0, p_t·S_t − κ_t) }  +  u_t</pre>
+
+<p>What is estimated each day, across that date’s contracts, weighted by √(open interest):</p>
+<pre>(8)   ln F̂_t(τ_i)  =  α_t + β_t·τ_i + γ_t·τ_i²  +  η_it
+
+(9)   p̂_t  ≡  α_t − ln S_t        =  p_t + ε_t
+(10)  ω̂_t  ≡  365·β_t − r_t       =  s_N − ℓN_t + h_t·θ_t
+(11)  γ_t                          =  −h_t²·θ_t / (2·365²)   ≤ 0</pre>
+
+<p>The modelled spread, and the project’s headline number as one reading of it:</p>
+<pre>(12)  b_t(τ) ≡ F_t(τ) − S_t
+             = S_t · [   p_t        +   Λ_t(τ)·θ_t   +  (r_t + s_N − ℓN_t)·τ/365 ]
+                      place/form/trust   policy risk              carry
+
+(13)  disloc_t(T) ≈ p_t·(365/T)  +  h_t·θ_t  +  (s_N − s)  −  ℓN_t</pre>
+
+<h3>Reading it</h3>
+<ul>
+  <li><strong>(1) is carry inside one location.</strong> A COMEX contract is metal in a New York vault at a future date, so its price is that metal’s value compounded at interest plus storage, less forgone lease income. It is the only equation with a time dimension.</li>
+  <li><strong>(2) is the location wedge</strong> — the paper’s subject. A standing part <code>p</code>, plus a policy part that depends on the delivery date.</li>
+  <li><strong>(3) makes the policy part horizon-dependent.</strong> A contract delivering in nine months is likelier to be caught by a tariff than one delivering next month. <strong>This is where “P is a level” fails</strong>, and it gives two signatures: policy risk enters the <em>slope</em> (10), and because the probability is concave in the horizon it bends the curve down (11).</li>
+  <li><strong>(4) is what arbitrage enforces</strong> — not p = 0 but p inside a band whose edges are shipping cost each way. The band’s width <em>is</em> the transfer cost the kink regression estimates.</li>
+  <li><strong>(5) is the only place London’s lease rate enters.</strong> Shipping ties up metal and money in transit; a London squeeze widens the band rather than moving the COMEX curve.</li>
+  <li><strong>(6) is the clock</strong>, and being common across contracts is why it hits (9) and not (10).</li>
+  <li><strong>(7) is the flow equation with a capacity ceiling.</strong> Refining and secure freight are capped short-run, which is also why a $16/oz premium can persist for months against a $2/oz threshold without being an arbitrage failure.</li>
+  <li><strong>(9)–(11) say what the data can deliver:</strong> the level gives the premium plus timing noise; the slope gives storage minus the New York lease rate, contaminated by policy risk while a threat is live; the curvature is the lever that separates them.</li>
+  <li><strong>(12) is the answer to “what is the spread”.</strong> <strong>(13)</strong> shows what annualising does to it: divides the first term by the horizon, leaves the others, and adds a storage error. Report <code>p</code> in $/oz and <code>ω</code> in pp/yr and the horizon stops mattering.</li>
+</ul>
+
+<h2>5. Three results from fitting it</h2>
+<ul>
+  <li><strong>The calm level validates the framework.</strong> 2015–19 mean level = <strong>−$0.55/oz</strong> (−0.047% of spot). Trade estimates of transfer cost are $1.5–2.5/oz and <code>estimate_kink.py</code> puts the threshold at $3.77/oz (90% CI $0.83–10.25). Three independent numbers, mutually consistent.</li>
+  <li><strong>The storage assumption fails.</strong> The calm slope gives ω = <strong>+0.58 pp/yr</strong> = s_N − ℓ_N. If the New York lease rate is near zero in calm years, storage is 0.58%, not the assumed 0.25%; if storage really is 0.25%, the lease rate is −0.33%, which nobody quotes. <strong>Every dislocation level inherits this one-for-one</strong>, so levels should be read in differences until it is settled.</li>
+  <li><strong>This contradicts the critique’s item 3.</strong> It compared 29 Jan 2025 with a single calm day (3 Jun 2019) and concluded 80% of the move was slope. Against the five-year calm baseline instead, January 2025’s level is +0.55 pp of spot above normal (0.502% vs −0.047%, ≈$14/oz) while ω rose 0.40 pp (0.975 vs 0.58) — so in 90-day units the <strong>level accounts for about 85% of the January move, not 20%</strong>. That single 2019 level was a draw from the timing noise. The critique’s item 2 (that the fit does separate them) was right, and §7 of the explainer now says so.</li>
+</ul>
+
+<p>Curvature is negative on average and deepens roughly sevenfold in the episode window (mean/se −10.7 calm, −22.0 episode) — suggestive of the hazard term in (3), but present in calm years too, so the event dates are still needed to attribute it.</p>
+
+<p><strong>One bug found and fixed while building Figure 4</strong> of the explainer: a hardcoded y-range was cutting off the carry wedge’s ~3 pp mid-2020 spike. The range now comes from the data.</p>
+
+<footer>
+  Sources: <code>claude/spread-explainer/spread_model_checks.py</code> (with its saved output), <code>worked_examples.py</code>, and <code>make_charts.py</code>, all reading <code>data/processed/</code>. Where this note disagrees with earlier project text, it says so.
+</footer>
+
+</body>
+</html>
