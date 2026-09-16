@@ -168,6 +168,59 @@ def main():
 
     rule("7  Monthly level and slope through the episode")
     print(m.loc["2024-09":"2025-10", ["level", "omega", "n"]].round(3).to_string())
+
+    rule("8  Units and scales: how to read a coefficient")
+    for T in (30, 90, 180):
+        frac = T / 365 / 100          # one pp a year, held for T days, as a fraction of spot
+        print(f"  1 pp of dislocation at T={T:>3}d = {frac:.4%} of spot"
+              f" = ${frac * 2756.30:5.2f}/oz at $2,756    ${frac * 4200:5.2f}/oz at $4,200")
+    for usd in (1.0, 2.0, 13.08):
+        print(f"  ${usd:5.2f}/oz of level premium at $2,756 = {usd / 2756.30:.4%} of spot"
+              f" = {usd / 2756.30 * 365 / 90 * 100:.2f} pp when read at 90 days")
+
+    rule("9  One day through the whole system: 29 January 2025")
+    row = f.loc[pd.Timestamp("2025-01-29")]
+    S0, r0, carry0 = row.lbma_pm_usd, row.short_rate, row.carry_rate
+    ny0 = np.exp(row.a)
+    f90 = np.exp(row.a + row.b * 90)
+    implied = (f90 / S0 - 1) * 365 / 90
+    disloc = (implied - carry0) * 100
+    level_contrib = row.level_pct * 365 / 90
+    slope_contrib = row.omega_pp - STORAGE * 100
+    print(f"  observed   S = ${S0:,.2f}    r = {r0:.4%}    s (assumed) = {STORAGE:.2%}")
+    print(f"  eq (8)     exp(alpha) = ${ny0:,.2f}    365*beta = {365 * row.b:.4%}"
+          f"    gamma = {row.q2 * 1e6:+.3f}e-6 per day^2")
+    print(f"  eq (9)     p_hat     = {row.level_pct:+.3f}% of spot = ${row.level_usd:+.2f}/oz")
+    print(f"  eq (10)    omega_hat = {row.omega_pp:+.3f} pp = storage_NY - lease_NY (+ any hazard)")
+    print(f"  eq (1,2)   F_90 = exp(alpha + 90*beta) = ${f90:,.2f}    implied rate = {implied:.4%}")
+    print(f"  eq (12)    spread at 90 days = ${f90 - S0:.2f}/oz:"
+          f" level ${ny0 - S0:.2f} + carry ${S0 * 365 * row.b * 90 / 365:.2f}"
+          f" + compounding ${f90 - S0 - (ny0 - S0) - S0 * 365 * row.b * 90 / 365:.2f}")
+    print(f"  eq (13)    disloc(90) = {disloc:.3f} pp = level {level_contrib:.3f}"
+          f" + (omega - s) {slope_contrib:+.3f} + cross {disloc - level_contrib - slope_contrib:+.3f}")
+
+    rule("10  Do the slope and curvature identify the hazard and the tariff separately?")
+    # (10) delivers h*theta and (11) delivers h^2*theta/(2*365^2), so in principle
+    # h = B/A and theta = A^2/B with A = h*theta and B = -2*365^2*gamma. That needs
+    # a baseline for storage minus lease, which the calm years provide.
+    calm = f.loc["2015":"2019"]
+    calm_omega, calm_gamma = calm.omega_pp.mean() / 100, calm.q2.mean()
+    print(f"  calm baseline: omega = {calm_omega:.4%}/yr, gamma = {calm_gamma * 1e6:+.3f}e-6")
+    for lab, sl in (("Nov 2024-Apr 2025", slice("2024-11", "2025-04")),
+                    ("Jan 2025", slice("2025-01", "2025-01"))):
+        w = f.loc[sl]
+        A = w.omega_pp.mean() / 100 - calm_omega                  # h*theta, per year
+        print(f"\n  {lab}: omega {w.omega_pp.mean():+.3f} pp -> h*theta = {A:.5f}/yr,"
+              f"  gamma {w.q2.mean() * 1e6:+.3f}e-6")
+        for gname, gam in (("raw gamma", w.q2.mean()), ("gamma net of calm", w.q2.mean() - calm_gamma)):
+            B = -2 * 365 ** 2 * gam                               # h^2*theta, per year^2
+            if A > 0 and B > 0:
+                h, th = B / A, A ** 2 / B
+                print(f"    via {gname:<18}: h = {h:5.2f}/yr"
+                      f" (Lambda(90d) = {1 - np.exp(-h * 90 / 365):4.0%}), theta = {th:.3%}")
+        for lam in (0.10, 0.25, 0.50):
+            h = -np.log(1 - lam) * 365 / 90
+            print(f"    if Lambda(90d) = {lam:.0%} (h = {h:.2f}/yr) then theta = {A / h:.3%}")
     return 0
 
 
