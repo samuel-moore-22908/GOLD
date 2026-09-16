@@ -1,218 +1,395 @@
-% The modelled COMEX-London gold spread: the system of equations, plus the
-% apparatus needed to interpret and use it - units, a worked instantiation,
-% what is identified, the restrictions it imposes, and its assumptions.
+% Location, carry and policy risk in the COMEX-London gold basis.
 %
-% Companion to claude/spread-explainer/SPREAD_EXPLAINED.html (section 9) and
-% spread_model_note.pdf (section 4), where the same system appears set in
-% monospace. Equation numbers (1)-(13) are the same in all three.
+% Written as a short empirical paper. Equations (1)-(13) in the body are the
+% same equations, in the same order and with the same numbers, as section 9 of
+% claude/spread-explainer/SPREAD_EXPLAINED.html and section 4 of
+% spread_model_note.pdf. Appendix equations are numbered (A.1), (A.2), ...
 %
-% Build (from the repo root), keeping aux files out of the working tree:
+% Build (from the repo root, so that \graphicspath resolves):
 %   pdflatex -interaction=nonstopmode -output-directory=<build> \
 %     claude/spread-explainer/spread_system.tex          % run it twice
+%
+% amsthm is NOT installed on this machine (kpsewhich finds no amsthm.sty),
+% and MiKTeX's on-the-fly installer stalls for minutes and then dies with a
+% file-not-found prompt that nonstopmode cannot answer. The proposition and
+% proof environments are therefore defined by hand below. Pass
+% --disable-installer so any future missing package fails in seconds.
 %
 % Use pdflatex directly rather than latexmk: MiKTeX 23.5 on this machine
 % prints "You are running MiKTeX on an unsupported version of Windows"
 % (Windows 11 build 26200) and exits non-zero even when the compile
 % succeeded, which latexmk treats as fatal and refuses to work through.
-% Two passes are needed because the section cross-references are real.
+% Two passes are needed for the cross-references.
 %
-% Package set is deliberately the same one the repo's other .tex already
-% compiles with, so no package has to be fetched at build time.
-%
-% Every number is printed by claude/spread-explainer/spread_model_checks.py,
-% whose saved output sits next to it in spread_model_checks_output.txt.
+% Every number is produced by claude/spread-explainer/spread_model_checks.py
+% (output saved beside it) and the figure by make_paper_figure.py.
 
 \documentclass[11pt,a4paper]{article}
 
-\usepackage[margin=1in]{geometry}
+\usepackage[margin=1.05in]{geometry}
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage{url}
 \usepackage{booktabs}
-\usepackage{enumitem}
-\usepackage{parskip}
+\usepackage{graphicx}
+\usepackage{url}
+\usepackage{caption}
 \usepackage[hidelinks]{hyperref}
 
-% The objects of the model, named once so the notation cannot drift.
-\newcommand{\sN}{s^{N}}                        % New York storage cost
-\newcommand{\lN}{\ell^{N}_{t}}                 % New York lease rate
-\newcommand{\lL}{\ell^{L}_{t}}                 % London lease rate
-\newcommand{\kLN}{\kappa^{L\to N}_{t}}         % cost of moving London -> New York
-\newcommand{\kNL}{\kappa^{N\to L}_{t}}         % and back
+\graphicspath{{claude/spread-explainer/}{./}}
+\captionsetup[table]{labelfont=bf,font=small,skip=4pt}
+\captionsetup[figure]{labelfont=bf,font=small,skip=6pt}
+
+% amsthm is not installed on this machine, and installing a package is not
+% this document's business, so the two environments it would supply are
+% written out here. Behaviour is the same: numbered, italic body, and a proof
+% environment that takes an optional heading and ends with a box.
+\newcounter{proposition}
+\newenvironment{proposition}[1][]
+  {\par\refstepcounter{proposition}\medskip\noindent
+   \textbf{Proposition \theproposition\ifx\\#1\\\else\ (#1)\fi.}\itshape\space}
+  {\upshape\par\medskip}
+\newenvironment{proof}[1][Proof]
+  {\par\medskip\noindent\textit{#1.}\space}
+  {\hfill$\square$\par\medskip}
+
+% Objects of the model, named once so the notation cannot drift.
+\newcommand{\sN}{s^{N}}
+\newcommand{\lN}{\ell^{N}_{t}}
+\newcommand{\lL}{\ell^{L}_{t}}
+\newcommand{\kLN}{\kappa^{L\to N}_{t}}
+\newcommand{\kNL}{\kappa^{N\to L}_{t}}
 \newcommand{\Fhat}{\widehat{F}}
 \newcommand{\disloc}{\operatorname{disloc}}
 \newcommand{\Var}{\operatorname{Var}}
 
-\title{\textbf{The Modelled Spread}\\[0.4em]
-\large A System of Equations for the COMEX--London Gold Basis,\\
-and How to Read It}
-\author{Methods note, GOLD project}
+\title{\textbf{Location, Carry and Policy Risk\\ in the COMEX--London Gold Basis}%
+\thanks{Replication: every number reported here is produced by
+\protect\path{claude/spread-explainer/spread_model_checks.py} and the figure by
+\protect\path{make_paper_figure.py}, both reading only files in
+\protect\path{data/processed/}. The same system of equations, in the same
+numbering, appears in Section~9 of \protect\path{SPREAD_EXPLAINED.html} and
+Section~4 of \protect\path{spread_model_note.pdf}.}}
+\author{GOLD Project}
 \date{16 September 2026}
 
 \begin{document}
 \maketitle
 
+\begin{abstract}
 \noindent
-The spread between the COMEX gold futures price and the London benchmark is
-usually reported as a single annualised number. That number mixes three
-economically distinct objects: a premium for metal being in New York rather
-than London, a premium for the risk that a tariff lands before delivery, and
-the cost of carrying metal through time. This note writes the system down so
-the three can be held apart, fixes the units, runs one real date through every
-equation, states which combinations the data identify and which they do not,
-sets the restrictions the system imposes against their measured values, and
-lists the assumptions with the point at which each one fails.
+The difference between the COMEX gold futures price and the London benchmark
+is conventionally summarised as a single annualised rate. We show that this
+statistic is a horizon-weighted mixture of two economically distinct objects
+--- a premium for metal being located in New York, which is a level, and a
+wedge between storage costs and the lease rate, which is a rate --- and that
+the weight on the first, $365/T$, is set by the horizon at which the analyst
+chooses to read the futures curve. Estimating the curve daily across contracts
+over 2015--2026 separates the two, and three results follow. First, the
+measurement error induced by the three-and-a-half-hour gap between the London
+auction and the COMEX settlement is common across contracts and therefore
+loads entirely on the curve's intercept: a regression of the estimated level on
+the day's return yields $0.193$ against the $0.146$ implied by a random walk
+over the window, while the same regression on the slope yields $-0.012$ and is
+indistinguishable from zero. Second, the location premium averages $-\$0.55$ an
+ounce in calm years, inside a transfer-cost band independently estimated at
+\$0.83--10.25, whereas the calm-period slope implies storage net of lease
+income of $0.58$ percentage points a year --- inconsistent with the $0.25\%$
+storage cost assumed throughout this literature. Third, the 2024--25 United
+States gold tariff episode was priced almost entirely as a level: the slope
+bounds the risk-neutral expected tariff at $0.92\%$ even under a ten per cent
+arrival probability, and an over-identifying restriction linking slope and
+curvature to a tariff hazard is rejected.
 
-Equation numbers match Section~9 of \path{SPREAD_EXPLAINED.html} and Section~4
-of \path{spread_model_note.pdf}. Every figure quoted is printed by
-\path{spread_model_checks.py}, which reads only files already in
-\path{data/processed/}; its saved output is the audit trail for this document.
+\vspace{0.6em}
+\noindent\textbf{Keywords:} gold, commodity basis, covered interest parity,
+limits to arbitrage, trade policy, term structure.
 
-\section{Notation and conventions}
-\label{sec:notation}
+\noindent\textbf{JEL:} G13, G14, F13, C22.
+\end{abstract}
 
-\begin{center}
+\section{Introduction}
+\label{sec:intro}
+
+Gold is traded simultaneously in two locations with different market
+conventions: in London as unallocated claims on metal held in vaults, and in
+New York as exchange-warranted metal deliverable against a futures contract.
+The difference between the two prices is the object that determines whether
+metal physically crosses the Atlantic, and it is therefore the price signal
+behind episodes in which very large gross bilateral flows appear in trade
+statistics without any corresponding change in ownership or consumption. The
+2024--25 episode, in which roughly 535 tonnes moved from Switzerland to the
+United States and subsequently returned, is the motivating case.
+
+That difference is almost always reported as an annualised rate, the
+``dislocation'': the futures-to-spot ratio converted to an implied financing
+rate and netted of a benchmark carry rate. This paper argues that the statistic
+is not a well-defined economic object. Writing the basis as the sum of a
+location premium, a policy-risk premium and a carry term makes the problem
+visible: annualising divides the first component by the horizon at which the
+curve is read while leaving the third unchanged, so the reported number mixes a
+level and a rate in proportions the analyst fixes by choosing a horizon. At
+thirty days the weight on the location premium is $12.2$; at ninety it is
+$4.06$; at one hundred and eighty it is $2.03$. January 2025 reads $6.90$,
+$2.83$ and $1.84$ percentage points at those three horizons respectively, from
+identical underlying data.
+
+The alternative pursued here is to estimate the futures curve directly. On each
+date we fit the log settlement price across the traded contracts as a quadratic
+function of time to first notice, weighting by the square root of open
+interest. The intercept, net of the contemporaneous London price, estimates the
+location premium as a level. The slope, net of the dollar interest rate,
+estimates storage costs net of the lease rate. The curvature responds only to
+horizon-dependent policy risk. The decomposition requires no horizon
+convention, and its components are separately interpretable: the first is
+comparable to freight and refining costs, the second to quoted lease rates.
+
+Four findings follow. First, the measurement error created by observing the two
+legs at different instants is a single common shift in every contract's log
+price on a given date, so it enters the intercept and not the slope
+(Proposition~\ref{prop:timing}). This is testable and is borne out: the
+estimated level covaries with the day's gold return with a coefficient of
+$0.193$ (standard error $0.015$) against a random-walk benchmark of
+$3.5/24=0.146$, whereas the slope does not covary with it at all, $-0.012$
+(standard error $0.011$). Results resting on the slope therefore require no
+timing correction, and results resting on the level can be corrected by a
+reliability ratio of $0.80$ at monthly frequency.
+
+Second, in the calm years 2015--19 the estimated location premium averages
+$-\$0.55$ an ounce, or $-0.047\%$ of spot. Arbitrage thus holds the premium
+inside a narrow band around zero, as the theory requires, and the band's width
+is the transfer cost the threshold regressions in this literature attempt to
+recover; a threshold estimated from physical flows puts it at \$3.77 an ounce
+with a ninety per cent interval of \$0.83--10.25, and trade sources put the
+all-in cost of moving London metal into COMEX-deliverable form at \$1.5--2.5.
+The three readings are mutually consistent.
+
+Third, the same calm period delivers a slope implying storage net of lease
+income of $0.58$ percentage points a year. If the New York lease rate is near
+zero when nothing is happening, storage is of the order of $0.58\%$, not the
+$0.25\%$ conventionally assumed; if storage is $0.25\%$, the implied lease rate
+is $-0.33\%$, which is not a rate that is quoted. Because the assumed storage
+cost enters the annualised dislocation one-for-one, every reported
+\emph{level} of that statistic inherits the error, and only differences are
+safe to interpret.
+
+Fourth, the tariff episode was priced as a level on metal already inside the
+United States rather than as a term premium on future delivery. Inverting the
+slope for the risk-neutral expected tariff gives $0.92\%$ under a ten per cent
+arrival probability within ninety days, $0.34\%$ under twenty-five and $0.14\%$
+under fifty, against a tariff under public discussion at ten to thirty-nine per
+cent. The over-identifying restriction that links the slope and the curvature
+to a common hazard is rejected: it implies a near-certain tariff of one tenth
+of one per cent.
+
+\paragraph{Related literature.}
+The framework is the theory of storage (Kaldor, 1939; Working, 1949; Fama and
+French, 1987) applied to a commodity for which the convenience yield is
+unusually well identified, because above-ground inventories are enormous
+relative to flow demand and the own-rate of interest is directly quoted as a
+lease rate. Treating the futures price as a forward price abstracts from the
+margining wedge analysed by Cox, Ingersoll and Ross (1981). The location
+premium is the commodity analogue of a covered interest parity deviation, and
+the mechanism that sustains it --- balance-sheet and financing costs borne by
+constrained intermediaries --- is the one emphasised in the currency literature
+by Du, Tepper and Verdelhan (2018) and Avdjiev, Du, Koch and Shin (2019), and
+more generally by Shleifer and Vishny (1997). The band structure in which
+arbitrage operates only beyond a transfer cost, and the resulting threshold in
+the flow response, is estimated in the manner of Hansen (2000). The relation
+between cash and futures prices as a price-discovery problem across venues
+follows Garbade and Silber (1983).
+
+Section~\ref{sec:data} describes the institutional setting and data.
+Section~\ref{sec:model} sets out the model. Section~\ref{sec:ident} gives the
+estimating equations and the identification results. Section~\ref{sec:results}
+reports estimates and tests. Section~\ref{sec:robust} discusses specification
+choices and limitations, and Section~\ref{sec:conclusion} concludes. Appendix
+A derives the estimating equations and proves the propositions.
+
+\section{Institutional setting and data}
+\label{sec:data}
+
+\paragraph{The London leg.}
+The London Bullion Market Association Gold Price is set by auction, administered
+by ICE Benchmark Administration, twice daily; we use the afternoon auction,
+struck at 15:00 London time, in US dollars per troy ounce. The price refers to
+unallocated metal held in London vaults --- a claim on a bullion bank's pool
+rather than title to identified bars --- and is retrieved from the LBMA's
+public price service.
+
+\paragraph{The New York leg.}
+The COMEX gold futures contract calls for delivery of 100 troy ounces of metal
+in an exchange-approved vault in the New York area, conveyed as a warrant.
+Contracts are listed for a range of delivery months, of which February, April,
+June, August, October and December carry the great majority of open interest.
+For each contract and date we use the official settlement price, computed by
+the exchange from trading around 13:30 New York time, together with open
+interest. Both are taken from Databento's \path{GLBX.MDP3} feed: settlement is
+statistic type~3 and open interest type~9. Settlement rather than closing price
+is the relevant quotation because it is the price at which positions are
+marked and against which an exchange-for-physical transaction is struck.
+
+\paragraph{Rates and storage.}
+The dollar interest rate is the Secured Overnight Financing Rate from 3 April
+2018, spliced with the effective federal funds rate before that date, both from
+FRED. Storage is set to a constant $0.25\%$ a year, an assumption rather than
+an observation: no free public series for vaulting and insurance exists.
+Section~\ref{sec:results} shows the data reject this value.
+
+\paragraph{Horizon and contract selection.}
+Time to delivery is measured as $\tau$, calendar days to first notice day,
+defined as the last business day of the month preceding the delivery month.
+First notice rather than last trade is the economically relevant horizon
+because from that date a long position may be assigned metal, so a financial
+holder must close or roll before it. A contract enters the daily cross-section
+if $15\le\tau\le400$ days, open interest is at least 1{,}000 lots, and a
+settlement price exists: inside fifteen days a contract is in its delivery
+window and no longer behaves as a forward, while far-dated or thinly held
+contracts carry stale settlements. This leaves a median of six contracts a day.
+Requiring both markets to be open loses 178 of 3{,}035 weekdays, predominantly
+around Christmas, New Year, Independence Day and Juneteenth. The estimation
+sample is 2{,}857 trading days, 2 January 2015 to 20 August 2026.
+
+Table~\ref{tab:notation} collects the notation.
+
+\begin{table}[t]
+\centering
+\caption{Notation, and the status of each object}
+\label{tab:notation}
+\small
 \begin{tabular}{@{}lll@{}}
 \toprule
 \textbf{Symbol} & \textbf{Meaning} & \textbf{Status} \\
 \midrule
 $S_t$ & London price, unallocated, 15:00 London & observed \\
 $F_t(\tau)$ & COMEX price for delivery in $\tau$ days & observed, 13:30 New York \\
-$V_t(\tau)$ & value today of metal deliverable in New York at $\tau$ & latent \\
-$p_t$ & location premium, fraction of spot (place, form, trust) & latent; estimated \\
-$r_t$ & dollar interest rate (SOFR; fed funds before Apr 2018) & observed \\
-$\sN$ & New York storage cost, per year & assumed; see \S\ref{sec:restrict} \\
+$V_t(\tau)$ & value of metal deliverable in New York at $\tau$ & latent \\
+$p_t$ & location premium, fraction of spot & latent; estimated \\
+$r_t$ & dollar interest rate & observed \\
+$\sN$ & New York storage cost, per year & assumed \\
 $\ell^{N}_{t},\ \ell^{L}_{t}$ & lease rate on metal in New York, in London & latent \\
-$h_t,\ \theta_t$ & hazard rate of a tariff; tariff rate if it lands & latent \\
+$h_t,\ \theta_t$ & tariff hazard rate; tariff rate if imposed & latent \\
 $\Lambda_t(\tau)$ & probability a delivery at $\tau$ is tariffed & latent \\
 $\kappa_t$ & all-in cost of moving an ounce between locations & latent; estimated \\
-$\varepsilon_t$ & gold's return from 15:00 London to the settlement & latent; measurable \\
-$Q_t$ & metal shipped, tonnes a month & observed (Swiss customs) \\
-$\bar{Q}$ & refining and secure-freight capacity, tonnes a month & latent \\
+$\varepsilon_t$ & gold's return from 15:00 London to settlement & latent; measurable \\
+$Q_t$ & metal shipped, tonnes a month & observed \\
+$\bar{Q}$ & refining and secure-freight capacity & latent \\
 \bottomrule
 \end{tabular}
-\end{center}
+\vspace{2pt}
+\captionsetup{font=scriptsize}
+\caption*{\emph{Notes.} Rates are annualised decimals; differences between
+rates are reported in percentage points. Day count is 365 throughout. The
+superscripts $N$ and $L$ denote New York and London and are never powers.
+Prices are US dollars per troy ounce and flows are tonnes a month, where
+$1$~tonne${}=32{,}150.7$ troy ounces.}
+\end{table}
 
-\noindent\textbf{Conventions the arithmetic depends on.}
-\begin{itemize}[leftmargin=1.2em,itemsep=3pt,topsep=2pt]
-\item \emph{Subscripts and superscripts.} $t$ indexes the trading date;
-superscripts $N$ and $L$ are locations, New York and London, never powers.
-\item \emph{Rates} are annualised decimals: $0.05$ is five per cent a year.
-Differences between rates are quoted in percentage points (pp).
-\item \emph{Day count} is 365 throughout. SOFR is quoted on a 360-day year, so
-using it unadjusted overstates carry by the factor $365/360$ --- about
-$0.06$~pp at 2025 rates. Not corrected; small relative to everything here.
-\item \emph{$\tau$ is calendar days to first notice}, the last business day of
-the month before the delivery month. First notice rather than last trade,
-because from that day a holder can be handed metal, so it is the date a
-financial holder must be out by.
-\item \emph{Compounding.} Equations (1), (8) and the fitted curve are
-continuous; (2), (12) and (13) are simple. The difference is the compounding
-cross-term --- 40 cents an ounce on the worked date in \S\ref{sec:oneday}.
-Mixed conventions are a real if minor inconsistency in this system.
-\item \emph{$\hat p_t$ is a log difference}, $\alpha_t-\ln S_t$, so it differs
-from the simple ratio $P_t/S_t$ in the third decimal: $0.473\%$ against
-$0.475\%$ on the worked date. Either is fine; they should not be mixed within
-a table.
-\item \emph{Signs.} $p_t>0$ means New York is dear, so metal flows west;
-$p_t<0$ means the reverse. A rise in the lease rate lowers the measured
-dislocation.
-\item \emph{Prices} are US dollars per troy ounce; flows are tonnes a month
-($1$~t${}=32{,}150.7$~oz).
-\end{itemize}
+\section{The model}
+\label{sec:model}
 
-\section{The system}
-\label{sec:system}
+\subsection{Carry within a location}
 
-\noindent\textbf{Pricing through time, within New York.}
+A futures contract on metal held in New York is priced by the cost of carrying
+that metal to the delivery date. Writing $V_t(\tau)$ for the value today of
+metal deliverable in New York at horizon $\tau$,
 \begin{align}
-F_t(\tau) &= V_t(\tau)\cdot\exp\!\left[\left(r_t+\sN-\lN\right)\frac{\tau}{365}\right]
+F_t(\tau) &= V_t(\tau)\cdot\exp\!\left[\left(r_t+\sN-\lN\right)\frac{\tau}{365}\right].
 \end{align}
-A COMEX contract is metal in a New York vault at a future date, so its price is
-that metal's value today compounded at the cost of holding it: interest, plus
-storage, less the lease income the holder forgoes. This is the only equation
-with a time dimension, and it is the gold version of covered interest parity
-with $\ell^{N}$ in the role of the foreign interest rate.
+The holder finances the position at $r_t$, pays storage $\sN$, and forgoes the
+lease income $\lN$ that metal in hand could earn if lent. Equation (1) is the
+gold analogue of covered interest parity, with the lease rate in the role of
+the foreign interest rate; it is the only equation in the system with a time
+dimension.
 
-\noindent\textbf{Pricing across locations, and the policy risk inside it.}
+\subsection{The location wedge and policy risk}
+
+Metal in New York need not be worth metal in London. Let $p_t$ denote the
+premium on New York metal as a fraction of the London price, comprising
+location, bar form --- London trades 400-ounce bars, COMEX takes 100-ounce and
+kilogramme bars --- and the difference between an exchange warrant and a claim
+on a bank. Suppose in addition that an import tariff at rate $\theta_t$ may be
+imposed, arriving with constant hazard $h_t$, and that metal already inside the
+United States is exempt while metal imported for later delivery is not. Then
 \begin{align}
 V_t(\tau) &= S_t\left[\,1+p_t+\Lambda_t(\tau)\,\theta_t\,\right] \\[2pt]
 \Lambda_t(\tau) &= 1-\exp\!\left(-h_t\frac{\tau}{365}\right)
-   \;\approx\; h_t\frac{\tau}{365}-\frac{1}{2}\left(h_t\frac{\tau}{365}\right)^{\!2}
+   \;\approx\; h_t\frac{\tau}{365}-\frac{1}{2}\left(h_t\frac{\tau}{365}\right)^{\!2},
 \end{align}
-New York metal is worth the London price plus a premium. The premium has a
-standing part $p_t$ --- location, bar form, and trust in a warrant versus a
-claim on a bank --- and a policy part that depends on the delivery date,
-because a contract delivering in nine months is likelier to be caught by a
-tariff than one delivering next month. Equation (3) is where a ``level''
-premium stops being a level, and it leaves two signatures: the policy term
-enters the \emph{slope} of the curve, and because $\Lambda$ is concave in the
-horizon it bends the curve down. The expansion needs $h_t\tau/365\ll1$; if the
-hazard is large, $\Lambda$ saturates and the policy term loads on the level
-instead, which turns out to matter in \S\ref{sec:ident}.
+where $\Lambda_t(\tau)$ is the risk-neutral probability that a delivery at
+$\tau$ is caught by the tariff. Equation (3) is the point at which the premium
+ceases to be a pure level: the expected tariff cost rises with the horizon, so
+policy risk enters the \emph{slope} of the curve, and because $\Lambda_t$ is
+concave in $\tau$ it also bends the curve downwards. The expansion requires
+$h_t\tau/365\ll1$; if the hazard is large, $\Lambda_t$ saturates and the policy
+term reverts to a level, a case Section~\ref{sec:results} returns to.
 
-\noindent\textbf{What arbitrage enforces: a band, not a point.}
+\subsection{The arbitrage band and the transfer cost}
+
+Arbitrage does not force $p_t$ to zero. It confines it to a band whose edges
+are the cost of moving metal in each direction,
 \begin{align}
 -\kNL \;&\le\; p_t S_t \;\le\; \kLN
    \qquad\text{unless capacity binds} \\[2pt]
 \kLN &= \underbrace{c_{\text{freight}}+c_{\text{ins}}+c_{\text{recast}}}_{\text{physical, per ounce}}
-   \;+\; \underbrace{\left(r_t+\lL\right)\frac{d_{\text{transit}}}{365}\,S_t}_{\text{financing in transit}}
+   \;+\; \underbrace{\left(r_t+\lL\right)\frac{d_{\text{transit}}}{365}\,S_t}_{\text{financing in transit}} .
 \end{align}
-Arbitrage does not hold $p_t$ at zero; it holds it inside a band whose edges are
-the cost of shipping each way. The band's width is therefore not a nuisance
-parameter --- it is the transfer cost the kink regression is trying to recover.
-Equation (5) is also the only place London's lease rate appears: shipping ties
-up metal and money for the days in transit, and a London squeeze raises that
-cost, widening the band rather than moving the COMEX curve.
+The width of the band is therefore not a nuisance parameter but the quantity
+that the threshold in the flow equation identifies. Equation (5) is also the
+only point at which the \emph{London} lease rate enters the system: shipping
+immobilises metal and money for the days in transit, so a London squeeze raises
+the cost of the arbitrage and widens the band, without shifting the COMEX
+curve. A single lease rate, as in (1), is therefore an approximation that fails
+precisely when the two markets are segmented.
 
-\noindent\textbf{Measurement: the two legs are not observed at the same instant.}
+\subsection{Measurement}
+
+The two legs are not observed at the same instant. The London benchmark is
+struck at 15:00 London and the COMEX settlement approximately three and a half
+hours later, so the observed futures price embeds gold's return over the
+intervening window,
 \begin{align}
 \Fhat_t(\tau) &= F_t(\tau)\cdot e^{\varepsilon_t},
    \qquad \mathbb{E}[\varepsilon_t]=\mu,
-   \qquad \Var[\varepsilon_t]=\sigma^{2}
+   \qquad \Var[\varepsilon_t]=\sigma^{2}.
 \end{align}
-The London benchmark is struck at 15:00 London and the COMEX settlement about
-three and a half hours later, so $\varepsilon_t$ is gold's return over that
-window. Every contract settles at the same instant, so $\varepsilon_t$ is
-\emph{common} to all of them on date~$t$: it shifts the whole curve without
-tilting it. That single property decides which results need a timing fix and
-which do not.
+Because every contract settles at the same instant, $\varepsilon_t$ is common
+across the cross-section on date $t$. This is the property that makes the
+measurement problem tractable, and Proposition~\ref{prop:timing} states its
+consequence.
 
-\noindent\textbf{Flow, with a capacity ceiling.}
+\subsection{Flows}
+
+Metal moves when the premium exceeds the cost of moving it, subject to the
+capacity of refineries and secure freight,
 \begin{align}
-Q_t &= \min\!\left\{\bar{Q},\;\;\beta\max\!\left(0,\;p_t S_t-\kappa_t\right)\right\}+u_t
+Q_t &= \min\!\left\{\bar{Q},\;\;\beta\max\!\left(0,\;p_t S_t-\kappa_t\right)\right\}+u_t .
 \end{align}
-Metal moves once the premium clears the cost of moving it, and no faster than
-refineries and secure freight allow. The ceiling is why a premium far above the
-threshold can persist for months without being an arbitrage failure.
+The ceiling matters for interpretation: a premium far above the threshold can
+persist for months without constituting an arbitrage failure, because the
+technology for closing it is rate-limited.
 
-\section{What is estimated}
-\label{sec:estimated}
+\section{Estimation and identification}
+\label{sec:ident}
 
-Taking logs of (1) and (2), substituting (3) and (6), and collecting powers of
-$\tau$ gives a curve that is quadratic in the horizon. This is the regression
-run each day across that date's contracts, weighted by the square root of open
-interest:
+Taking logarithms of (1) and (2), substituting (3) and (6) and collecting powers
+of $\tau$ (Appendix~\ref{app:derivation}) yields a curve that is quadratic in
+the horizon. The estimating equation, fitted by weighted least squares across
+the contracts available on each date with weights equal to the square root of
+open interest, is
 \begin{align}
-\ln \Fhat_t(\tau_i) &= \alpha_t+\beta_t\tau_i+\gamma_t\tau_i^{2}+\eta_{it}
+\ln \Fhat_t(\tau_i) &= \alpha_t+\beta_t\tau_i+\gamma_t\tau_i^{2}+\eta_{it},
 \end{align}
-A contract enters if $15\le\tau_i\le400$ days, open interest is at least
-1{,}000 lots, and a settlement exists: under 15 days a contract is in its
-delivery scramble, and far-dated or thinly held contracts carry stale
-settlements. That leaves a median of six contracts a day across 2{,}857 days,
-2015--2026. The three fitted coefficients map onto the objects above:
+and the three coefficients map onto the objects of Section~\ref{sec:model} as
 \begin{align}
 \hat{p}_t \;\equiv\; \alpha_t-\ln S_t &= p_t+\varepsilon_t \\[2pt]
 \hat{\omega}_t \;\equiv\; 365\beta_t-r_t &= \sN-\lN+h_t\theta_t \\[2pt]
-\gamma_t &= -\,\frac{h_t^{2}\theta_t}{2\cdot 365^{2}} \;\le\; 0
+\gamma_t &= -\,\frac{h_t^{2}\theta_t}{2\cdot 365^{2}} \;\le\; 0 .
 \end{align}
-Read them as: the intercept is a \emph{level}, in per cent of spot; the slope is
-a \emph{rate}, in points a year; the curvature is a \emph{bend}, and the only
-coefficient that responds to policy risk alone.
-
-\section{The modelled spread}
-\label{sec:spread}
-
+The intercept is a level, measured in per cent of spot; the slope is a rate,
+measured in percentage points a year; the curvature is a bend, and is the only
+coefficient that responds to policy risk alone. Reassembling the components
+gives the spread at any horizon and, as a special case, the conventional
+statistic:
 \begin{align}
 b_t(\tau)\;\equiv\;F_t(\tau)-S_t
   \;&=\; S_t\left[\;
@@ -220,265 +397,465 @@ b_t(\tau)\;\equiv\;F_t(\tau)-S_t
   \;+\;\underbrace{\Lambda_t(\tau)\,\theta_t}_{\text{policy risk}}
   \;+\;\underbrace{\left(r_t+\sN-\lN\right)\dfrac{\tau}{365}}_{\text{carry}}
   \;\right] \\[6pt]
-\disloc_t(T) \;&\approx\; p_t\,\frac{365}{T}\;+\;h_t\theta_t\;+\;\left(\sN-s\right)\;-\;\lN
+\disloc_t(T) \;&\approx\; p_t\,\frac{365}{T}\;+\;h_t\theta_t\;+\;\left(\sN-s\right)\;-\;\lN .
 \end{align}
 
-Equation (12) is the spread itself. Equation (13) is what the project's
-headline number does to it: reading the fitted curve at a fixed horizon $T$ and
-subtracting an assumed carry rate $s$ divides the location premium by the
-horizon, leaves the policy and lease terms alone, and adds whatever error sits
-in the storage assumption. The multiplier $365/T$ is $12.2$ at thirty days,
-$4.06$ at ninety and $2.03$ at one hundred and eighty, so the horizon silently
-sets how much of the reported number is location and how much is carry. January
-2025 reads $6.90$~pp at thirty days, $2.83$ at ninety and $1.84$ at one hundred
-and eighty. That is the case for reporting $\hat{p}_t$ and $\hat{\omega}_t$
-separately rather than any single dislocation.
+Equation (13) is the paper's first point. Reading the fitted curve at a fixed
+horizon $T$ and subtracting an assumed carry rate $s$ divides the location
+premium by the horizon, leaves the policy and lease terms untouched, and adds
+the error in the storage assumption. The statistic is therefore a
+horizon-weighted mixture whose composition the analyst selects, not a
+parameter.
 
-\section{Units and scales: how to read a coefficient}
-\label{sec:units}
+\begin{proposition}[Measurement error loads on the level]
+\label{prop:timing}
+If $\varepsilon_t$ is common across contracts on date $t$, then it enters the
+intercept of (8) one-for-one and does not enter the slope or the curvature.
+Consequently $\hat{p}_t$ is measured with error while $\hat{\omega}_t$ and
+$\gamma_t$ are not, and $\mathrm{plim}\,\mathrm{cov}(\hat{\omega}_t,
+\varepsilon_t)=0$.
+\end{proposition}
 
-The three quantities live in different units, and most confusion in this
-literature is a failure to convert between them.
+\begin{proposition}[What the curve identifies]
+\label{prop:ident}
+From the daily cross-section alone: $p_t$ is identified up to the additive
+measurement error $\varepsilon_t$; the combination $\sN-\lN$ is identified
+whenever $h_t\theta_t=0$; and the product $h_t\theta_t$ is identified relative
+to a period in which it is known to vanish. Neither $\sN$ nor $\lN$ is
+separately identified, the decomposition of $p_t$ into location, form and trust
+components is not identified, and $\lL$ does not enter the cross-section at all.
+\end{proposition}
 
-\begin{center}
+\begin{proposition}[Over-identification of the hazard]
+\label{prop:hazard}
+Given a baseline value for $\sN-\lN$, equations (10) and (11) constitute two
+moments in the two unknowns $h_t$ and $\theta_t$. Writing $A\equiv h_t\theta_t$
+and $B\equiv-2\cdot365^{2}\gamma_t$,
+\begin{equation*}
+h_t=\frac{B}{A}, \qquad \theta_t=\frac{A^{2}}{B},
+\end{equation*}
+so the model is over-identified: any third moment, or an independent estimate
+of either parameter, constitutes a test.
+\end{proposition}
+
+Proofs are in Appendix~\ref{app:proofs}.
+
+\section{Results}
+\label{sec:results}
+
+\subsection{Scaling}
+
+Because the components are measured in different units, comparisons require
+explicit conversion, and Table~\ref{tab:units} provides it. One percentage
+point of the conventional dislocation corresponds to $0.0822\%$ of spot at a
+thirty-day horizon and $0.4932\%$ at one hundred and eighty; at a gold price of
+\$2{,}756 those are \$2.27 and \$13.59 an ounce respectively. Conversely, a
+transfer cost of \$2 an ounce is $0.0726\%$ of spot, equivalent to $0.29$
+percentage points when read at ninety days. A one-point movement in a
+ninety-day dislocation is thus worth roughly twice the entire cost of shipping
+the metal, which is the practical reason for preferring the level to the rate
+when the object of interest is a shipping decision.
+
+\begin{table}[t]
+\centering
+\caption{Converting between the units of the decomposition}
+\label{tab:units}
+\small
 \begin{tabular}{@{}lrrr@{}}
 \toprule
-& \textbf{\% of spot} & \textbf{\$/oz at \$2{,}756} & \textbf{\$/oz at \$4{,}200} \\
+& \textbf{Per cent of spot} & \textbf{\$/oz at \$2{,}756} & \textbf{\$/oz at \$4{,}200} \\
 \midrule
-1 pp of $\disloc(T)$, $T=30$  & $0.0822\%$ & \$2.27 & \$3.45 \\
-1 pp of $\disloc(T)$, $T=90$  & $0.2466\%$ & \$6.80 & \$10.36 \\
-1 pp of $\disloc(T)$, $T=180$ & $0.4932\%$ & \$13.59 & \$20.71 \\
+1 pp of $\disloc_t(T)$, $T=30$  & $0.0822$ & $2.27$ & $3.45$ \\
+1 pp of $\disloc_t(T)$, $T=90$  & $0.2466$ & $6.80$ & $10.36$ \\
+1 pp of $\disloc_t(T)$, $T=180$ & $0.4932$ & $13.59$ & $20.71$ \\
 \midrule
-& & \textbf{\% of spot} & \textbf{pp read at 90d} \\
+& & \textbf{Per cent of spot} & \textbf{pp read at 90 days} \\
 \midrule
-\$1/oz of level premium & & $0.0363\%$ & $0.15$ \\
-\$2/oz, a typical transfer cost & & $0.0726\%$ & $0.29$ \\
-\$13.08/oz, the worked date & & $0.4745\%$ & $1.92$ \\
+\$1/oz of location premium & & $0.0363$ & $0.15$ \\
+\$2/oz, a representative transfer cost & & $0.0726$ & $0.29$ \\
+\$13.08/oz, the date in Table~\ref{tab:oneday} & & $0.4745$ & $1.92$ \\
 \bottomrule
 \end{tabular}
-\end{center}
+\end{table}
 
-\noindent Two reference magnitudes are worth carrying: the calm-period level is
-$-\$0.55$ an ounce, and the estimated flow threshold is \$3.77 an ounce with a
-90\% interval of \$0.83--10.25. A one-point move in a 90-day dislocation is
-therefore worth roughly twice the entire transfer cost --- which is why the
-level, and not the annualised rate, is the quantity a shipping decision
-responds to.
+\subsection{The decomposition on a representative date}
 
-\section{One day through the whole system: 29 January 2025}
-\label{sec:oneday}
+Table~\ref{tab:oneday} runs 29 January 2025, near the peak of the tariff
+episode, through the whole system. The fitted curve at zero maturity stands at
+\$2{,}769.38 against a London price of \$2{,}756.30, so the location premium is
+\$13.08 an ounce or $0.473\%$ of spot. The slope is $5.2165\%$ a year against a
+dollar rate of $4.3500\%$, so storage net of lease income and any hazard term
+is $0.866$ percentage points. Of the resulting \$48.93 spread at ninety days,
+\$35.45 is the time value of money and storage, \$13.08 is the location
+premium, and forty cents is compounding. The conventional statistic for that
+date, $2.599$ percentage points, is three-quarters location premium --- but
+only because ninety days was the horizon chosen.
 
-\begin{center}
+\begin{table}[t]
+\centering
+\caption{The system evaluated on 29 January 2025}
+\label{tab:oneday}
+\small
 \begin{tabular}{@{}llr@{}}
 \toprule
 \textbf{Equation} & \textbf{Quantity} & \textbf{Value} \\
 \midrule
-observed & $S_t$, London PM auction & \$2{,}756.30 \\
-observed & $r_t$, SOFR & $4.3500\%$ \\
+observed & $S_t$, London afternoon auction & \$2{,}756.30 \\
+observed & $r_t$ & $4.3500\%$ \\
 assumed  & $s$, storage & $0.25\%$ \\
 \midrule
-(8) & $\exp(\alpha_t)$, the curve at $\tau=0$ & \$2{,}769.38 \\
-(8) & $365\beta_t$, the curve's slope & $5.2165\%$ \\
-(8) & $\gamma_t$, the curve's bend & $-0.030\times10^{-6}$/day$^2$ \\
+(8) & $\exp(\alpha_t)$, fitted curve at $\tau=0$ & \$2{,}769.38 \\
+(8) & $365\beta_t$, slope & $5.2165\%$ \\
+(8) & $\gamma_t$, curvature & $-0.030\times10^{-6}$/day$^2$ \\
 \midrule
 (9)  & $\hat{p}_t$, location premium & $+0.473\%$ of spot $={}+\$13.08$/oz \\
-(10) & $\hat{\omega}_t=\sN-\lN\,(+\,h_t\theta_t)$ & $+0.866$~pp \\
-(1),(2) & $F_t(90)=\exp(\alpha_t+90\beta_t)$ & \$2{,}805.23 \\
-(1),(2) & implied rate at 90 days & $7.1991\%$ \\
+(10) & $\hat{\omega}_t=\sN-\lN+h_t\theta_t$ & $+0.866$~pp \\
+(1),(2) & $F_t(90)$ & \$2{,}805.23 \\
+(1),(2) & implied rate at ninety days & $7.1991\%$ \\
 \midrule
-(12) & spread at 90 days & \$48.93/oz \\
-     & \quad of which location & \$13.08 \\
-     & \quad of which carry & \$35.45 \\
-     & \quad of which compounding & \$0.40 \\
+(12) & spread at ninety days & \$48.93/oz \\
+     & \quad location component & \$13.08 \\
+     & \quad carry component & \$35.45 \\
+     & \quad compounding & \$0.40 \\
 \midrule
 (13) & $\disloc_t(90)$ & $2.599$~pp \\
-     & \quad location, $\hat p_t\times365/90$ & $1.919$ \\
-     & \quad carry wedge, $\hat\omega_t-s$ & $+0.616$ \\
+     & \quad location, $\hat{p}_t\times365/90$ & $1.919$ \\
+     & \quad carry wedge, $\hat{\omega}_t-s$ & $+0.616$ \\
      & \quad cross-term & $+0.063$ \\
 \bottomrule
 \end{tabular}
-\end{center}
+\end{table}
 
-\noindent Read down the table: of the \$48.93 spread that day, \$35.45 was the
-time value of money and storage, \$13.08 was New York being dear, and forty
-cents was compounding. The headline $2.60$~pp dislocation is three-quarters
-location premium --- but only because it was read at ninety days.
+\subsection{The two components over time}
 
-\section{Identification: what the data pin down}
-\label{sec:ident}
+Figure~\ref{fig:decomp} plots monthly means of the two estimated components
+from 2019. The location premium is quiet for long stretches and moves sharply
+in three episodes: the spring of 2020, when freight and refining capacity
+collapsed; January 2025, during the tariff anticipation; and the late summer of
+2025, following the customs ruling that reclassified bullion. The carry wedge
+moves on an entirely different rhythm, peaking in mid-2020 at roughly three
+percentage points and drifting through 2025 without a marked episode. That the
+two series are only loosely related is the empirical content of the
+decomposition: a single annualised statistic necessarily blends them.
 
-\begin{center}
-\begin{tabular}{@{}p{0.20\linewidth}p{0.37\linewidth}p{0.35\linewidth}@{}}
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{spread_system_fig1.pdf}
+\caption{Monthly means of the location premium $\hat{p}_t$ and the carry wedge
+$\hat{\omega}_t$, 2019--2026}
+\label{fig:decomp}
+\vspace{2pt}
+{\scriptsize \emph{Notes.} The location premium is the fitted curve's intercept
+net of the contemporaneous London price, in per cent of spot; the carry wedge
+is the fitted slope net of the dollar interest rate, in percentage points a
+year. Monthly means of daily estimates; months with fewer than six trading days
+of data are left blank rather than interpolated. Vertical lines mark the 2024
+United States election, the publication of Executive Order 14257, and US
+Customs and Border Protection ruling N351466.}
+\end{figure}
+
+Table~\ref{tab:periods} reports period means. Across 2015--19 the premium
+averages $-0.047\%$ of spot, or $-\$0.55$ an ounce: economically zero, and
+inside the transfer band of (4). During the tariff anticipation window it
+averages $+0.137\%$ (\$3.82) and in January 2025 alone $+0.502\%$. Following
+the customs ruling it averages $+0.157\%$ (\$5.22), while in 2026 it turns
+negative, $-0.111\%$ (${-}\$5.21$), New York trading cheap as metal returned.
+The carry wedge, by contrast, is positive throughout and highest in 2026, when
+the premium is at its most negative.
+
+\begin{table}[t]
+\centering
+\caption{The components by period}
+\label{tab:periods}
+\small
+\begin{tabular}{@{}lrrrr@{}}
 \toprule
-\textbf{Object} & \textbf{Identified by} & \textbf{Caveat} \\
+\textbf{Period} & \textbf{$\hat{p}_t$, \% of spot} & \textbf{$\hat{p}_t$, \$/oz}
+ & \textbf{$\hat{\omega}_t$, pp} & \textbf{Days} \\
 \midrule
-$p_t$ & the intercept, $\alpha_t-\ln S_t$ & carries $\varepsilon_t$; a monthly mean has reliability $0.80$ \\
-$\sN-\lN$ & the slope, $365\beta_t-r_t$ & not separable without an external storage or lease quote \\
-$h_t\theta_t$ & the slope in excess of a calm baseline & only as good as that baseline \\
-$h_t$, $\theta_t$ apart & slope together with curvature & rejected in practice; see below \\
-$\kappa_t$ & the kink in (7), and the calm band of $p_tS_t$ & wide interval, \$0.83--10.25 \\
-$\varepsilon_t$ & intraday COMEX prices at the auction instant & not on disk; one Databento job \\
-place / form / trust & \textit{not identified} & needs warrant- or bar-level prices \\
-$\lL$ & \textit{not identified from this curve} & enters only through $\kappa_t$ in (5) \\
+2015--2019 (calm)            & $-0.047$ & $-0.55$ & $+0.58$ & 1{,}230 \\
+2019 alone                   & $+0.011$ & $+0.21$ & $+0.25$ & 247 \\
+Nov 2024--Apr 2025 (tariff)  & $+0.137$ & $+3.82$ & $+0.56$ & 120 \\
+\quad January 2025 alone     & $+0.502$ & ---     & $+0.98$ & 21 \\
+Aug--Oct 2025 (customs ruling) & $+0.157$ & $+5.22$ & $+0.22$ & 64 \\
+2026                         & $-0.111$ & $-5.21$ & $+0.75$ & 157 \\
 \bottomrule
 \end{tabular}
-\end{center}
+\end{table}
 
-\noindent\textbf{The hazard and the tariff, in principle.} Equations (10) and
-(11) are two moments in two unknowns, once a baseline for $\sN-\lN$ is fixed.
-Writing $A\equiv h_t\theta_t$ from the slope and
-$B\equiv-2\cdot365^{2}\gamma_t$ from the curvature,
-\[
-h_t \;=\; \frac{B}{A}, \qquad\qquad \theta_t \;=\; \frac{A^{2}}{B}.
-\]
+\subsection{Testing the measurement model}
 
-\noindent\textbf{In practice it is rejected, informatively.} Taking the calm
-years 2015--19 as the baseline ($\hat\omega=0.58\%$,
-$\gamma=-0.007\times10^{-6}$):
+Proposition~\ref{prop:timing} has a direct empirical implication, reported in
+Table~\ref{tab:timing}. Regressing the estimated level on the contemporaneous
+London-to-London return yields a coefficient of $0.193$, close to but somewhat
+above the $0.146$ that a random walk over three and a half of twenty-four hours
+implies; the excess is what one expects if the United States morning carries
+more than a time-proportional share of the day's variance. The same regression
+for the slope yields $-0.012$ with a standard error of $0.011$, which is the
+prediction of the proposition. A placebo using the previous day's return
+returns $0.049$ (standard error $0.017$), small but not zero, indicating mild
+persistence that a purely classical error model does not capture.
 
-\begin{itemize}[leftmargin=1.2em,itemsep=4pt]
-\item For January 2025, $\hat\omega=+0.975$~pp gives $A=0.00395$ a year. The
-curvature then implies $h_t\approx3.4$--$3.9$ a year --- a 57--62\% chance of a
-tariff within ninety days --- paired with $\theta_t\approx0.10$--$0.12\%$. A
-near-certain tariff of one tenth of one per cent is not a description of what
-was being discussed, so the over-identifying restriction fails. The curvature
-is mostly ordinary term structure: it is already negative in the calm years.
-\item Run the other way, the slope \emph{bounds} the risk-neutral tariff
-expectation, and the bound is small. Imposing a 10\% chance within ninety days
-gives $\theta_t=0.92\%$; a 25\% chance gives $0.34\%$; a 50\% chance gives
-$0.14\%$. Against a tariff under discussion at 10--39\%, the term structure was
-pricing almost none of it.
-\item Across the whole episode window, November 2024 to April 2025,
-$\hat\omega$ averaged $+0.561$~pp --- \emph{below} the calm baseline --- so
-$A<0$ and the slope prices no positive hazard at all.
-\end{itemize}
+Scaling up, the daily standard deviation of the London benchmark is $1.01\%$,
+implying $0.39\%$ of spot, or \$7.44 an ounce, of measurement noise in a single
+day's level; the measured standard deviation of the level is $0.50\%$, so the
+timing gap accounts for roughly sixty per cent of its daily variance and
+forty-seven per cent in 2019 alone. At monthly frequency, averaging twenty
+sessions reduces the noise to $0.086\%$ against a monthly series standard
+deviation of $0.192\%$, a reliability ratio of $0.80$: slope coefficients
+estimated on the monthly level are attenuated by a fifth and should be scaled
+by $1.25$. The bias is bounded below by \$0.31 an ounce under a uniform-drift
+assumption, which is negligible relative to an episode premium of \$14 but not
+relative to a calm mean of $-\$0.55$. Re-timing the New York leg using intraday
+prices at the auction instant would eliminate the problem rather than
+correcting for it.
 
-\noindent The reading is not that the tariff scare was imaginary but that it was
-priced as a \emph{level} on metal already in New York rather than as a term
-premium on future delivery. That is consistent with the level accounting for
-roughly 85\% of the January 2025 move once the five-year calm mean rather than
-a single calm day is used as the counterfactual. Equation (3) earns its place
-as a restriction the data reject, not as a channel they support.
-
-\section{Restrictions, and what the data say}
-\label{sec:restrict}
-
-Estimated over 2{,}857 daily fits, 2015--2026:
-
-\begin{center}
-\begin{tabular}{@{}p{0.31\linewidth}p{0.08\linewidth}p{0.36\linewidth}p{0.13\linewidth}@{}}
+\begin{table}[t]
+\centering
+\caption{The timing error loads on the level, not the slope}
+\label{tab:timing}
+\small
+\begin{tabular}{@{}lccc@{}}
 \toprule
-\textbf{Prediction} & \textbf{From} & \textbf{Measured} & \textbf{Verdict} \\
+\textbf{Dependent variable} & \textbf{Same-day return} & \textbf{Previous-day return} & \textbf{$R^{2}$} \\
 \midrule
-The timing error loads on the intercept, not the slope
- & (6), (9), (10)
- & level on the day's return $+0.193$ (s.e.\ $0.015$); slope on it $-0.012$ (s.e.\ $0.011$)
- & holds \\
-Level noise is a 3.5-hour slice of gold's variance
- & (6)
- & predicted $0.39\%$ of spot; measured level s.d.\ $0.50\%$, so $61\%$ of the variance
- & holds \\
-Yesterday's return says nothing about today's level
- & (6)
- & $+0.049$ (s.e.\ $0.017$)
- & small violation \\
-In calm markets $|p_tS_t|$ sits inside the transfer band
- & (4)
- & calm mean $-\$0.55$/oz against $\kappa\approx\$1.5$--$3.8$
- & holds \\
-The curve bends down, $\gamma_t\le0$
- & (3), (11)
- & mean over s.e.\ $-10.7$ calm, $-22.0$ in the episode
- & holds, but present in calm too \\
-The slope prices a positive expected tariff while the threat is live
- & (10)
- & Jan 2025 $+0.40$~pp; whole window $-0.02$~pp
- & fails at window level \\
-(10) and (11) jointly give plausible $h_t,\theta_t$
- & (3), (11)
- & $h\approx3.5$/yr with $\theta\approx0.1\%$
- & rejected \\
-Flow is flat below the threshold, then rises
- & (7)
- & threshold \$3.77 [\$0.83, \$10.25]; 2--3 t/month below, 64 t median above
- & holds \\
+$\hat{p}_t$, location premium & $0.193$ & & $0.155$ \\
+                              & $(0.015)$ & & \\
+$\hat{p}_t$, location premium & $0.194$ & $0.049$ & \\
+                              & $(0.015)$ & $(0.017)$ & \\
+$\hat{\omega}_t$, carry wedge & $-0.012$ & & $0.000$ \\
+                              & $(0.011)$ & & \\
+\midrule
+\multicolumn{4}{@{}l}{Random-walk benchmark for the same-day coefficient: $3.5/24=0.146$} \\
 \bottomrule
 \end{tabular}
-\end{center}
+\vspace{2pt}
+\captionsetup{font=scriptsize}
+\caption*{\emph{Notes.} Daily observations, 2015--2026, $n=2{,}856$.
+Heteroskedasticity-robust standard errors in parentheses. The return is the log
+change in the London afternoon auction price from date $t$ to $t+1$, which
+contains the 15:00-to-settlement window of date $t$.}
+\end{table}
 
-\noindent One further restriction is not a test but an arithmetic identity, and
-it fails. The calm-period slope gives $\sN-\lN=+0.58$~pp a year. With
-$\ell^{N}\approx0$ in calm years that implies storage of about $0.58\%$, not
-the $0.25\%$ assumed; if storage really is $0.25\%$, the implied lease rate is
-$-0.33\%$, which nobody quotes. One of the two is mis-set, and because $s$
-enters (13) one-for-one, so is every reported dislocation \emph{level}. Read
-levels in differences until this is resolved.
+\subsection{Storage and the lease rate}
 
-\section{Assumptions, and where each one fails}
-\label{sec:assume}
+The calm-period slope implies $\sN-\lN=+0.58$ percentage points a year. The two
+cannot be separated without external information (Proposition~\ref{prop:ident}),
+but neither admissible resolution is comfortable. If the New York lease rate is
+approximately zero when the market is quiet, storage is of the order of
+$0.58\%$ a year rather than the $0.25\%$ assumed; if storage is indeed
+$0.25\%$, the lease rate implied is $-0.33\%$, which is not a rate that is
+quoted in this market. Because the assumed storage cost enters (13) one-for-one,
+the level of every reported dislocation is displaced by the error. Differences
+are unaffected, and until an external vaulting and insurance schedule is
+obtained, only differences should be interpreted.
 
-\begin{itemize}[leftmargin=1.2em,itemsep=4pt]
-\item \textbf{Futures are treated as forwards.} Daily margining makes a futures
-price differ from a forward when interest rates covary with the gold price. The
-wedge is small at these horizons, but it lands in $\beta_t$ --- which is where
-the lease rate is read.
-\item \textbf{One representative New York price.} Registered and eligible
-warrants, and 100-oz against kilo bars, are all folded into $p_t$. The
-registered/eligible split is itself a signal the project tracks separately.
-\item \textbf{One lease rate per location, flat across $\tau$.} If the lease
-curve is sloped, part of it appears as curvature and contaminates
-\S\ref{sec:ident}.
-\item \textbf{The curve is log-quadratic.} A third-order term would reallocate
-weight between $\beta_t$ and $\gamma_t$, which is precisely the margin the
-hazard identification rests on.
-\item \textbf{$\sqrt{\text{open interest}}$ weights are ad hoc.} The defensible
-weight is inverse settlement-error variance, for which open interest is a proxy
-of unknown shape. In practice the heaviest contract carries a median $46\%$ of
-the weight (middle half $43$--$51\%$), so the ``constant maturity'' curve is
-less independent of the front month than the name suggests.
-\item \textbf{$\varepsilon_t$ is assumed mean zero.} Only its variance has been
-measured. The drift lower bound is $\$0.31$ an ounce: negligible against a \$14
-episode premium, not negligible against a $-\$0.55$ calm mean. One intraday
-pull settles it.
-\item \textbf{(7) is estimated on monthly data.} Shipments respond to the
-premium and also close it, so the coefficient is an equilibrium relation rather
-than the supply of arbitrage. It is descriptive; identification needs
-within-month timing or an event study.
-\item \textbf{Swiss customs is a partial flow measure.} It misses direct
-London--New York shipments of already-deliverable bars, and non-Swiss origins.
-If the missing flows respond to the same signal, $\beta$ is attenuated and
-$\kappa_t$ biased.
-\end{itemize}
+\subsection{Was the tariff episode priced in the term structure?}
 
-\section{How to use it}
-\label{sec:use}
+Proposition~\ref{prop:hazard} allows the hazard and the tariff rate to be
+recovered separately, given a baseline for $\sN-\lN$. Using 2015--19 as the
+baseline ($\hat{\omega}=0.58\%$, $\gamma=-0.007\times10^{-6}$), January 2025
+delivers $A=h_t\theta_t=0.00395$ a year. Combining this with the observed
+curvature yields $h_t$ between $3.4$ and $3.9$ a year --- a fifty-seven to
+sixty-two per cent probability of imposition within ninety days --- paired with
+$\theta_t$ between $0.10$ and $0.12$ per cent. A near-certain tariff of one
+tenth of one per cent does not describe the policy under discussion, and the
+over-identifying restriction is therefore rejected. The natural reading is that
+the curvature is dominated by ordinary term-structure variation rather than by
+a policy hazard: it is already negative in the calm years, where by
+construction no tariff risk exists.
 
-\begin{enumerate}[leftmargin=1.4em,itemsep=4pt]
-\item \textbf{Report $\hat p_t$ in dollars an ounce and $\hat\omega_t$ in points
-a year.} No horizon, no annualising of a level, and both are directly
-comparable to quantities measured outside this project: transfer costs for one,
-lease rates for the other.
-\item \textbf{Re-time the New York leg} with an \path{ohlcv-1m} pull priced at
-the London auction instant, then re-estimate. Until then, divide kink slopes by
-the $0.80$ reliability.
-\item \textbf{Pin down storage.} A quoted vault-and-insurance schedule breaks
-the $\sN$ versus $\ell^{N}$ tie and fixes every level in the project at once.
-\item \textbf{Test whether the premium is a level or a risk} by reading the
-fitted curve at 30, 90 and 180 days and comparing $p_t/S_t$ across them: equal
-means a level, rising means a horizon-dependent risk.
-\item \textbf{Use the dated resolutions as identification.} At resolution
-$h_t\to0$, so the slope and curvature should step at the April 2025 exemption
-and the July 2025 customs ruling while the level does not.
-\item \textbf{Re-specify (7) with the ceiling}, and say plainly that the
-coefficient is descriptive.
-\end{enumerate}
+Imposing a hazard instead and inverting (10) for the tariff rate bounds the
+risk-neutral expectation, and the bound is small: a ten per cent probability
+within ninety days implies $\theta_t=0.92\%$, twenty-five per cent implies
+$0.34\%$, and fifty per cent implies $0.14\%$. Over the full anticipation
+window, November 2024 to April 2025, $\hat{\omega}$ averages $+0.561$
+percentage points, \emph{below} the calm baseline, so the slope prices no
+positive hazard at all. Against a tariff under public discussion at ten to
+thirty-nine per cent, the term structure was pricing almost none of it.
 
-\vspace{0.5em}
-\noindent\rule{\linewidth}{0.4pt}\\[0.3em]
-{\footnotesize Sources: \path{claude/spread-explainer/spread_model_checks.py}
-and \path{worked_examples.py}, both reading \path{data/processed/}; the kink
-threshold is from \path{claude/mechanism-figures/estimate_kink.py}. Where this
-note disagrees with earlier project text, or with an earlier version of itself,
-it says so.}
+The conclusion is not that the episode was imaginary but that it was priced as
+a level on metal already inside the United States rather than as a term premium
+on future delivery. This is consistent with the accounting in
+Table~\ref{tab:periods}: measured against the five-year calm mean rather than a
+single quiet day, the level accounts for approximately eighty-five per cent of
+the January 2025 movement in the conventional statistic.
+
+\subsection{Flows}
+
+The threshold in (7), estimated on monthly Swiss customs shipments to the
+United States over 2023--26, is \$3.77 an ounce with a ninety per cent interval
+of \$0.83--10.25; below it, flows sit on a floor of two to three tonnes a
+month, and in the highest premium bucket the median is sixty-four tonnes. The
+point estimate is consistent both with the calm-period location premium and
+with trade estimates of \$1.5--2.5 an ounce for freight, insurance and
+recasting, which is the joint validation the band in (4) makes available. The
+coefficient itself, however, is not structural: shipments respond to the
+premium and simultaneously close it, so a monthly regression recovers an
+equilibrium relation rather than the supply of arbitrage.
+
+\section{Specification and limitations}
+\label{sec:robust}
+
+\paragraph{The reading horizon.}
+Although the decomposition requires no horizon, the conventional statistic
+does, and the choice is not innocuous. Three criteria are measurable. First,
+support: the shortest contract in the daily cross-section is a median of thirty
+days out and at most seventy-seven, so a horizon of seventy-seven days or more
+lies inside the observed data on every date in the sample, whereas a thirty-day
+reading extrapolates below the shortest available contract on $48.3\%$ of
+dates. Second, precision: the weighted centre of mass of the cross-section
+averages eighty-two days, and on a grid from twenty to two hundred and seventy
+days the variance of the fitted value is minimised at ninety. Third,
+specification: allowing the quadratic term moves the fitted value least, in
+dollar terms, near ninety days (\$0.33 an ounce, against \$0.46 at thirty and
+\$0.40 at one hundred and eighty). Ninety days is also the tenor at which the
+covered interest parity literature conventionally quotes deviations. These
+criteria justify the convention without rescuing the statistic.
+
+\paragraph{Weighting.}
+Square-root-of-open-interest weights are ad hoc; the defensible weight is the
+inverse variance of the settlement error, for which open interest is a proxy of
+unknown functional form. In practice the most heavily weighted contract carries
+a median $46\%$ of the total weight, with a middle half of $43$--$51\%$, so the
+fitted curve is less independent of the front contract than the term
+``constant maturity'' suggests.
+
+\paragraph{Futures against forwards.}
+Equation (1) treats the futures price as a forward price, abstracting from the
+margining wedge of Cox, Ingersoll and Ross (1981). The wedge is small at these
+horizons but falls on $\beta_t$, which is where the lease rate is read.
+
+\paragraph{Aggregation within a location.}
+The model admits one New York price, so the registered and eligible warrant
+categories, and the difference between 100-ounce and kilogramme bars, are
+absorbed into $p_t$. A single lease rate per location, flat in $\tau$, is
+likewise an approximation; a sloped lease curve would appear as curvature and
+contaminate Section~\ref{sec:results}.
+
+\paragraph{Functional form.}
+A third-order term in (8) would reallocate weight between $\beta_t$ and
+$\gamma_t$, which is precisely the margin on which
+Proposition~\ref{prop:hazard} is tested. The rejection reported above should be
+read as a rejection of the joint hypothesis that the curve is log-quadratic and
+that its curvature is generated by a tariff hazard.
+
+\paragraph{The flow measure.}
+Swiss customs shipments omit direct London-to-New York movements of
+already-deliverable bars, and non-Swiss origins. If the omitted flows respond
+to the same signal, $\beta$ is attenuated and the estimated threshold biased.
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+The conventional annualised gold basis is a mixture of a level and a rate whose
+composition is determined by an analytical choice rather than by the market.
+Estimating the futures curve directly separates the two at no cost in data: the
+intercept identifies a location premium comparable to physical transfer costs,
+and the slope identifies storage net of the lease rate, comparable to quoted
+lease rates. Doing so shows that the measurement error induced by
+non-synchronous observation is confined to the level, that the storage cost
+assumed in this literature is inconsistent with the term structure in calm
+periods, and that the 2024--25 tariff episode was a level phenomenon that the
+term structure barely priced.
+
+Three extensions would sharpen the analysis at low cost. Re-timing the New York
+leg with intraday prices at the auction instant would remove rather than
+attenuate the measurement error. An external vaulting and insurance schedule
+would break the storage-lease identification problem and thereby fix the level
+of every dislocation series in this literature. Finally, the dated resolutions
+of the policy episode --- the April 2025 exemption and the July 2025 customs
+ruling --- provide events at which the hazard falls to zero by construction,
+and hence a sharper test of whether policy risk ever entered the slope than the
+period comparisons used here.
+
+\appendix
+\renewcommand{\theequation}{A.\arabic{equation}}
+\setcounter{equation}{0}
+
+\section{Derivation of the estimating equation}
+\label{app:derivation}
+
+Substituting (2) into (1), multiplying by the measurement factor in (6) and
+taking logarithms,
+\begin{equation}
+\ln \Fhat_t(\tau) = \ln S_t + \ln\!\left[1+p_t+\Lambda_t(\tau)\theta_t\right]
+  + \left(r_t+\sN-\lN\right)\frac{\tau}{365} + \varepsilon_t .
+\end{equation}
+For small $p_t$ and $\Lambda_t\theta_t$ the logarithm is approximately its
+argument less one, and substituting the second-order expansion of $\Lambda_t$
+from (3) gives
+\begin{equation}
+\ln \Fhat_t(\tau) \approx \underbrace{\ln S_t + p_t + \varepsilon_t}_{\alpha_t}
+  + \underbrace{\left[\frac{r_t+\sN-\lN}{365} + \frac{h_t\theta_t}{365}\right]}_{\beta_t}\tau
+  - \underbrace{\frac{h_t^{2}\theta_t}{2\cdot365^{2}}}_{-\gamma_t}\,\tau^{2},
+\end{equation}
+which is (8) with the coefficient mappings (9), (10) and (11). Two features are
+worth noting. The location premium and the measurement error are
+indistinguishable within a date because both are constants in $\tau$; and the
+policy term contributes to both the linear and quadratic coefficients, which is
+what makes Proposition~\ref{prop:hazard} available.
+
+\section{Proofs}
+\label{app:proofs}
+
+\begin{proof}[Proof of Proposition~\ref{prop:timing}]
+By (6) the observed log price on date $t$ is $\ln F_t(\tau_i)+\varepsilon_t$
+for every $i$ in the cross-section, so $\varepsilon_t$ is collinear with the
+constant regressor in (8) and orthogonal to $\tau_i$ and $\tau_i^{2}$ within
+the date. Weighted least squares therefore attributes it entirely to
+$\alpha_t$, leaving $\beta_t$ and $\gamma_t$ unchanged. Since $\hat{\omega}_t$
+is a function of $\beta_t$ and the observed $r_t$ alone, it is uncorrelated
+with $\varepsilon_t$ by construction.
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:ident}]
+Immediate from (9), (10) and (11). Equation (9) gives $p_t+\varepsilon_t$, so
+$p_t$ is identified only up to the error, and consistently under averaging if
+$\mathbb{E}[\varepsilon_t]=0$. Equation (10) gives the sum
+$\sN-\lN+h_t\theta_t$; with $h_t\theta_t=0$ it gives $\sN-\lN$, but no function
+of the cross-section separates $\sN$ from $\lN$, since both enter only through
+that sum. Given a period in which $h_t\theta_t=0$, the difference of (10)
+between periods identifies $h_t\theta_t$ under the assumption that $\sN-\lN$ is
+unchanged. The three components of $p_t$ enter (2) only through their sum. The
+London lease rate $\lL$ appears in (5) alone, which involves no quantity in the
+New York cross-section.
+\end{proof}
+
+\begin{proof}[Proof of Proposition~\ref{prop:hazard}]
+Write $A=h_t\theta_t$ from (10) net of the baseline and
+$B=-2\cdot365^{2}\gamma_t=h_t^{2}\theta_t$ from (11). Then $B/A=h_t$ and
+$A/h_t=A^{2}/B=\theta_t$, provided $A\neq0$ and $B>0$. Both moments derive from
+the same fitted curve, so any additional restriction --- a third moment, an
+independent estimate of $h_t$ or $\theta_t$, or a sign restriction such as
+$\theta_t$ lying in a plausible range --- is testable.
+\end{proof}
+
+\section*{References}
+\small
+\begin{list}{}{\setlength{\leftmargin}{1.6em}\setlength{\itemindent}{-1.6em}\setlength{\itemsep}{3pt}}
+\item Avdjiev, S., W. Du, C. Koch and H. S. Shin (2019). ``The Dollar, Bank
+Leverage, and Deviations from Covered Interest Parity.'' \emph{American
+Economic Review: Insights} 1(2), 193--208.
+\item Cox, J. C., J. E. Ingersoll and S. A. Ross (1981). ``The Relation between
+Forward Prices and Futures Prices.'' \emph{Journal of Financial Economics}
+9(4), 321--346.
+\item Du, W., A. Tepper and A. Verdelhan (2018). ``Deviations from Covered
+Interest Rate Parity.'' \emph{Journal of Finance} 73(3), 915--957.
+\item Fama, E. F. and K. R. French (1987). ``Commodity Futures Prices: Some
+Evidence on Forecast Power, Premiums, and the Theory of Storage.''
+\emph{Journal of Business} 60(1), 55--73.
+\item Garbade, K. D. and W. L. Silber (1983). ``Price Movements and Price
+Discovery in Futures and Cash Markets.'' \emph{Review of Economics and
+Statistics} 65(2), 289--297.
+\item Hansen, B. E. (2000). ``Sample Splitting and Threshold Estimation.''
+\emph{Econometrica} 68(3), 575--603.
+\item Kaldor, N. (1939). ``Speculation and Economic Stability.'' \emph{Review of
+Economic Studies} 7(1), 1--27.
+\item Shleifer, A. and R. W. Vishny (1997). ``The Limits of Arbitrage.''
+\emph{Journal of Finance} 52(1), 35--55.
+\item Working, H. (1949). ``The Theory of Price of Storage.'' \emph{American
+Economic Review} 39(6), 1254--1262.
+\end{list}
 
 \end{document}
