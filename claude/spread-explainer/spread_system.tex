@@ -1,0 +1,213 @@
+% The modelled COMEX-London gold spread, as a system of equations.
+%
+% Typeset version of section 9 of claude/spread-explainer/SPREAD_EXPLAINED.html
+% and section 4 of spread_model_note.pdf, where the same system is set in
+% monospace. Equation numbers match those documents.
+%
+% Build (from the repo root), keeping aux files out of the working tree:
+%   pdflatex -interaction=nonstopmode -output-directory=<build> \
+%     claude/spread-explainer/spread_system.tex          % run it twice
+%
+% Use pdflatex directly rather than latexmk: MiKTeX 23.5 on this machine
+% prints "You are running MiKTeX on an unsupported version of Windows"
+% (Windows 11 build 26200) and exits non-zero even when the compile
+% succeeded, which latexmk treats as fatal and refuses to work through.
+%
+% Package set is deliberately the same one the repo's other .tex already
+% compiles with, so no package has to be fetched at build time.
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage[hidelinks]{hyperref}
+
+% The objects of the model, named once so the notation cannot drift.
+\newcommand{\sN}{s^{N}}                        % New York storage cost
+\newcommand{\lN}{\ell^{N}_{t}}                 % New York lease rate
+\newcommand{\lL}{\ell^{L}_{t}}                 % London lease rate
+\newcommand{\kLN}{\kappa^{L\to N}_{t}}         % cost of moving London -> New York
+\newcommand{\kNL}{\kappa^{N\to L}_{t}}         % and back
+\newcommand{\Fhat}{\widehat{F}}
+\newcommand{\disloc}{\operatorname{disloc}}
+\newcommand{\Var}{\operatorname{Var}}
+
+\title{\textbf{The Modelled Spread}\\[0.4em]
+\large A System of Equations for the COMEX--London Gold Basis}
+\author{Methods note, GOLD project}
+\date{16 September 2026}
+
+\begin{document}
+\maketitle
+
+\noindent
+The spread between the COMEX gold futures price and the London benchmark is
+usually reported as a single annualised number. That number mixes three
+economically distinct objects: a premium for metal being in New York rather
+than London, a premium for the risk that a tariff lands before delivery, and
+the cost of carrying metal through time. This note writes the system down so
+the three can be held apart, states which combinations the data identify, and
+records what the estimated versions of them look like.
+
+Equation numbers match Section~9 of \path{SPREAD_EXPLAINED.html} and
+Section~4 of \path{spread_model_note.pdf}. All rates are annualised
+decimals, $\tau$ is in calendar days to first notice, and prices are US
+dollars per troy ounce.
+
+\section*{Notation}
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} & \textbf{Status} \\
+\midrule
+$S_t$ & London price, unallocated, 15:00 London & observed \\
+$F_t(\tau)$ & COMEX price for delivery in $\tau$ days & observed, 13:30 New York \\
+$V_t(\tau)$ & value today of metal deliverable in New York at $\tau$ & latent \\
+$p_t$ & location premium, fraction of spot (place, form, trust) & latent; estimated \\
+$r_t$ & dollar interest rate (SOFR; fed funds before Apr 2018) & observed \\
+$\sN$ & New York storage cost, per year & assumed; see note below \\
+$\ell^{N}_{t},\ \ell^{L}_{t}$ & lease rate on metal in New York, in London & latent \\
+$h_t,\ \theta_t$ & hazard rate of a tariff; tariff rate if it lands & latent \\
+$\Lambda_t(\tau)$ & probability a delivery at $\tau$ is tariffed & latent \\
+$\kappa_t$ & all-in cost of moving an ounce between locations & latent; estimated \\
+$\varepsilon_t$ & gold's return from 15:00 London to the settlement & latent; measurable \\
+$Q_t$ & metal shipped, tonnes a month & observed (Swiss customs) \\
+$\bar{Q}$ & refining and secure-freight capacity, tonnes a month & latent \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section*{The system}
+
+\noindent\textbf{Pricing through time, within New York.}
+\begin{align}
+F_t(\tau) &= V_t(\tau)\cdot\exp\!\left[\left(r_t+\sN-\lN\right)\frac{\tau}{365}\right]
+\end{align}
+
+\noindent\textbf{Pricing across locations, and the policy risk inside it.}
+\begin{align}
+V_t(\tau) &= S_t\left[\,1+p_t+\Lambda_t(\tau)\,\theta_t\,\right] \\[2pt]
+\Lambda_t(\tau) &= 1-\exp\!\left(-h_t\frac{\tau}{365}\right)
+   \;\approx\; h_t\frac{\tau}{365}-\frac{1}{2}\left(h_t\frac{\tau}{365}\right)^{\!2}
+\end{align}
+
+\noindent\textbf{What arbitrage enforces: a band, not a point.}
+\begin{align}
+-\kNL \;&\le\; p_t S_t \;\le\; \kLN
+   \qquad\text{unless capacity binds} \\[2pt]
+\kLN &= \underbrace{c_{\text{freight}}+c_{\text{ins}}+c_{\text{recast}}}_{\text{physical, per ounce}}
+   \;+\; \underbrace{\left(r_t+\lL\right)\frac{d_{\text{transit}}}{365}\,S_t}_{\text{financing in transit}}
+\end{align}
+
+\noindent\textbf{Measurement: the two legs are not observed at the same instant.}
+\begin{align}
+\Fhat_t(\tau) &= F_t(\tau)\cdot e^{\varepsilon_t},
+   \qquad \mathbb{E}[\varepsilon_t]=\mu,
+   \qquad \Var[\varepsilon_t]=\sigma^{2}
+\end{align}
+The London benchmark is struck at 15:00 London and the COMEX settlement about
+three and a half hours later, so $\varepsilon_t$ is gold's return over that
+window. Every contract settles at the same instant, so $\varepsilon_t$ is
+\emph{common} to all of them on date~$t$: it shifts the whole curve without
+tilting it.
+
+\noindent\textbf{Flow, with a capacity ceiling.}
+\begin{align}
+Q_t &= \min\!\left\{\bar{Q},\;\;\beta\max\!\left(0,\;p_t S_t-\kappa_t\right)\right\}+u_t
+\end{align}
+
+\section*{What is estimated}
+
+Taking logs of (1) and (2), substituting (3) and (6), and collecting powers of
+$\tau$ gives a curve that is quadratic in the horizon. This is the regression
+run each day across that date's contracts, weighted by the square root of open
+interest:
+\begin{align}
+\ln \Fhat_t(\tau_i) &= \alpha_t+\beta_t\tau_i+\gamma_t\tau_i^{2}+\eta_{it}
+\end{align}
+The three fitted coefficients map onto the objects above:
+\begin{align}
+\hat{p}_t \;\equiv\; \alpha_t-\ln S_t &= p_t+\varepsilon_t \\[2pt]
+\hat{\omega}_t \;\equiv\; 365\beta_t-r_t &= \sN-\lN+h_t\theta_t \\[2pt]
+\gamma_t &= -\,\frac{h_t^{2}\theta_t}{2\cdot 365^{2}} \;\le\; 0
+\end{align}
+
+\section*{The modelled spread}
+
+\begin{align}
+b_t(\tau)\;\equiv\;F_t(\tau)-S_t
+  \;&=\; S_t\left[\;
+  \underbrace{p_t}_{\substack{\text{place, form,}\\ \text{trust}}}
+  \;+\;\underbrace{\Lambda_t(\tau)\,\theta_t}_{\text{policy risk}}
+  \;+\;\underbrace{\left(r_t+\sN-\lN\right)\dfrac{\tau}{365}}_{\text{carry}}
+  \;\right] \\[6pt]
+\disloc_t(T) \;&\approx\; p_t\,\frac{365}{T}\;+\;h_t\theta_t\;+\;\left(\sN-s\right)\;-\;\lN
+\end{align}
+
+Equation (12) is the spread itself. Equation (13) is what the project's
+headline number does to it: reading the fitted curve at a fixed horizon $T$
+and subtracting an assumed carry rate $s$ divides the location premium by the
+horizon, leaves the policy and lease terms alone, and adds whatever error sits
+in the storage assumption. The multiplier $365/T$ is $12.2$ at thirty days,
+$4.06$ at ninety and $2.03$ at one hundred and eighty, so the horizon silently
+sets how much of the reported number is location and how much is carry. That
+is the case for reporting $\hat{p}_t$ and $\hat{\omega}_t$ separately rather
+than any single dislocation.
+
+\section*{What the system implies, and what the data say}
+
+Estimated over 2{,}857 daily fits, 2015--2026 (\texttt{spread\_model\_checks.py}):
+
+\begin{itemize}[leftmargin=1.2em,itemsep=4pt]
+\item \textbf{The timing error lands in the level, not the slope.} Because
+$\varepsilon_t$ is common across contracts it enters (9) and not (10).
+Regressing $\hat{p}_t$ on the day's London-to-London return gives
+$+0.193$ (s.e.\ $0.015$), against $3.5/24=0.146$ predicted by a random walk
+over the window; the same regression for $\hat{\omega}_t$ gives $-0.012$
+(s.e.\ $0.011$), indistinguishable from zero. Any result resting on the slope
+needs no timing correction.
+
+\item \textbf{The band in (4) is where the transfer cost is.} In the calm
+years 2015--19 the fitted level averages $-\$0.55$ an ounce, so arbitrage does
+hold $p_t S_t$ near zero. Trade estimates of the all-in cost of moving London
+metal into COMEX form are roughly \$1.5--2.5 an ounce, and the flow threshold
+estimated from (7) is \$3.77 with a 90\% interval of \$0.83--10.25. Three
+independent readings of $\kappa_t$, mutually consistent.
+
+\item \textbf{(10) does not identify the lease rate on its own.} The calm-period
+wedge is $\hat{\omega}=+0.58$ points a year. With $\ell^{N}\approx 0$ in calm
+years that implies storage of about $0.58\%$, not the $0.25\%$ the code
+assumes; if storage really is $0.25\%$, the implied lease rate is $-0.33\%$,
+which nobody quotes. One of the two is mis-set, and because $s$ enters (13)
+one-for-one, so is every reported dislocation level. Levels should be read in
+differences until this is pinned down.
+
+\item \textbf{Curvature is the lever on policy risk.} $\gamma_t$ is negative on
+average, with mean over standard error of $-10.7$ in calm years and $-22.0$ in
+the tariff window --- a roughly sevenfold deepening. Consistent with the
+hazard term in (3), but present in calm years too, so the dated resolutions
+(the April 2025 exemption, the July 2025 customs ruling) are still needed to
+attribute it: at resolution $h_t\to 0$, so the slope and curvature should step
+while the level does not.
+
+\item \textbf{The flow equation is not a response function.} Shipments respond
+to the premium and also close it, so estimating (7) on monthly data recovers
+an equilibrium relation rather than the supply of arbitrage. The coefficient
+is descriptive; identification needs the timing within the month, or an event
+study around the dated announcements.
+\end{itemize}
+
+\vspace{0.5em}
+\noindent\rule{\linewidth}{0.4pt}\\[0.3em]
+{\footnotesize Sources: \path{claude/spread-explainer/spread_model_checks.py}
+and \path{worked_examples.py}, both reading \path{data/processed/}; the
+kink threshold is from \path{claude/mechanism-figures/estimate_kink.py}.
+Where this note disagrees with earlier project text, it says so.}
+
+\end{document}
