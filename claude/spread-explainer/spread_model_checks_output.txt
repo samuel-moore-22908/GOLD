@@ -83,3 +83,41 @@ date
 2025-08-31  0.356  0.292  20
 2025-09-30  0.331  0.110  21
 2025-10-31 -0.175  0.267  23
+
+==============================================================================
+8  Units and scales: how to read a coefficient
+==============================================================================
+  1 pp of dislocation at T= 30d = 0.0822% of spot = $ 2.27/oz at $2,756    $ 3.45/oz at $4,200
+  1 pp of dislocation at T= 90d = 0.2466% of spot = $ 6.80/oz at $2,756    $10.36/oz at $4,200
+  1 pp of dislocation at T=180d = 0.4932% of spot = $13.59/oz at $2,756    $20.71/oz at $4,200
+  $ 1.00/oz of level premium at $2,756 = 0.0363% of spot = 0.15 pp when read at 90 days
+  $ 2.00/oz of level premium at $2,756 = 0.0726% of spot = 0.29 pp when read at 90 days
+  $13.08/oz of level premium at $2,756 = 0.4745% of spot = 1.92 pp when read at 90 days
+
+==============================================================================
+9  One day through the whole system: 29 January 2025
+==============================================================================
+  observed   S = $2,756.30    r = 4.3500%    s (assumed) = 0.25%
+  eq (8)     exp(alpha) = $2,769.38    365*beta = 5.2165%    gamma = -0.030e-6 per day^2
+  eq (9)     p_hat     = +0.473% of spot = $+13.08/oz
+  eq (10)    omega_hat = +0.866 pp = storage_NY - lease_NY (+ any hazard)
+  eq (1,2)   F_90 = exp(alpha + 90*beta) = $2,805.23    implied rate = 7.1991%
+  eq (12)    spread at 90 days = $48.93/oz: level $13.08 + carry $35.45 + compounding $0.40
+  eq (13)    disloc(90) = 2.599 pp = level 1.919 + (omega - s) +0.616 + cross +0.063
+
+==============================================================================
+10  Do the slope and curvature identify the hazard and the tariff separately?
+==============================================================================
+  calm baseline: omega = 0.5805%/yr, gamma = -0.007e-6
+
+  Nov 2024-Apr 2025: omega +0.561 pp -> h*theta = -0.00019/yr,  gamma -0.050e-6
+    if Lambda(90d) = 10% (h = 0.43/yr) then theta = -0.045%
+    if Lambda(90d) = 25% (h = 1.17/yr) then theta = -0.016%
+    if Lambda(90d) = 50% (h = 2.81/yr) then theta = -0.007%
+
+  Jan 2025: omega +0.975 pp -> h*theta = 0.00395/yr,  gamma -0.058e-6
+    via raw gamma         : h =  3.91/yr (Lambda(90d) =  62%), theta = 0.101%
+    via gamma net of calm : h =  3.43/yr (Lambda(90d) =  57%), theta = 0.115%
+    if Lambda(90d) = 10% (h = 0.43/yr) then theta = 0.924%
+    if Lambda(90d) = 25% (h = 1.17/yr) then theta = 0.338%
+    if Lambda(90d) = 50% (h = 2.81/yr) then theta = 0.140%
