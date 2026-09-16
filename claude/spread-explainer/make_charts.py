@@ -158,7 +158,63 @@ def chart_curve():
     return svg("COMEX settlement prices by days to first notice on 29 January 2025, with the fitted curve read at 90 days", body)
 
 
-CHARTS = (("sawtooth", chart_sawtooth), ("premium", chart_premium), ("curve", chart_curve))
+def segments(x, y):
+    """Contiguous runs of non-missing points, so gaps stay gaps."""
+    ok = ~np.isnan(y)
+    out, start = [], None
+    for i, good in enumerate(ok):
+        if good and start is None:
+            start = i
+        elif not good and start is not None:
+            out.append((x[start:i], y[start:i]))
+            start = None
+    if start is not None:
+        out.append((x[start:], y[start:]))
+    return [(a, b) for a, b in out if len(a) > 1]
+
+
+def chart_decomposition():
+    """Monthly location premium (the curve's level) against the carry wedge (its slope)."""
+    from spread_model_checks import fit_daily
+
+    f = fit_daily()
+    m = (f.resample("ME").agg(level=("level_pct", "mean"), omega=("omega_pp", "mean"),
+                              n=("level_pct", "size")).loc["2019":])
+    m = m.reindex(pd.date_range(m.index.min(), m.index.max(), freq="ME"))
+    m.loc[m.n.fillna(0) < 6, ["level", "omega"]] = np.nan
+    t0 = m.index.min()
+    x = (m.index - t0).days.to_numpy(float)
+    # Take the range from the data. The carry wedge reached about 3 pp in
+    # mid-2020, far above anything in the tariff episode, and a hardcoded range
+    # drew that stretch of the line outside the frame.
+    lo = min(-1.0, float(np.floor(m[["level", "omega"]].min().min())))
+    hi = max(2.0, float(np.ceil(m[["level", "omega"]].max().max() * 2) / 2))
+    fr = Frame(0, x.max(), lo, hi)
+
+    years = [pd.Timestamp(f"{y}-01-01") for y in range(2019, 2027)]
+    xt = [((y - t0).days, y.strftime("%Y")) for y in years if (y - t0).days >= 0]
+    yt = [(float(v), f"{v:.0f}") for v in range(int(np.ceil(lo)), int(np.floor(hi)) + 1)]
+    body = axes(fr, xt, yt, "month", "per cent (level: % of spot · wedge: pp a year)")
+    y0 = fr.y(0)
+    body.append(f'<line class="axis" x1="{L}" x2="{W - R}" y1="{y0:.1f}" y2="{y0:.1f}"/>')
+
+    for i, (dt, lab) in enumerate((("2024-11-05", "tariff scare"), ("2025-07-31", "CBP ruling"))):
+        xx = fr.x((pd.Timestamp(dt) - t0).days)
+        body.append(f'<line class="roll" x1="{xx:.1f}" x2="{xx:.1f}" y1="{T}" y2="{H - B}"/>')
+        body.append(f'<text class="note" x="{xx - 5:.1f}" y="{T + 11 + i * 14}" text-anchor="end">{lab}</text>')
+
+    for col, cls in (("omega", "line-ink"), ("level", "line-ny")):
+        for xs, ys in segments(x, m[col].to_numpy(float)):
+            body.append(f'<path class="{cls}" d="{path(fr, xs, ys)}"/>')
+
+    peak = m.level.idxmax()
+    body.append(f'<text class="note strong" x="{fr.x((peak - t0).days) + 6:.1f}" '
+                f'y="{fr.y(m.level.max()) - 4:.1f}">COVID</text>')
+    return svg("Monthly location premium and carry wedge from the daily curve fits, 2019 to 2026", body)
+
+
+CHARTS = (("sawtooth", chart_sawtooth), ("premium", chart_premium),
+          ("curve", chart_curve), ("decomposition", chart_decomposition))
 
 
 def main():

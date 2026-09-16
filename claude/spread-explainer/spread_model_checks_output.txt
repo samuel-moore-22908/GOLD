@@ -1,0 +1,85 @@
+﻿2857 days, 2015-01-02 to 2026-08-20, median 6 contracts a day
+
+==============================================================================
+1  Is the horizon inside the data? (support)
+==============================================================================
+shortest contract in the fit, days: {'min': 15.0, '25%': 22.0, '50%': 30.0, '75%': 40.0, 'max': 77.0}
+longest contract in the fit, days: {'min': 227.0, '50%': 351.0, 'max': 400.0}
+  T= 30: read below the shortest contract on  48.3% of days
+  T= 60: read below the shortest contract on  11.4% of days
+  T= 77: read below the shortest contract on   0.0% of days
+  T= 90: read below the shortest contract on   0.0% of days
+  T=120: read below the shortest contract on   0.0% of days
+
+==============================================================================
+2  Where is the fitted value most precise? (variance)
+==============================================================================
+weighted centre of mass of the fit: mean 82 days, median 78, middle half 66-94
+variance-minimising horizon on this grid: 90 days
+  T= 30: fit variance 1.99x the minimum
+  T= 60: fit variance 1.23x the minimum
+  T= 90: fit variance 1.00x the minimum
+  T=180: fit variance 3.47x the minimum
+  T=270: fit variance 10.68x the minimum
+
+==============================================================================
+3  How much does a straight line cost? (specification bias)
+==============================================================================
+mean curvature q2: -0.021e-6 per day^2   (calm 2015-19 -0.007e-6, Nov 2024-Apr 2025 -0.050e-6)
+  2015-2019: mean/se = -10.7 (n=1230)
+  Nov 2024-Apr 2025: mean/se = -22.0 (n=120)
+  T= 30: straight line vs curve differs by $ 0.46/oz on average = 0.27 pp at that horizon
+  T= 90: straight line vs curve differs by $ 0.33/oz on average = 0.06 pp at that horizon
+  T=180: straight line vs curve differs by $ 0.40/oz on average = 0.04 pp at that horizon
+
+==============================================================================
+4  The clock mismatch: is the level noise the 3.5-hour window?
+==============================================================================
+2015-2026: daily sd of the London fix 1.01% -> implied sd over 3.5h 0.39% = $7.44/oz
+           measured sd of the fitted level: 0.50% = $12.78/oz
+2019 only: daily sd of the London fix 0.73% -> implied sd over 3.5h 0.28% = $3.90/oz
+           measured sd of the fitted level: 0.41% = $5.96/oz
+drift: mean London-to-London return 0.047%/day; a uniform slice of the day gives 0.0069% = $0.31/oz at the latest price. LOWER BOUND - the US morning is not an average slice.
+
+level on the same-day forward return : slope +0.193 (se 0.015), R2 0.155   <- predicted 0.146 if the 3.5h window drives it
+  with the previous day's return added : slope +0.194 (se 0.015), placebo lag +0.049 (se 0.017)   <- lag should be ~0
+  slope wedge on the same return      : -0.0121 (se 0.0108), R2 0.000   <- ~0 confirms the error is common across contracts, so it lands in the level only
+
+==============================================================================
+5  What the slope says about storage and the New York lease rate
+==============================================================================
+omega = 365b - r = storage_NY - lease_NY (+ any horizon-dependent policy hazard)
+  2015-2019 calm     omega +0.58 pp    level -0.047% of spot ($-0.55/oz)    n=1230
+  2019               omega +0.25 pp    level +0.011% of spot ($+0.21/oz)    n=247
+  Nov 2024-Apr 2025  omega +0.56 pp    level +0.137% of spot ($+3.82/oz)    n=120
+  Aug-Oct 2025       omega +0.22 pp    level +0.157% of spot ($+5.22/oz)    n=64
+  2026               omega +0.75 pp    level -0.111% of spot ($-5.21/oz)    n=157
+
+If lease_NY were 0 in calm years, the calm omega implies storage of 0.58%/yr, against the assumed 0.25%.
+If instead storage really is 0.25%, the same omega implies lease_NY = -0.33%/yr, which is negative - so one of the two is mis-set.
+
+==============================================================================
+6  Measurement error at monthly frequency (attenuation)
+==============================================================================
+timing noise in one session: 0.387% of spot; in a monthly mean of 20 sessions: 0.086%
+sd of the monthly level series: 0.192% -> reliability 0.802, so a slope regressed on it is attenuated by 0.802 (divide by that to correct: 1.25x)
+
+==============================================================================
+7  Monthly level and slope through the episode
+==============================================================================
+            level  omega   n
+date                        
+2024-09-30  0.249 -0.566  20
+2024-10-31  0.036 -0.140  23
+2024-11-30  0.029  0.076  21
+2024-12-31  0.163  0.287  18
+2025-01-31  0.502  0.975  21
+2025-02-28  0.090  0.904  19
+2025-03-31  0.179  0.649  21
+2025-04-30 -0.159  0.467  20
+2025-05-31  0.032  0.642  20
+2025-06-30 -0.016  0.583  20
+2025-07-31  0.139  0.538  22
+2025-08-31  0.356  0.292  20
+2025-09-30  0.331  0.110  21
+2025-10-31 -0.175  0.267  23
