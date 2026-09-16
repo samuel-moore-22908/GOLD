@@ -82,11 +82,7 @@
   }
 
   /* ---------- contents ---------- */
-  nav.toc {
-    font-family: var(--sans);
-    font-size: 0.84rem;
-    line-height: 1.4;
-  }
+  nav.toc { font-family: var(--sans); font-size: 0.84rem; line-height: 1.4; }
   nav.toc p {
     margin: 0 0 10px;
     font-size: 0.72rem;
@@ -101,9 +97,7 @@
   @media (min-width: 1100px) {
     nav.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 32px); align-self: start; padding-top: 12px; }
   }
-  @media (max-width: 1099px) {
-    nav.toc { display: none; }
-  }
+  @media (max-width: 1099px) { nav.toc { display: none; } }
 
   /* ---------- header ---------- */
   header { border-bottom: 1px solid var(--rule); padding-bottom: 28px; margin-bottom: 8px; }
@@ -126,8 +120,7 @@
   .dek { font-size: 1.14rem; line-height: 1.55; color: var(--ink-2); margin: 0 0 20px; }
   .key {
     display: flex; flex-wrap: wrap; gap: 8px 18px;
-    font-family: var(--sans); font-size: 0.84rem; color: var(--muted);
-    margin: 0;
+    font-family: var(--sans); font-size: 0.84rem; color: var(--muted); margin: 0;
   }
   .key span { display: inline-flex; align-items: center; gap: 7px; }
   .chip { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
@@ -145,10 +138,11 @@
   }
   h2 .num { font-family: var(--mono); font-weight: 400; font-size: 0.95rem; color: var(--ny); }
   h3 { font-weight: 600; font-size: 1.08rem; margin: 30px 0 10px; }
+  h4 { font-family: var(--sans); font-weight: 600; font-size: 0.95rem; margin: 22px 0 8px; }
   p { margin: 0 0 14px; }
   ul, ol { margin: 0 0 16px; padding-left: 1.3em; }
   li { margin-bottom: 7px; }
-  li > ul { margin-top: 7px; }
+  li > ul, li > ol { margin-top: 7px; }
   strong { font-weight: 600; }
   a { color: var(--ldn); }
   a:focus-visible, nav.toc a:focus-visible { outline: 2px solid var(--ny); outline-offset: 3px; border-radius: 2px; }
@@ -172,7 +166,6 @@
     margin: -4px 0 18px;
   }
   .where b { font-weight: 500; color: var(--ink-2); }
-
   .lead { font-size: 1.04rem; }
 
   /* ---------- equations ---------- */
@@ -182,7 +175,22 @@
     margin: 4px 0 18px;
     border-block: 1px solid var(--rule);
   }
-  math { font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", math; font-size: 1.18em; }
+  .eqn {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 12px;
+    padding-block: 9px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .eqn:first-of-type { border-top: 1px solid var(--rule); }
+  .eqn > .body { overflow-x: auto; }
+  /* The numbered system equations run wider than the column; a slightly smaller
+     face keeps most of them inside it, and the rest scroll in their own box. */
+  .eqn math { font-size: 1.04em; }
+  .eqn > .tag { font-family: var(--mono); font-size: 0.8rem; color: var(--muted); }
+  .eqgroup { margin: 8px 0 20px; }
+  math { font-family: "STIX Two Math", "Cambria Math", "Latin Modern Math", math; font-size: 1.16em; }
   math .ny { color: var(--ny); }
   math .ldn { color: var(--ldn); }
 
@@ -212,16 +220,12 @@
   td.n, td.m { font-family: var(--mono); font-size: 0.86rem; }
   td.label { color: var(--ink-2); }
   tr.total td { border-bottom-color: var(--ink-2); font-weight: 600; }
+  tr.pick td { background: var(--ny-soft); }
   table.ledger td:first-child { width: 36%; color: var(--ink-2); }
   table.ledger td:last-child { font-family: var(--mono); font-size: 0.86rem; }
 
   /* ---------- revision notes ---------- */
-  aside.revise {
-    background: var(--revise-bg);
-    padding: 16px 20px 6px;
-    margin: 22px 0;
-    border-radius: 2px;
-  }
+  aside.revise { background: var(--revise-bg); padding: 16px 20px 6px; margin: 22px 0; border-radius: 2px; }
   aside.revise .tag {
     font-family: var(--sans);
     font-size: 0.72rem;
@@ -248,6 +252,7 @@
   .swatch { display: inline-block; width: 16px; height: 0; border-top: 2.5px solid; vertical-align: middle; margin: 0 4px 2px 0; }
   .swatch.ny { border-color: var(--ny); }
   .swatch.raw { border-color: var(--muted); border-top-width: 1.5px; }
+  .swatch.ink { border-color: var(--ink); border-top-style: dashed; border-top-width: 2px; }
 
   svg text { font-family: var(--sans); font-size: 11px; }
   svg .tick, svg .axlab { fill: var(--muted); }
@@ -259,6 +264,7 @@
   svg .axis { stroke: var(--muted); stroke-width: 1; fill: none; }
   svg .line-raw { stroke: var(--muted); stroke-width: 1; stroke-opacity: 0.6; fill: none; stroke-linejoin: round; }
   svg .line-ny { stroke: var(--ny); stroke-width: 2.2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+  svg .line-ink { stroke: var(--ink); stroke-width: 1.6; stroke-dasharray: 5 3; fill: none; stroke-linejoin: round; }
   svg .roll { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; fill: none; }
   svg .shade { fill: var(--shade); stroke: none; }
   svg .dot-ny { fill: var(--ny); stroke: var(--ground); stroke-width: 1.5; }
@@ -289,12 +295,8 @@
     body { font-size: 16px; padding-block: 28px 64px; }
     h2 { font-size: 1.3rem; }
   }
-  @media (prefers-reduced-motion: reduce) {
-    html { scroll-behavior: auto; }
-  }
-  @media (prefers-reduced-motion: no-preference) {
-    html { scroll-behavior: smooth; }
-  }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
 </style>
 
 <div class="page">
@@ -309,6 +311,7 @@
       <li><a href="#timing"><span>6</span>Timing issues</a></li>
       <li><a href="#limits"><span>7</span>What it measures</a></li>
       <li><a href="#cheat"><span>8</span>Cheat sheet</a></li>
+      <li><a href="#model"><span>9</span>The model</a></li>
     </ol>
   </nav>
 
@@ -320,7 +323,7 @@
       <p class="key">
         <span><i class="chip ldn"></i>London price, <i class="ldn sym">S</i></span>
         <span><i class="chip ny"></i>New York futures price, <i class="ny sym">F</i></span>
-        <span>Every number below is printed by <code>worked_examples.py</code></span>
+        <span>Every number below is printed by <code>worked_examples.py</code> or <code>spread_model_checks.py</code></span>
       </p>
     </header>
 
@@ -345,7 +348,7 @@
             <li><strong>Open interest.</strong> How many contracts are outstanding. It shows which contract the market is actually using.</li>
           </ul>
         </li>
-        <li>Source: Databento’s CME feed (<code>GLBX.MDP3</code>), two zips downloaded by hand into <code>data/databento/</code>. In the statistics stream, <code>stat_type = 3</code> is settlement and <code>9</code> is open interest.</li>
+        <li>Source: Databento’s CME feed (<code>GLBX.MDP3</code>), two zips downloaded by hand into <code>data/databento/</code>: the <code>ohlcv-1d</code> and <code>statistics</code> schemas for <code>GC.FUT</code>, 2015 to 2026. There is no intraday file on disk, which matters in §6.</li>
       </ul>
 
       <h3>The dollar interest rate (<i class="sym">r</i>)</h3>
@@ -355,7 +358,7 @@
 
       <h3>Storage (<i class="sym">s</i>)</h3>
       <ul>
-        <li>A flat <strong>0.25% a year</strong> for vaulting and insurance. <strong>This is an assumption, not data</strong>, because no free public series exists. Column <code>storage_rate_assumed</code>.</li>
+        <li>A flat <strong>0.25% a year</strong> for vaulting and insurance. <strong>This is an assumption, not data</strong>, because no free public series exists. Column <code>storage_rate_assumed</code>. §7 shows the curve itself disagrees with this number.</li>
       </ul>
 
       <h3>Three calendar terms</h3>
@@ -380,18 +383,29 @@
       </div>
       <p>This adds two terms to the textbook formula:</p>
       <ul>
-        <li><strong><i>ℓ</i>, the gold lease rate.</strong> Someone who owns gold can lend it out and earn <i>ℓ</i>, which lowers their cost of holding it. <strong>This is covered interest parity with gold as the foreign currency and <i>ℓ</i> as its interest rate.</strong> When London runs short of physical metal, <i>ℓ</i> rises.</li>
+        <li><strong><i>ℓ</i>, the gold lease rate.</strong> Someone who owns gold can lend it out and earn <i>ℓ</i>, which lowers their cost of holding it. <strong>This is covered interest parity with gold as the foreign currency and <i>ℓ</i> as its interest rate.</strong> The next subsection does it properly.</li>
         <li><strong><i>P</i>, the premium for being in New York rather than London</strong>, in dollars. <i>P</i> bundles three things:
           <ul>
             <li><strong>place:</strong> location risk, or tariff risk;</li>
             <li><strong>form:</strong> COMEX takes 100-oz or kilo bars, London trades 400-oz bars;</li>
             <li><strong>trust:</strong> an exchange warrant versus a claim on a bank.</li>
           </ul>
-          In calm markets, arbitrage holds <i>P</i> near zero.
+          Arbitrage does not hold <i>P</i> at zero. It holds <i>P</i> inside a band whose edges are the cost of moving metal each way, which is why §9 writes the band down explicitly. Over 2015–19 the fitted level averaged <strong>−$0.55/oz</strong>, or −0.047% of spot: near zero, as the band implies.
         </li>
       </ul>
-      <p class="lead"><strong>The thing to hold onto: <i>P</i> is a level, paid once, not a rate paid each year.</strong> A tariff risk does not care whether a contract expires in 10 days or 100. Carry does. Sections 4 and 5 turn on this distinction.</p>
-      <p>The project has no lease-rate series. GOFO, the published benchmark, was discontinued in 2015. So <i>ℓ</i> is never observed and ends up inside whatever gets measured.</p>
+      <p class="lead"><strong>The thing to hold onto: <i>P</i> is a level, paid once, not a rate paid each year.</strong> Carry accrues with time; a bar-form premium does not. Sections 4 and 5 turn on this distinction. One caveat, developed in §9: a tariff <em>risk</em> is not quite a level either, because the chance of the tariff landing before delivery grows with the horizon.</p>
+
+      <h3>The lease rate, in more detail</h3>
+      <p>The lease rate is the interest rate on metal rather than money. Lend 100 ounces for three months and you get 100 ounces back plus interest, quoted as a percent a year on the gold and settled in either metal or dollars.</p>
+      <ul>
+        <li><strong>Who is on each side.</strong> Borrowers need metal in hand now: dealers who have sold gold they do not yet hold, refiners financing work in progress, market-makers covering shorts. Lenders are holders content to part with metal for a while: central banks, some allocated-account holders, miners hedging.</li>
+        <li><strong>The macro analogue is exact.</strong> <i>ℓ</i> is the own-rate of interest on gold, which is the foreign nominal interest rate in covered interest parity. Ignoring the location premium, <i class="ny">F</i>/<i class="ldn">S</i> = (1&nbsp;+&nbsp;<i>r</i>&nbsp;+&nbsp;<i>s</i>)&nbsp;/&nbsp;(1&nbsp;+&nbsp;<i>ℓ</i>). Gold’s forward curve is a currency forward curve with a storage cost bolted on.</li>
+        <li><strong>How it used to be quoted.</strong> GOFO, the Gold Forward Offered Rate, was the dollar rate on a gold-collateralised dollar loan, so GOFO ≈ <i>r</i> − <i>ℓ</i> and the lease rate was read off as <i>r</i> − GOFO. The LBMA stopped publishing GOFO in January 2015, which is exactly when this sample starts. Since then the lease rate is implied, not quoted, and the implied and dealer-quoted numbers are known to differ.</li>
+        <li><strong>What it normally is, and what moves it.</strong> Under 0.5% a year, because above-ground gold is enormous relative to borrowing demand. It spikes when metal is needed in a particular <em>place</em>: vault queues, refining bottlenecks, a sudden short base. Silver’s lease rate reached 35–39% in October 2025 when London’s free float fell below a third of one day’s turnover.</li>
+        <li><strong>There are two lease rates, not one.</strong> London’s (<i>ℓ</i><sup>L</sup>) and New York’s (<i>ℓ</i><sup>N</sup>). This matters because <strong>only New York’s appears in the COMEX curve</strong>: the curve is a New York object, and its slope identifies New York’s storage minus New York’s lease rate. London’s lease rate enters the <em>shipping</em> decision, as part of the cost of financing or borrowing metal to move, which is equation (5) in §9. A London squeeze and a New York premium are therefore separate objects, and the single <i>ℓ</i> in the equation above is a simplification that fails exactly when the paper’s episode is happening.</li>
+        <li><strong>Sign intuition.</strong> A high lease rate makes forwards cheap relative to spot, because an owner earns more by lending metal than by selling it forward. So a lease spike pushes the measured dislocation <em>down</em> and can mask a New York premium.</li>
+      </ul>
+      <p>What this project can actually measure is the combination <i>s</i><sup>N</sup> − <i>ℓ</i><sup>N</sup>, from the slope of the fitted curve. Over the calm years 2015–19 that combination averages <strong>+0.58 percentage points a year</strong> — which, as §7 explains, is hard to reconcile with a 0.25% storage assumption.</p>
     </section>
 
     <!-- ============================================================ 3 -->
@@ -579,7 +593,7 @@
         <span><b>Code</b> <code>constant_maturity()</code> in <code>claude/mechanism-figures/validate_mechanism.py</code></span>
         <span><b>Used by</b> <code>build_figure_data.py</code> (mechanism Figures 2–4) and <code>estimate_kink.py</code></span>
       </div>
-      <p><strong>The idea.</strong> On any day, the contracts together trace out a term structure: a yield curve for New York gold. Version 1 reads one point on that curve, and that point’s maturity keeps drifting. Version 2 fits the whole curve and always reads it at <strong>the same maturity, 90 days</strong>. With <i>τ</i> fixed, neither calendar artefact can appear.</p>
+      <p><strong>The idea.</strong> On any day, the contracts together trace out a term structure: a yield curve for New York gold. Version 1 reads one point on that curve, and that point’s maturity keeps drifting. Version 2 fits the whole curve and always reads it at <strong>the same maturity, 90 days</strong>. With <i>τ</i> fixed, neither calendar artefact can appear in the series’ <em>shape</em> — though, as the horizon subsection below shows, the choice of horizon still sets its <em>level</em>.</p>
 
       <h3>Steps</h3>
       <ol>
@@ -685,11 +699,27 @@
       </div>
       <p>Version 1 gave 3.48 pp for the same day.</p>
 
-      <h3>Why this works, in the same algebra</h3>
-      <div class="eq">
-        <math display="block"><mtext>disloc</mtext><mo>≈</mo><mfrac><mi>P</mi><mi class="ldn">S</mi></mfrac><mo>·</mo><mfrac><mn>365</mn><mn>90</mn></mfrac><mo>−</mo><mi>ℓ</mi></math>
+      <h3>Why 90 days</h3>
+      <p>The code’s own justification is one line: long enough to clear the delivery scramble, short enough to sit among contracts people trade. That is a judgement, not an estimate, so here are three criteria that can be measured. All are computed over the 2,857 daily fits by <code>spread_model_checks.py</code>.</p>
+      <ol>
+        <li><strong>Support.</strong> The horizon should lie inside the contracts actually observed, or the reading is an extrapolation of a fitted line rather than a reading of the market. The shortest contract in the daily fit is a median of 30 days out, and at the extreme 77. So any horizon of 77 days or more is inside the data <em>every day in the sample</em>, and 30 days is below the shortest available contract on almost half of them.</li>
+        <li><strong>Precision.</strong> In weighted least squares the fitted value is most precise at the weighted centre of mass of the contracts, and the variance grows with the square of the distance from it. That centre sits at a mean of 82 days, median 78, middle half 66–94. Ninety days is essentially on top of it: on a grid from 20 to 270 days, <strong>90 is the variance-minimising horizon</strong>.</li>
+        <li><strong>Specification.</strong> The true curve is not exactly log-linear. Allowing a quadratic term moves the reading least in rate terms at the long end, but in dollars the straight line costs least near 90 days: $0.33/oz against $0.46 at 30 days and $0.40 at 180.</li>
+      </ol>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Horizon</th><th class="n">Read below the shortest contract</th><th class="n">Fit variance vs. minimum</th><th class="n">Cost of the straight line</th></tr></thead>
+          <tbody>
+            <tr><td>30 days</td><td class="n">48.3% of days</td><td class="n">1.99×</td><td class="n">$0.46/oz · 0.27 pp</td></tr>
+            <tr><td>60 days</td><td class="n">11.4%</td><td class="n">1.23×</td><td class="n">—</td></tr>
+            <tr class="pick"><td>90 days</td><td class="n">0.0%</td><td class="n">1.00×</td><td class="n">$0.33/oz · 0.06 pp</td></tr>
+            <tr><td>180 days</td><td class="n">0.0%</td><td class="n">3.47×</td><td class="n">$0.40/oz · 0.04 pp</td></tr>
+            <tr><td>270 days</td><td class="n">0.0%</td><td class="n">10.68×</td><td class="n">—</td></tr>
+          </tbody>
+        </table>
       </div>
-      <p>The multiplier on <i>P</i> is now a constant, 4.06, so <i>P</i> no longer creates a sawtooth. A dislocation of 1 pp simply means a New York premium of about 0.25% of spot, net of the lease rate.</p>
+      <p>A fourth reason is conventional rather than statistical, and worth keeping: 90 days is the three-month tenor at which the covered-interest-parity and cross-currency-basis literature quotes everything, so this series is directly comparable to a three-month basis.</p>
+      <p><strong>What the horizon still decides.</strong> Reading at <i>T</i> multiplies the level premium by 365/<i>T</i> — 12.2 at 30 days, 4.06 at 90, 2.03 at 180 — while leaving the slope alone. So the horizon fixes the mix of two different economic objects in one number. January 2025 reads 6.90 pp at 30 days, 2.83 at 90 and 1.84 at 180. Episode <em>rankings</em> barely move (January 2025 is 3rd to 5th of 140 months at every horizon, April 2020 first), but levels move by a factor of nearly four. <strong>The way out is not a better horizon but no horizon:</strong> report the curve’s level and slope separately, as §9 does. Then 90 days is a presentational choice, not an identifying assumption.</p>
 
       <h3>A free extra: the fit separates level from slope</h3>
       <p>The two fitted numbers line up with the two kinds of wedge in §2. The intercept is a level gap; the slope is excess carry.</p>
@@ -704,7 +734,52 @@
           </tbody>
         </table>
       </div>
-      <p>The code does not use this split yet. The calm-day column is a warning. A $5.70 “premium” on a day when nothing happened is the clock mismatch from §6 showing up in the data. One day’s intercept is noisy, which is why the figures rely on multi-day means.</p>
+      <p>One day’s intercept is noisy, and this pair of days shows why care is needed: the calm day’s level, $5.70, looks almost as large as the episode day’s $13.08. Over the whole calm period 2015–19 the level averages <strong>−$0.55/oz</strong>, so that single 2019 reading was a draw from the clock-mismatch noise in §6, not a standing premium. Figure 4 shows both series monthly.</p>
+
+      <figure class="chart">
+        <div class="chart-scroll">
+<!-- chart:decomposition -->
+<svg viewBox="0 0 640 270" role="img" aria-label="Monthly location premium and carry wedge from the daily curve fits, 2019 to 2026">
+  <line class="grid" x1="56" x2="616" y1="230.0" y2="230.0"/>
+  <text class="tick" x="48" y="234.0" text-anchor="end">-1</text>
+  <line class="grid" x1="56" x2="616" y1="184.7" y2="184.7"/>
+  <text class="tick" x="48" y="188.7" text-anchor="end">0</text>
+  <line class="grid" x1="56" x2="616" y1="139.3" y2="139.3"/>
+  <text class="tick" x="48" y="143.3" text-anchor="end">1</text>
+  <line class="grid" x1="56" x2="616" y1="94.0" y2="94.0"/>
+  <text class="tick" x="48" y="98.0" text-anchor="end">2</text>
+  <line class="grid" x1="56" x2="616" y1="48.7" y2="48.7"/>
+  <text class="tick" x="48" y="52.7" text-anchor="end">3</text>
+  <line class="axis" x1="123.8" x2="123.8" y1="230" y2="235"/>
+  <text class="tick" x="123.8" y="249" text-anchor="middle">2020</text>
+  <line class="axis" x1="197.8" x2="197.8" y1="230" y2="235"/>
+  <text class="tick" x="197.8" y="249" text-anchor="middle">2021</text>
+  <line class="axis" x1="271.6" x2="271.6" y1="230" y2="235"/>
+  <text class="tick" x="271.6" y="249" text-anchor="middle">2022</text>
+  <line class="axis" x1="345.4" x2="345.4" y1="230" y2="235"/>
+  <text class="tick" x="345.4" y="249" text-anchor="middle">2023</text>
+  <line class="axis" x1="419.2" x2="419.2" y1="230" y2="235"/>
+  <text class="tick" x="419.2" y="249" text-anchor="middle">2024</text>
+  <line class="axis" x1="493.2" x2="493.2" y1="230" y2="235"/>
+  <text class="tick" x="493.2" y="249" text-anchor="middle">2025</text>
+  <line class="axis" x1="567.1" x2="567.1" y1="230" y2="235"/>
+  <text class="tick" x="567.1" y="249" text-anchor="middle">2026</text>
+  <line class="axis" x1="56" x2="616" y1="230" y2="230"/>
+  <text class="axlab" x="56" y="14">per cent (level: % of spot · wedge: pp a year)</text>
+  <text class="axlab" x="616" y="267" text-anchor="end">month</text>
+  <line class="axis" x1="56" x2="616" y1="184.7" y2="184.7"/>
+  <line class="roll" x1="481.7" x2="481.7" y1="26" y2="230"/>
+  <text class="note" x="476.7" y="37" text-anchor="end">tariff scare</text>
+  <line class="roll" x1="535.9" x2="535.9" y1="26" y2="230"/>
+  <text class="note" x="530.9" y="51" text-anchor="end">CBP ruling</text>
+  <path class="line-ink" d="M56.0,165.5 L61.7,167.5 L67.9,169.5 L74.0,171.8 L80.3,172.6 L86.3,187.5 L92.6,188.2 L98.9,185.5 L104.9,185.4 L111.2,168.0 L117.3,158.9 L123.5,157.7 L129.8,160.0 L135.7,167.6 L142.0,179.1 L148.0,165.0 L154.3,97.4 L160.4,69.0 L166.6,39.7 L172.9,81.6 L179.0,108.1 L185.2,107.5 L191.3,128.4 L197.6,144.4 L203.8,147.6 L209.5,154.6 L215.8,152.8 L221.8,154.7 L228.1,157.2 L234.2,157.0 L240.4,157.4 L246.7,156.1 L252.8,159.1 L259.0,160.2 L265.1,160.7 L271.4,153.5 L277.7,149.5 L283.3,131.6 L289.6,126.8 L295.7,98.2 L301.9,100.8 L308.0,90.2 L314.3,95.8 L320.5,111.2 L326.6,99.0 L332.9,97.5 L338.9,118.4 L345.2,134.5 L351.5,146.3 L357.1,144.5 L363.4,157.9 L369.5,160.5 L375.7,162.5 L381.8,149.8 L388.1,148.2 L394.3,157.5 L400.4,156.0 L406.7,156.9 L412.7,168.5 L419.0,182.2 L425.3,190.1 L431.2,186.8 L437.4,186.0 L443.5,177.9 L449.8,169.1 L455.8,168.6 L462.1,172.1 L468.4,198.9 L474.4,210.3 L480.7,191.0 L486.8,181.2 L493.0,171.6 L499.3,140.5 L505.0,143.7 L511.2,155.3 L517.3,163.5 L523.6,155.6 L529.6,158.2 L535.9,160.3 L542.2,171.4 L548.2,179.7 L554.5,172.5 L560.6,169.0 L566.9,165.1 L573.1,154.5 L578.8,157.3 L585.1,152.4 L591.1,152.0 L597.4,150.6 L603.5,149.9 L609.7,146.2 L616.0,141.4"/>
+  <path class="line-ny" d="M56.0,188.1 L61.7,188.7 L67.9,192.0 L74.0,188.6 L80.3,187.1 L86.3,180.8 L92.6,178.6 L98.9,171.7 L104.9,189.5 L111.2,183.2 L117.3,183.0 L123.5,179.3 L129.8,184.2 L135.7,183.4 L142.0,165.9 L148.0,127.2 L154.3,159.4 L160.4,171.6 L166.6,174.8 L172.9,189.3 L179.0,182.4 L185.2,181.7 L191.3,182.4 L197.6,182.0 L203.8,190.8 L209.5,189.1 L215.8,181.2 L221.8,186.1 L228.1,183.8 L234.2,185.4 L240.4,190.2 L246.7,185.5 L252.8,182.8 L259.0,186.4 L265.1,189.4 L271.4,183.5 L277.7,184.3 L283.3,180.1 L289.6,177.9 L295.7,194.5 L301.9,196.9 L308.0,194.7 L314.3,200.7 L320.5,199.4 L326.6,200.6 L332.9,189.8 L338.9,186.3 L345.2,192.0 L351.5,180.7 L357.1,192.0 L363.4,183.9 L369.5,182.7 L375.7,180.2 L381.8,188.9 L388.1,184.4 L394.3,192.2 L400.4,195.6 L406.7,180.8 L412.7,183.5 L419.0,188.9 L425.3,192.8 L431.2,178.3 L437.4,173.7 L443.5,180.1 L449.8,186.3 L455.8,183.9 L462.1,188.9 L468.4,184.1 L474.4,173.4 L480.7,183.0 L486.8,183.4 L493.0,177.3 L499.3,161.9 L505.0,180.6 L511.2,176.5 L517.3,191.9 L523.6,183.2 L529.6,185.4 L535.9,178.3 L542.2,168.5 L548.2,169.7 L554.5,192.6 L560.6,177.0 L566.9,180.0 L573.1,199.9 L578.8,196.0 L585.1,191.1 L591.1,184.9 L597.4,179.6 L603.5,193.7 L609.7,187.4 L616.0,182.7"/>
+  <text class="note strong" x="154.0" y="123.2">COVID</text>
+</svg>
+<!-- /chart:decomposition -->
+        </div>
+        <figcaption><b>Figure 4.</b> Monthly means of the two fitted pieces: <span class="swatch ny"></span>the location premium, exp(a) − ln <i>S</i>, in per cent of spot, and <span class="swatch ink"></span>the carry wedge, 365<i>b</i> − <i>r</i>, in percentage points a year. The premium is the part a shipping decision responds to; the wedge is storage minus the New York lease rate, plus any horizon-dependent policy risk. Mind the scale: the wedge reached about 3 points in mid-2020, dwarfing anything in the tariff episode, while the premium peaked in April 2020 and again in January 2025. Source: <code>spread_model_checks.py</code>.</figcaption>
+      </figure>
 
       <h3>The two versions through the tariff episode</h3>
       <div class="table-wrap">
@@ -730,25 +805,57 @@
         <li><strong>The two prices are not taken at the same moment.</strong> The LBMA PM is set at 15:00 London. COMEX settles at 13:30 New York, which is 18:30 London most of the year (17:30 in the few weeks when the US and UK change clocks on different dates). <strong>The gap is about 3.5 hours.</strong> Any move in gold during that window shows up as spread. At the 90-day horizon, a 1% intraday move adds 1% × 365/90 ≈ <strong>4 pp</strong> of false dislocation for that day.
           <aside class="revise">
             <p class="tag">Correction</p>
-            <p><code>RESEARCH_DOSSIER.md</code> §6 and the “Timestamp mismatch” item in <code>gold_tariff_episode.tex</code> put this gap at “roughly ninety minutes”. That is wrong. The later notes in <code>claude/mechanism-figures/</code> have it right. The fix is item 1 in <code>NEXT_STEPS.md</code> and costs nothing: take the COMEX intraday price at 15:00 London, which Databento already supplies, instead of the settlement.</p>
+            <p><code>RESEARCH_DOSSIER.md</code> §6 and the “Timestamp mismatch” item in <code>gold_tariff_episode.tex</code> put this gap at “roughly ninety minutes”. That is wrong. The later notes in <code>claude/mechanism-figures/</code> have it right.</p>
           </aside>
         </li>
         <li><strong>Day-count mismatch.</strong> The implied rate uses a 365-day year. SOFR is quoted on a 360-day year, so on the same basis it is about 365/360 higher: 4.35% becomes 4.41%. This overstates the dislocation by roughly <strong>0.06 pp</strong> at 2025 rates and by almost nothing at zero rates. It is not corrected, and it is small next to the episodes.</li>
-        <li><strong>Horizon mismatch in the rate.</strong> Carry uses <em>overnight</em> SOFR against a 90-day (or <i>τ</i>-day) horizon. When markets expect rate cuts, the 90-day rate sits below the overnight rate. Carry is then overstated and the dislocation understated by the difference. This is neither corrected nor measured here. Using a term rate of matching maturity would fix it.</li>
+        <li><strong>Horizon mismatch in the rate.</strong> Carry uses <em>overnight</em> SOFR against a 90-day horizon. When markets expect rate cuts, the 90-day rate sits below the overnight rate. Carry is then overstated and the dislocation understated by the difference. Ninety-day OIS is free and would fix it.</li>
         <li><strong>FND ignores exchange holidays.</strong> <i>τ</i> can be off by 1–2 days. This only matters for version 1 at short <i>τ</i>.</li>
         <li><strong>Holidays are dropped, not filled.</strong> Charts must show them as gaps. <code>build_figure_data.py</code> inserts break markers wherever a gap exceeds 7 days.</li>
         <li><strong>Monthly alignment.</strong> Each month is a calendar-month mean of daily values, matched to the customs month in which the shipment was recorded. <code>validate_mechanism.py</code> finds that same-month correlation beats a one-month lag. That fits a Zurich–New York shipment being recorded when it leaves.</li>
       </ol>
+
+      <h3>Fixing the clock mismatch</h3>
+      <p>The window is measurable, and most of it is already measured. Three facts come out of the daily fits, and they change what has to be corrected.</p>
+      <ul>
+        <li><strong>The error is a common shift, so it lands in the level and not the slope.</strong> Every contract settles at the same instant, so a gold move between 15:00 London and the settlement shifts every log price by the same amount. It therefore moves the intercept and leaves the slope untouched. That is testable: regressing the fitted level on the day’s London-to-London return gives <strong>+0.193 (s.e. 0.015)</strong>, while the same regression for the slope wedge gives <strong>−0.012 (s.e. 0.011)</strong>, indistinguishable from zero. <strong>Any result that rests on the slope needs no timing fix at all.</strong></li>
+        <li><strong>The size is about what a random walk predicts.</strong> A 3.5-hour slice of a day carries 3.5/24 = 0.146 of the variance, so the regression coefficient above should be ≈ 0.146 if the window is the whole story. It is 0.193, a little larger, which is what you would expect if the US morning carries more than its time-proportional share of the day’s move. Scaled up: the daily standard deviation of the London fix is 1.01% over 2015–26, implying <strong>0.39% of spot, or $7.44/oz</strong>, of noise in a single day’s level. The measured standard deviation of the level is 0.50%, so the clock gap accounts for roughly 60% of its daily variance (47% in 2019).</li>
+        <li><strong>The bias is small but not zero.</strong> Gold drifted up 0.047% a day over the sample. A uniform slice of that drift puts <strong>+$0.31/oz</strong> in the level at current prices. That is a lower bound, because the drift is not uniform across the day, and it is the reason the bias must be measured rather than assumed away: $0.31 is negligible against a $14 episode premium and not negligible against a −$0.55 calm mean.</li>
+      </ul>
+
+      <h4>The real fix: re-time the New York leg, one Databento job</h4>
+      <p>Only the <code>ohlcv-1d</code> and <code>statistics</code> schemas are on disk, so this needs a new pull. It is specifiable exactly:</p>
+      <ul>
+        <li>Dataset <code>GLBX.MDP3</code>, schema <code>ohlcv-1m</code>, symbols <code>GC.FUT</code> with <code>stype_in=parent</code>, 2015-01-01 to date — the same query as the existing jobs with a finer schema.</li>
+        <li>For each date, convert 15:00 <code>Europe/London</code> to <code>America/New_York</code> with a timezone-aware library rather than a fixed offset. It is usually 10:00 New York and 11:00 during the weeks when the two clocks disagree, which is exactly the case a hard-coded offset gets wrong.</li>
+        <li>Take each contract’s volume-weighted price over 15:00–15:05 London, not a single minute: the auction runs in rounds and takes a few minutes to settle.</li>
+        <li>Refit <i>a</i> and <i>b</i> on those prices. Everything else is unchanged — settlements and open interest still come from the <code>statistics</code> schema, and still choose the roll.</li>
+        <li>The by-product is the thing the project should report anyway: the distribution of the 15:00-to-settlement return, whose mean is the bias and whose variance is the noise, both measured rather than assumed.</li>
+      </ul>
+
+      <h4>Until then, three free corrections</h4>
+      <ul>
+        <li><strong>Subtract the drift.</strong> Use the estimated window drift as a bias correction on the level, and state it as a lower bound.</li>
+        <li><strong>Correct the attenuation.</strong> The noise is classical measurement error in a regressor. At 0.39% of spot per session and about 20 sessions a month, a monthly mean carries 0.086%, against a monthly series standard deviation of 0.192%. That is a reliability of <strong>0.80</strong>, so any slope estimated on the monthly level is biased towards zero by a fifth and should be divided by 0.80. One caveat: the placebo coefficient on the <em>previous</em> day’s return is +0.049 (s.e. 0.017) rather than zero, so the error is not perfectly classical.</li>
+        <li><strong>Average.</strong> Multi-session means are why the mechanism figures use a 10-session window; the monthly panel gets the same benefit for free.</li>
+      </ul>
+      <p>A fourth option is nearly free and worth a line: the settlement sits between the 15:00 PM auction and the next morning’s 10:30 AM auction, so interpolating between the two along a Brownian bridge cuts the timing variance by about a fifth. It needs the LBMA AM series, which should pull the same way the PM one does, and it uses tomorrow’s information, so it is for retrospective work only.</p>
     </section>
 
     <!-- ============================================================ 7 -->
     <section id="limits">
       <h2><span class="num">§7</span>What the dislocation does and does not measure</h2>
       <ul>
-        <li><strong>It nets two forces with opposite signs.</strong> Dislocation ≈ New York premium − London lease rate. A rich New York pushes it up. A London short of metal raises <i>ℓ</i> and pushes it down. The dossier quotes secondary-source lease rates rising from 0.08% to 4.5% in January 2025. If those figures are right, both forces were at work, and <strong>the measured dislocation understated New York’s premium by up to the lease rate.</strong> The two cannot be separated without a lease-rate series. This point follows from the algebra, not the data, but it matters for any reading of the tariff episode as “a small dislocation”.</li>
-        <li><strong>The three parts of <i>P</i> are not separated.</strong> Place, form and trust all sit inside <i>P</i>. <code>CLAUDE.md</code> already concedes that trust is not separately identifiable.</li>
-        <li><strong>It is a proxy, not a real Exchange for Physical (EFP).</strong> An EFP is a privately negotiated swap of a futures position for London metal. Dealers quote EFPs on entitlement-gated Bloomberg pages. This series is a settlement price minus an auction price, built to stand in for one.</li>
-        <li><strong>The unit of the flow threshold is still open.</strong> Freight and insurance cost dollars per ounce, which argues for measuring the threshold in <code>excess_usd</code>. <code>estimate_kink.py</code> fits both units. Over its 2023–26 estimation window the rate version fits better (R² 0.52 vs 0.38). The full-sample comparison is in <code>claude/mechanism-figures/kink_output.txt</code>.</li>
+        <li><strong>The curve separates the location premium from the New York lease rate.</strong> The level identifies <i>P</i>, up to the timing error; the slope identifies <i>s</i><sup>N</sup> − <i>ℓ</i><sup>N</sup>. What is <em>not</em> identified is the split of <i>P</i> into place, form and trust; <i>s</i><sup>N</sup> against <i>ℓ</i><sup>N</sup> separately; and the <strong>London</strong> lease rate, which never enters the COMEX curve at all and reaches the spread only through the cost of shipping.
+          <aside class="revise">
+            <p class="tag">Revises an earlier claim in this note</p>
+            <p>An earlier version said the premium and the lease rate “cannot be separated without a lease-rate series”. That is too pessimistic: the term-structure fit separates them, which is what §9 formalises. The residual identification problem is narrower and different — it is that a live tariff threat also steepens the curve, so during an episode the slope is not a clean lease-rate reading.</p>
+          </aside>
+        </li>
+        <li><strong>The calm-period level is a validation, not a nuisance.</strong> Over 2015–19 the fitted level averages −0.047% of spot, or <strong>−$0.55/oz</strong>: arbitrage does hold the premium inside a band around zero. Trade estimates put the all-in cost of moving London metal into COMEX form at roughly $1.5–2.5/oz, and <code>estimate_kink.py</code> puts the flow threshold at $3.77/oz with a 90% interval of $0.83–10.25. Three independent numbers, consistent with one another.</li>
+        <li><strong>The storage assumption does not survive the slope.</strong> The calm-period wedge is +0.58 pp a year. If the New York lease rate is near zero in calm years, storage is about <strong>0.58%</strong>, not the assumed 0.25%; if storage really is 0.25%, the lease rate comes out at −0.33%, which is not a rate anybody quotes. One of the two is mis-set, and because the assumption enters every dislocation reading one-for-one, so is every reported level. Levels in this project should be read in differences until it is resolved.</li>
+        <li><strong>It is a proxy, not a real Exchange for Physical (EFP).</strong> An EFP is a privately negotiated swap of a futures position for London metal, quoted by dealers on entitlement-gated Bloomberg pages. This series is a settlement price minus an auction price, built to stand in for one.</li>
+        <li><strong>The unit of the flow threshold is still open.</strong> Freight and insurance cost dollars per ounce, which argues for measuring the threshold in dollars. <code>estimate_kink.py</code> fits both units; over its 2023–26 window the rate version fits better (R² 0.52 against 0.38). The full-sample comparison is in <code>claude/mechanism-figures/kink_output.txt</code>. §9’s answer is that the level premium in dollars is the regressor the theory implies.</li>
       </ul>
     </section>
 
@@ -764,20 +871,163 @@
             <tr><td>OI</td><td>open interest</td><td><code>open_interest</code></td><td>Databento, stat 9</td></tr>
             <tr><td><i class="sym">τ</i></td><td>days to first notice</td><td><code>days_to_first_notice</code></td><td>from the contract symbol</td></tr>
             <tr><td><i class="sym">r</i></td><td>SOFR (DFF before Apr 2018)</td><td><code>short_rate</code></td><td>FRED</td></tr>
-            <tr><td><i class="sym">s</i></td><td>storage, 0.25%/yr</td><td><code>storage_rate_assumed</code></td><td>assumption</td></tr>
+            <tr><td><i class="sym">s</i></td><td>storage, 0.25%/yr assumed</td><td><code>storage_rate_assumed</code></td><td>assumption; see §7</td></tr>
             <tr><td><i class="ny sym">F₉₀</i></td><td>fitted curve at 90 days</td><td><code>f90</code></td><td>version 2</td></tr>
+            <tr><td><i class="sym">p</i></td><td>location premium, % of spot</td><td><code>level_pct</code>, <code>level_usd</code></td><td>curve intercept</td></tr>
+            <tr><td><i class="sym">ω</i></td><td>carry wedge, <i>s</i><sup>N</sup> − <i>ℓ</i><sup>N</sup>, pp/yr</td><td><code>omega_pp</code></td><td>curve slope</td></tr>
             <tr><td>—</td><td>dislocation</td><td><code>dislocation</code> (v1, decimal) · <code>disloc_pp</code> (v2, pp)</td><td>derived</td></tr>
             <tr><td>—</td><td>what is left over carry, $/oz</td><td><code>excess_basis_usd</code> (v1) · <code>excess_usd</code> (v2, over 90 days)</td><td>derived</td></tr>
           </tbody>
         </table>
       </div>
-      <p>Reproduce every number and redraw the figures, from the repo root:</p>
+      <p>Reproduce every number, redraw the figures, and rerun the model checks, from the repo root:</p>
 <pre>.venv/Scripts/python.exe claude/spread-explainer/worked_examples.py
-.venv/Scripts/python.exe claude/spread-explainer/make_charts.py</pre>
+.venv/Scripts/python.exe claude/spread-explainer/make_charts.py
+.venv/Scripts/python.exe claude/spread-explainer/spread_model_checks.py</pre>
+    </section>
+
+    <!-- ============================================================ 9 -->
+    <section id="model">
+      <h2><span class="num">§9</span>The model: a system that produces the spread</h2>
+      <p>Everything above is arithmetic on observed prices. This section writes down the economics that arithmetic is standing in for: a small system whose unknowns are the things the paper wants, and whose observables are the things the data give. The equations come first, the reading of them after.</p>
+
+      <h3>Notation</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Symbol</th><th>Meaning</th><th>Status</th></tr></thead>
+          <tbody>
+            <tr><td><i class="ldn sym">S</i><sub>t</sub></td><td>London price, unallocated, 15:00 London</td><td>observed</td></tr>
+            <tr><td><i class="ny sym">F</i><sub>t</sub>(<i>τ</i>)</td><td>COMEX price for delivery in <i>τ</i> days</td><td>observed, at 13:30 New York</td></tr>
+            <tr><td><i>V</i><sub>t</sub>(<i>τ</i>)</td><td>value today of metal deliverable in New York at <i>τ</i></td><td>latent</td></tr>
+            <tr><td><i>p</i><sub>t</sub></td><td>location premium, fraction of spot (place, form, trust)</td><td>latent; estimated</td></tr>
+            <tr><td><i>r</i><sub>t</sub>, <i>s</i><sup>N</sup></td><td>dollar rate; New York storage cost, per year</td><td><i>r</i> observed; <i>s</i><sup>N</sup> assumed</td></tr>
+            <tr><td><i>ℓ</i><sup>N</sup><sub>t</sub>, <i>ℓ</i><sup>L</sup><sub>t</sub></td><td>lease rate on metal in New York, in London</td><td>latent</td></tr>
+            <tr><td><i>h</i><sub>t</sub>, <i>θ</i><sub>t</sub></td><td>hazard rate of a tariff; tariff rate if it lands</td><td>latent</td></tr>
+            <tr><td><i>κ</i><sub>t</sub></td><td>all-in cost of moving an ounce London → New York</td><td>latent; estimated</td></tr>
+            <tr><td><i>ε</i><sub>t</sub></td><td>gold’s return between 15:00 London and the settlement</td><td>latent; measurable with intraday data</td></tr>
+            <tr><td><i>Q</i><sub>t</sub></td><td>metal shipped, tonnes a month</td><td>observed (Swiss customs)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>The system</h3>
+      <div class="eqgroup">
+        <div class="eqn">
+          <div class="body">
+            <math display="block"><msub><mi class="ny">F</mi><mi>t</mi></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>=</mo><msub><mi>V</mi><mi>t</mi></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>·</mo><mi>exp</mi><mrow><mo>[</mo><mrow><mo stretchy="false">(</mo><msub><mi>r</mi><mi>t</mi></msub><mo>+</mo><msup><mi>s</mi><mi>N</mi></msup><mo>−</mo><msubsup><mi>ℓ</mi><mi>t</mi><mi>N</mi></msubsup><mo stretchy="false">)</mo></mrow><mfrac><mi>τ</mi><mn>365</mn></mfrac><mo>]</mo></mrow></math>
+          </div>
+          <div class="tag">(1)</div>
+        </div>
+        <div class="eqn">
+          <div class="body">
+            <math display="block"><msub><mi>V</mi><mi>t</mi></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>=</mo><msub><mi class="ldn">S</mi><mi>t</mi></msub><mrow><mo>[</mo><mn>1</mn><mo>+</mo><msub><mi>p</mi><mi>t</mi></msub><mo>+</mo><msub><mi>Λ</mi><mi>t</mi></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><msub><mi>θ</mi><mi>t</mi></msub><mo>]</mo></mrow></math>
+          </div>
+          <div class="tag">(2)</div>
+        </div>
+        <div class="eqn">
+          <div class="body">
+            <math display="block"><msub><mi>Λ</mi><mi>t</mi></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>=</mo><mn>1</mn><mo>−</mo><mi>exp</mi><mrow><mo>(</mo><mo>−</mo><msub><mi>h</mi><mi>t</mi></msub><mfrac><mi>τ</mi><mn>365</mn></mfrac><mo>)</mo></mrow><mo>≈</mo><msub><mi>h</mi><mi>t</mi></msub><mfrac><mi>τ</mi><mn>365</mn></mfrac><mo>−</mo><mfrac><mn>1</mn><mn>2</mn></mfrac><msup><mrow><mo stretchy="false">(</mo><msub><mi>h</mi><mi>t</mi></msub><mfrac><mi>τ</mi><mn>365</mn></mfrac><mo stretchy="false">)</mo></mrow><mn>2</mn></msup></math>
+          </div>
+          <div class="tag">(3)</div>
+        </div>
+        <div class="eqn">
+          <div class="body">
+            <math display="block"><mo>−</mo><msubsup><mi>κ</mi><mi>t</mi><mrow><mi>N</mi><mo>→</mo><mi>L</mi></mrow></msubsup><mo>≤</mo><msub><mi>p</mi><mi>t</mi></msub><msub><mi class="ldn">S</mi><mi>t</mi></msub><mo>≤</mo><msubsup><mi>κ</mi><mi>t</mi><mrow><mi>L</mi><mo>→</mo><mi>N</mi></mrow></msubsup><mo>,</mo><mspace width="0.6em"></mspace><mtext>unless capacity binds</mtext></math>
+          </div>
+          <div class="tag">(4)</div>
+        </div>
+        <div class="eqn">
+          <div class="body">
+            <math display="block"><msubsup><mi>κ</mi><mi>t</mi><mrow><mi>L</mi><mo>→</mo><mi>N</mi></mrow></msubsup><mo>=</mo><msub><mi>c</mi><mtext>freight</mtext></msub><mo>+</mo><msub><mi>c</mi><mtext>insurance</mtext></msub><mo>+</mo><msub><mi>c</mi><mtext>recast</mtext></msub><mo>+</mo><mrow><mo stretchy="false">(</mo><msub><mi>r</mi><mi>t</mi></msub><mo>+</mo><msubsup><mi>ℓ</mi><mi>t</mi><mi>L</mi></msubsup><mo stretchy="false">)</mo></mrow><mfrac><msub><mi>d</mi><mtext>transit</mtext></msub><mn>365</mn></mfrac><msub><mi class="ldn">S</mi><mi>t</mi></msub></math>
+          </div>
+          <div class="tag">(5)</div>
+        </div>
+        <div class="eqn">
+          <div class="body">
+            <math display="block"><msub><mover><mi class="ny">F</mi><mo>^</mo></mover><mi>t</mi></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>=</mo><msub><mi class="ny">F</mi><mi>t</mi></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>·</mo><mi>exp</mi><mo stretchy="false">(</mo><msub><mi>ε</mi><mi>t</mi></msub><mo stretchy="false">)</mo><mo>,</mo><mspace width="0.6em"></mspace><mi>E</mi><mo stretchy="false">[</mo><msub><mi>ε</mi><mi>t</mi></msub><mo stretchy="false">]</mo><mo>=</mo><mi>μ</mi><mo>,</mo><mspace width="0.4em"></mspace><mi>Var</mi><mo stretchy="false">[</mo><msub><mi>ε</mi><mi>t</mi></msub><mo stretchy="false">]</mo><mo>=</mo><msup><mi>σ</mi><mn>2</mn></msup></math>
+          </div>
+          <div class="tag">(6)</div>
+        </div>
+        <div class="eqn">
+          <div class="body">
+            <math display="block"><msub><mi>Q</mi><mi>t</mi></msub><mo>=</mo><mi>min</mi><mrow><mo>{</mo><mover><mi>Q</mi><mo>¯</mo></mover><mo>,</mo><mspace width="0.3em"></mspace><mi>β</mi><mo>·</mo><mi>max</mi><mo stretchy="false">(</mo><mn>0</mn><mo>,</mo><mspace width="0.2em"></mspace><msub><mi>p</mi><mi>t</mi></msub><msub><mi class="ldn">S</mi><mi>t</mi></msub><mo>−</mo><msub><mi>κ</mi><mi>t</mi></msub><mo stretchy="false">)</mo><mo>}</mo></mrow><mo>+</mo><msub><mi>u</mi><mi>t</mi></msub></math>
+          </div>
+          <div class="tag">(7)</div>
+        </div>
+      </div>
+
+      <h3>What is estimated</h3>
+      <p>Taking logs of (1) and (2), substituting (3) and (6), and collecting powers of <i>τ</i> gives a curve that is quadratic in the horizon. That is the regression actually run each day, across the contracts on that date, weighted by the square root of open interest:</p>
+      <div class="eqgroup">
+        <div class="eqn">
+          <div class="body">
+            <math display="block"><mi>ln</mi><msub><mover><mi class="ny">F</mi><mo>^</mo></mover><mi>t</mi></msub><mo stretchy="false">(</mo><msub><mi>τ</mi><mi>i</mi></msub><mo stretchy="false">)</mo><mo>=</mo><msub><mi>α</mi><mi>t</mi></msub><mo>+</mo><msub><mi>β</mi><mi>t</mi></msub><msub><mi>τ</mi><mi>i</mi></msub><mo>+</mo><msub><mi>γ</mi><mi>t</mi></msub><msubsup><mi>τ</mi><mi>i</mi><mn>2</mn></msubsup><mo>+</mo><msub><mi>η</mi><mrow><mi>i</mi><mi>t</mi></mrow></msub></math>
+          </div>
+          <div class="tag">(8)</div>
+        </div>
+        <div class="eqn">
+          <div class="body">
+            <math display="block"><msub><mover><mi>p</mi><mo>^</mo></mover><mi>t</mi></msub><mo>≡</mo><msub><mi>α</mi><mi>t</mi></msub><mo>−</mo><mi>ln</mi><msub><mi class="ldn">S</mi><mi>t</mi></msub><mo>=</mo><msub><mi>p</mi><mi>t</mi></msub><mo>+</mo><msub><mi>ε</mi><mi>t</mi></msub></math>
+          </div>
+          <div class="tag">(9)</div>
+        </div>
+        <div class="eqn">
+          <div class="body">
+            <math display="block"><msub><mover><mi>ω</mi><mo>^</mo></mover><mi>t</mi></msub><mo>≡</mo><mn>365</mn><msub><mi>β</mi><mi>t</mi></msub><mo>−</mo><msub><mi>r</mi><mi>t</mi></msub><mo>=</mo><msup><mi>s</mi><mi>N</mi></msup><mo>−</mo><msubsup><mi>ℓ</mi><mi>t</mi><mi>N</mi></msubsup><mo>+</mo><msub><mi>h</mi><mi>t</mi></msub><msub><mi>θ</mi><mi>t</mi></msub></math>
+          </div>
+          <div class="tag">(10)</div>
+        </div>
+        <div class="eqn">
+          <div class="body">
+            <math display="block"><msub><mi>γ</mi><mi>t</mi></msub><mo>=</mo><mo>−</mo><mfrac><mrow><msubsup><mi>h</mi><mi>t</mi><mn>2</mn></msubsup><msub><mi>θ</mi><mi>t</mi></msub></mrow><mrow><mn>2</mn><mo>·</mo><msup><mn>365</mn><mn>2</mn></msup></mrow></mfrac><mo>≤</mo><mn>0</mn></math>
+          </div>
+          <div class="tag">(11)</div>
+        </div>
+      </div>
+
+      <h3>The modelled spread</h3>
+      <p>Putting the pieces back together gives the spread at any horizon, and the old dislocation as one particular way of reading it:</p>
+      <div class="eqgroup">
+        <div class="eqn">
+          <div class="body">
+            <math display="block"><msub><mi>b</mi><mi>t</mi></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>≡</mo><msub><mi class="ny">F</mi><mi>t</mi></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><mo>−</mo><msub><mi class="ldn">S</mi><mi>t</mi></msub><mo>=</mo><msub><mi class="ldn">S</mi><mi>t</mi></msub><mrow><mo>[</mo><munder><munder><mrow><msub><mi>p</mi><mi>t</mi></msub></mrow><mo>⏟</mo></munder><mtext>place, form, trust</mtext></munder><mo>+</mo><munder><munder><mrow><msub><mi>Λ</mi><mi>t</mi></msub><mo stretchy="false">(</mo><mi>τ</mi><mo stretchy="false">)</mo><msub><mi>θ</mi><mi>t</mi></msub></mrow><mo>⏟</mo></munder><mtext>policy risk</mtext></munder><mo>+</mo><munder><munder><mrow><mo stretchy="false">(</mo><msub><mi>r</mi><mi>t</mi></msub><mo>+</mo><msup><mi>s</mi><mi>N</mi></msup><mo>−</mo><msubsup><mi>ℓ</mi><mi>t</mi><mi>N</mi></msubsup><mo stretchy="false">)</mo><mfrac><mi>τ</mi><mn>365</mn></mfrac></mrow><mo>⏟</mo></munder><mtext>carry</mtext></munder><mo>]</mo></mrow></math>
+          </div>
+          <div class="tag">(12)</div>
+        </div>
+        <div class="eqn">
+          <div class="body">
+            <math display="block"><msub><mtext>disloc</mtext><mi>t</mi></msub><mo stretchy="false">(</mo><mi>T</mi><mo stretchy="false">)</mo><mo>≈</mo><msub><mi>p</mi><mi>t</mi></msub><mfrac><mn>365</mn><mi>T</mi></mfrac><mo>+</mo><msub><mi>h</mi><mi>t</mi></msub><msub><mi>θ</mi><mi>t</mi></msub><mo>+</mo><mrow><mo stretchy="false">(</mo><msup><mi>s</mi><mi>N</mi></msup><mo>−</mo><mi>s</mi><mo stretchy="false">)</mo></mrow><mo>−</mo><msubsup><mi>ℓ</mi><mi>t</mi><mi>N</mi></msubsup></math>
+          </div>
+          <div class="tag">(13)</div>
+        </div>
+      </div>
+
+      <h3>Reading the equations</h3>
+      <ul>
+        <li><strong>(1) is carry inside one location.</strong> A COMEX contract is metal in a New York vault at a future date, so its price is that metal’s current value compounded at the cost of holding it: interest plus storage, less the lease income the holder gives up. This is the only equation with a time dimension.</li>
+        <li><strong>(2) is the location wedge, and it is where the paper’s subject lives.</strong> The value of New York metal is the London price plus a premium. The premium has a standing part, <i>p</i>, and a policy part that depends on the delivery date.</li>
+        <li><strong>(3) makes the policy part horizon-dependent.</strong> A contract delivering in nine months is more likely to be caught by a tariff than one delivering next month, so the expected tariff cost rises with <i>τ</i>. This is the one place where a “level” premium is not a level, and it produces two testable signatures: the risk term enters the slope, and because the probability is concave in the horizon, it bends the curve down.</li>
+        <li><strong>(4) is what arbitrage actually enforces.</strong> Not <i>p</i> = 0, but <i>p</i> inside a band whose edges are the cost of shipping each way. The band is not a nuisance parameter: its width is the transfer cost the kink regression is trying to recover, so the calm-period level and the estimated threshold should agree — and they do, at −$0.55/oz against a threshold of $3.77 with a wide interval.</li>
+        <li><strong>(5) is where London’s lease rate enters,</strong> and the only place it does. Shipping ties up metal and money for the days it is in transit, and a London squeeze raises that cost. It affects the spread by moving the edge of the band, not by moving the COMEX curve.</li>
+        <li><strong>(6) is the clock.</strong> The mismatch is a single common shift in every contract’s log price on a given day, which is why it lands in the intercept (9) and not the slope (10) — and why the test in §6 finds a coefficient of 0.19 on the level and zero on the slope.</li>
+        <li><strong>(7) is the flow equation,</strong> with the capacity ceiling that a purely linear hinge misses. Refining and secure freight are capped in the short run, so a premium far above the threshold cannot pull an unbounded tonnage. This is also why a $16/oz premium can persist for months against a $2/oz threshold without being an arbitrage failure.</li>
+        <li><strong>(9), (10) and (11) are the estimating equations,</strong> and they say exactly what the data can and cannot deliver. The level gives the premium plus timing noise. The slope gives storage minus the New York lease rate, contaminated by policy risk whenever a threat is live. The curvature is the lever that separates the two, because only the policy term bends the curve.</li>
+        <li><strong>(12) is the answer to “what is the spread”:</strong> a location premium, plus a policy-risk term that grows with the horizon, plus carry that grows with the horizon, all scaled by the London price. <strong>(13)</strong> shows what the project’s headline number does to that: it divides the first term by the horizon, leaves the second and fourth alone, and adds a storage error. Three of the four components are contaminated by the choice of <i>T</i>, which is the case for reporting <i>p</i> and <i>ω</i> instead.</li>
+      </ul>
+
+      <h3>What to do with it</h3>
+      <ol>
+        <li><strong>Report <i>p</i> in dollars an ounce and <i>ω</i> in points a year.</strong> No horizon, no annualisation of a level, and both are directly comparable to things measured elsewhere: transfer costs for one, lease rates for the other.</li>
+        <li><strong>Re-time the New York leg</strong> with the intraday pull in §6, then re-estimate. Until then, correct the attenuation by 1.25× and lean on the slope where possible.</li>
+        <li><strong>Test whether the premium is a level or a risk.</strong> Read the fitted curve at 30, 90 and 180 days and compare <i>p</i>/<i>S</i> across them; equal means a level, rising means a horizon-dependent risk. The curvature already leans the second way: mean <i>γ</i> is negative, and it deepens roughly sevenfold in the episode window relative to calm years, though it is slightly negative even in calm years, so some of it is ordinary term structure rather than tariff risk.</li>
+        <li><strong>Use the event dates as the identification.</strong> The hazard collapses when the policy resolves. April 2025’s exemption and the July 2025 CBP ruling are dated, so the slope and curvature should step at them while the level does not.</li>
+        <li><strong>Pin down storage.</strong> The calm-period slope says 0.58% a year against an assumed 0.25%. A quoted vault-and-insurance schedule would break the tie and would fix every level in the project at once.</li>
+        <li><strong>Re-specify the flow equation with the ceiling in (7),</strong> and say plainly that the coefficient is descriptive: shipments respond to the premium and also close it, so a monthly regression estimates an equilibrium, not a response function.</li>
+      </ol>
     </section>
 
     <footer>
-      Numbers: <code>worked_examples.py</code>, output saved in <code>worked_examples_output.txt</code>. Figures: <code>make_charts.py</code>, from the same files in <code>data/processed/</code>. Where this note disagrees with earlier project text, it says so in a tinted note.
+      Numbers: <code>worked_examples.py</code> and <code>spread_model_checks.py</code>, with output saved beside them. Figures: <code>make_charts.py</code>, from the same files in <code>data/processed/</code>. Where this note disagrees with earlier project text, or with an earlier version of itself, it says so in a tinted box.
     </footer>
   </main>
 </div>
