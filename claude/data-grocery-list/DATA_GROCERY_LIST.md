@@ -180,7 +180,7 @@ of the arbitrage is lost. Pull the most detailed national digits available,
 | Leg | Primary source (reporter) | Mirror | Status and gotchas |
 |---|---|---|---|
 | UK → CH (400-oz bars to refineries) | **Swiss imports** (BAZG open-data bulk files, kg and USD, 2002–) | HMRC UK exports | ✅ Swiss. ⚠️ The UK side is unusable: UK-reported exports to CH are 300–2,000× below Swiss-reported imports in some months, unexplained. Use the Swiss figures |
-| CH → US (kilo and 100-oz bars) | **Swiss exports to US** (BAZG) | US Census imports from CH | ✅ Swiss. ⚠️ Census: the repo's current file misses the Q1 2025 surge ($0.57bn against Switzerland's $16.9bn for Jan 2025). Pull **general imports** at 10-digit HTS with quantity, and check whether imports are assigned by origin or by shipment |
+| CH → US (kilo and 100-oz bars) | **Swiss exports to US** (BAZG) | US Census imports from CH | ✅ both. ⚠️ Census records the episode under **HS 7115**, not 7108: Jan 2025 is $18.9bn under 7115 against $0.57bn under 7108 (`RESEARCH_DOSSIER.md` §4). A 7108-only pull misses it. Pull with quantity at 10-digit HTS, and check whether imports are assigned by origin or by shipment |
 | UK → US direct | US Census imports from UK; HMRC exports to US | each other | ✅ both. ⚠️ origin attribution again |
 | Eastward return: US → CH, US → UK, CH → UK | Census exports (domestic and re-export split); BAZG; HMRC | each other | ✅. US exports are reported **in grams** at fine detail, a units trap |
 | US totals in kg, as a cross-check | USGS Mineral Industry Surveys | monthly | ✅ |
