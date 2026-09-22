@@ -1,0 +1,102 @@
+==============================================================================
+THE TWO SERIES
+==============================================================================
+days fitted            : 2,857  (2015-01-02 to 2026-08-20)
+contracts per day      : median 6, range 4-9
+weighting              : OI ** 0.5 on the squared residual
+curve fit R^2          : median 0.9987, 10th pct 0.9891
+residual RMSE          : median 2.73 basis points of price
+days with R^2 < 0.90   : 32 (1.1%), of which 32 fall in 2020
+                         worst months: 2020-04 (16), 2020-05 (9), 2020-03 (6), 2020-07 (1)
+
+premium_pct        % of spot  mean    0.002   sd   0.499   min   -5.548   max    4.111
+premium_usd        $/oz       mean    0.210   sd  12.808   min -268.870   max   80.108
+carry_pct          % a year   mean    2.754   sd   1.793   min   -0.026   max    6.033
+excess_carry_pp    pp a year  mean    0.636   sd   0.592   min   -3.096   max    3.272
+
+premium standard error : median 0.017 pp of spot (within-day, from the fit alone)
+carry standard error   : median 0.042 pp a year
+
+==============================================================================
+SANITY CHECK: DOES THE FITTED CARRY TRACK THE DOLLAR SHORT RATE?
+==============================================================================
+No interest rate enters the fit, so agreement here is informative.
+A slope near 1 means a point of SOFR shows up as a point of carry.
+
+sample                     n    corr   slope   const     R2  mean carry  mean rate
+full sample             2857   0.952   0.884   0.881  0.907       2.754      2.118
+zero rates 2015-19      1230   0.903   0.941   0.619  0.815       1.684      1.131
+covid 2020-21            493   0.349   0.565   1.032  0.121       1.146      0.202
+hiking 2022-23           485   0.953   0.754   1.876  0.908       4.424      3.378
+cuts 2024-26             649   0.753   0.505   2.481  0.567       4.756      4.503
+monthly means            140   0.955   0.887   0.876  0.913       2.760      2.123
+vs 3m T-bill            2857   0.969   0.909
+
+In changes rather than levels. An overnight rate is a step function that
+moves on eight scheduled dates a year, so a day-on-day comparison against
+it is mostly noise against nothing; the three-month bill, which moves with
+expectations, is the informative counterpart at daily frequency.
+                           n    corr   slope
+d carry vs d SOFR       2856   0.008   0.006
+d carry vs d T-bill     2856   0.185   0.397
+m carry vs m SOFR        139   0.472   0.682
+m carry vs m T-bill      139   0.603   0.884
+
+==============================================================================
+DOES THE PREMIUM SERIES LOOK LIKE ANYTHING? (a check, not a result)
+==============================================================================
+Largest premium days, and the most negative:
+   2020-04-09   +4.111%  = $  +70.53/oz   (7 contracts, R2 0.1154)
+   2020-03-24   +3.494%  = $  +57.10/oz   (6 contracts, R2 0.3018)
+   2020-03-23   +2.904%  = $  +44.94/oz   (6 contracts, R2 0.9689)
+   2020-04-06   +2.663%  = $  +44.49/oz   (7 contracts, R2 0.0084)
+   2020-03-27   +2.155%  = $  +35.23/oz   (7 contracts, R2 0.2545)
+   2026-01-30   -5.548%  = $ -268.87/oz   (6 contracts, R2 0.9986)
+   2020-03-13   -3.002%  = $  -46.22/oz   (7 contracts, R2 0.9824)
+   2026-02-12   -2.417%  = $ -120.44/oz   (6 contracts, R2 0.9978)
+   2025-04-07   -2.050%  = $  -61.17/oz   (6 contracts, R2 0.9994)
+   2026-02-02   -1.949%  = $  -91.01/oz   (6 contracts, R2 0.9985)
+
+How much of the premium is the clock, not the market? The London leg is
+struck at 15:00 London and the New York leg about three and a half hours
+later, so a move in between lands in the premium. The next day's London
+auction has already absorbed that move, which makes the next-day London
+return a proxy for it: if the premium is partly the clock, the two should
+be positively related, and they should be most related on volatile days.
+   corr(premium_t, next-day London return) = 0.394   slope 0.194   R2 0.155
+                                  n   sd of premium    corr
+   calm days (|ret| < p25)      714           0.420   0.086
+   middle half                 1428           0.426   0.390
+   volatile days (> p75)        714           0.674   0.477
+   Implied noise floor: on calm days the premium's standard deviation is
+   0.420 pp of spot, against 0.674 pp on volatile ones.
+
+Monthly means through the tariff episode:
+   month       premium %     $/oz   carry %   SOFR %  excess pp  days
+   2024-10        0.063     1.75     4.596    4.916     -0.320    23
+   2024-11        0.057     1.54     4.613    4.702     -0.089    21
+   2024-12        0.178     4.76     4.778    4.605      0.174    18
+   2025-01        0.523    14.28     5.207    4.376      0.832    21
+   2025-02        0.109     3.15     5.180    4.404      0.776    19
+   2025-03        0.190     5.80     4.912    4.387      0.525    21
+   2025-04       -0.151    -4.25     4.778    4.410      0.368    20
+   2025-05        0.050     1.66     4.864    4.364      0.501    20
+   2025-06        0.001    -0.01     4.818    4.376      0.442    20
+
+==============================================================================
+ROBUSTNESS: HOW MUCH DO THE SPECIFICATION CHOICES MATTER?
+==============================================================================
+variant                       corr w/ baseline   mean diff  max |diff|
+premium, unweighted                     0.9975      0.0137      0.3072
+premium, OI weights                     0.9992     -0.0099      0.1657
+premium, quadratic fit                  0.9871     -0.0378      0.8773
+carry, unweighted                       0.9992     -0.0335      0.6283
+carry, OI weights                       0.9991      0.0352      0.7452
+carry, quadratic fit                    0.9697      0.2555      3.8347
+
+==============================================================================
+COVERAGE AND GAPS
+==============================================================================
+gaps longer than 7 days: 0
+
+Charts must break the line at these points rather than drawing across.
