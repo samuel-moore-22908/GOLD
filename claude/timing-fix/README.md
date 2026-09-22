@@ -93,26 +93,68 @@ UTC, and the window to buy. In total **616,360 contract-minutes**, a median of
 
 ---
 
-## What to buy, and pricing it first
+## What to buy, and what it costs
 
-`pull_minute_bars.py --quote` prices three ways of getting the same correction
-through `metadata.get_cost`, which is free:
+`pull_minute_bars.py --quote` prices the alternatives through
+`metadata.get_cost`, which is free. Run on 22 September 2026 it returned:
 
-1. **Everything** — `GC.FUT` parent symbology, `ohlcv-1m`, the whole sample.
-   One job, the same shape as the two pulls already in `data/databento/`, and
-   far more data than the correction needs.
-2. **Lead contracts only**, whole days — 50 symbols over the sample.
-3. **Lead contracts, only the minutes needed** — the windows in
-   `timing_instants.csv`. Least data, most requests; the quote extrapolates
-   from twelve sampled days and flags that per-request minimums, if any, set a
-   floor.
+| | What arrives | Cost |
+|---|---|---:|
+| Everything | every GC contract, every minute, 2015–2026 (0.66 GB billable) | **$43.09** |
+| Lead contracts, whole days | 50 symbols, every minute they traded | $23.70 |
+| Lead contracts, windows only | the 616,360 contract-minutes in the specification | **$2.24** |
 
-`--pull` executes the third and refuses to run without `--confirm`. `--batch`
-prints the web-UI parameters for the first, matching the existing workflow of
-submitting a job and downloading the zip by hand.
+Billing is strictly proportional to bytes, checked directly: one minute of one
+contract costs $0.000004 and bills 56 bytes, the 220-minute window bills
+exactly 220 × 56 = 12,320 bytes, and a whole day bills 77,000. There is **no
+per-request floor**, so the windowed figure is a real price rather than an
+underestimate, and per-day cost barely varies across the sample
+($0.00058–$0.00080).
 
-The client is pinned in `requirements.txt` (`databento==0.86.0`); the API
-signatures used here were checked against that installed version.
+The two routes buy the same correction. The windowed one is twenty times
+cheaper; the whole-tape one arrives as a single download and leaves room to
+re-time at some other instant, or from several contracts, without going back to
+the vendor.
+
+### The whole-tape route
+
+```
+pull_minute_bars.py --batch        # print the job parameters, submit nothing
+pull_minute_bars.py --submit --confirm    # quote, then submit; $43.09
+pull_minute_bars.py --status       # queued / processing / done
+pull_minute_bars.py --download     # fetch the finished job
+pull_minute_bars.py --normalize    # reduce it to the bars the correction reads
+```
+
+`--submit` prints the cost and refuses to send the job without `--confirm`. The
+job id is recorded in `data/databento/minute_raw/job_id.txt`, so `--status` and
+`--download` pick it up automatically; an existing job id can be written there
+by hand if the job was submitted through the web UI instead.
+
+`--normalize` is the step that matters for what follows. The job delivers every
+GC contract at every minute across eleven years — several gigabytes of CSV once
+decompressed — and the correction reads two instants a day for one contract. It
+streams the monthly files one at a time, keeps only the rows inside a day's
+window belonging to that day's lead or backup contract, and writes
+`data/databento/minute/gc_minute_<year>.csv`, which is the format
+`apply_timing_fix.py` expects and the same format the windowed route produces.
+Nothing downstream can tell which route was used.
+
+The window-assignment arithmetic is checked by `--selftest`, which fabricates
+bars whose fate is known — the lead contract inside the window (keep), another
+contract at the same instant (drop), the right contract an hour early (drop) —
+and asserts that exactly the right ones survive.
+
+### The windowed route
+
+```
+pull_minute_bars.py --pull --confirm
+```
+
+One request per trading day for that day's lead contract, paced, resumable by
+year, and it writes the same per-year files directly. Roughly 2,857 requests.
+
+The client is pinned in `requirements.txt` (`databento==0.86.0`).
 
 ---
 
