@@ -7,9 +7,20 @@ every contract on the curve, one contract is enough to correct the whole
 cross-section, so this buys a few hundred minutes a day rather than the whole
 tape.
 
-    --quote     price the alternatives through metadata.get_cost, which is free
-    --pull      fetch the per-day windows (requires --confirm as well)
-    --batch     print the parameters for the same pull through the web UI
+Two ways to buy it.
+
+    --quote       price both, through metadata.get_cost, which is free
+    --pull        the windowed route: one request per day, lead contract only,
+                  buying only the minutes needed (needs --confirm)
+
+or the whole tape in one asynchronous job, which costs more but arrives as a
+single download and leaves room to re-time at some other instant later:
+
+    --batch       print the job parameters without submitting
+    --submit      quote it, then submit it (needs --confirm)
+    --status      state and progress of the submitted job
+    --download    fetch the finished job's files
+    --normalize   reduce those files to the bars the correction reads
 
 Costing calls are free; nothing is downloaded without --confirm. The API
 signatures here were checked against the installed databento client (0.86.0).
@@ -34,10 +45,15 @@ import sys
 import time
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 INSTANTS = Path("claude/timing-fix/timing_instants.csv")
 OUT = Path("data/databento/minute")
+# Where a batch job's files land before they are reduced to the bars the
+# correction reads. Large, and gitignored with everything else under data/.
+RAW = Path("data/databento/minute_raw")
+JOB_FILE = RAW / "job_id.txt"
 
 DATASET = "GLBX.MDP3"
 SCHEMA = "ohlcv-1m"
@@ -146,23 +162,157 @@ def quote(args) -> None:
     print("in data/databento/.")
 
 
-def batch_spec() -> None:
+def batch_params() -> dict:
+    """The one job that buys every GC contract's minutes across the sample."""
     t = instants()
-    print("Batch job parameters, to enter in the Databento web UI -- the same")
-    print("shape as the two jobs already in data/databento/:\n")
-    print(f"   dataset      {DATASET}")
-    print(f"   schema       {SCHEMA}")
-    print("   symbols      GC.FUT")
-    print("   stype_in     parent")
-    print(f"   start        {t.window_start_utc.min():%Y-%m-%dT%H:%M}Z")
-    print(f"   end          {t.window_end_utc.max():%Y-%m-%dT%H:%M}Z")
-    print("   encoding     csv        compression  zstd")
-    print("   pretty_px    true       pretty_ts    true")
-    print("   map_symbols  true       split_duration  month")
+    return {
+        "dataset": DATASET,
+        "symbols": "GC.FUT",
+        "stype_in": "parent",
+        "schema": SCHEMA,
+        "start": t.window_start_utc.min().floor("D"),
+        "end": t.window_end_utc.max().ceil("D"),
+        "encoding": "csv",
+        "compression": "zstd",
+        "pretty_px": True,
+        "pretty_ts": True,
+        "map_symbols": True,
+        "split_duration": "month",
+    }
+
+
+def batch_spec() -> None:
+    p = batch_params()
+    print("Batch job parameters -- the same shape as the two jobs already in")
+    print("data/databento/. --submit sends exactly these; they are printed here")
+    print("so they can be entered in the web UI instead.\n")
+    for k, v in p.items():
+        v = f"{v:%Y-%m-%dT%H:%M}Z" if isinstance(v, pd.Timestamp) else v
+        print(f"   {k:<16}{v}")
     print("\nThat buys every GC contract's minutes across the whole period, which")
-    print("is far more than the correction needs; apply_timing_fix.py will use")
-    print("only the lead contract's bars in the two windows. Unzip into")
-    print(f"   {OUT}")
+    print("is far more than the correction needs. --normalize afterwards keeps")
+    print("only the lead contract's bars inside each day's windows and writes")
+    print(f"   {OUT}/gc_minute_<year>.csv")
+
+
+def batch_submit(args) -> None:
+    """Quote the job, then submit it -- but only with --confirm."""
+    c = client()
+    p = batch_params()
+    cost = c.metadata.get_cost(dataset=p["dataset"], start=p["start"], end=p["end"],
+                               schema=p["schema"], symbols=p["symbols"],
+                               stype_in=p["stype_in"])
+    size = c.metadata.get_billable_size(dataset=p["dataset"], start=p["start"],
+                                        end=p["end"], schema=p["schema"],
+                                        symbols=p["symbols"], stype_in=p["stype_in"])
+    print(f"This job costs ${cost:,.2f} ({size/1e9:.2f} GB billable):")
+    print(f"   {p['symbols']} ({p['stype_in']}), {p['schema']}, "
+          f"{p['start']:%Y-%m-%d} to {p['end']:%Y-%m-%d}\n")
+    if not args.confirm:
+        sys.exit("Not submitting. Re-run with --confirm to spend that amount.")
+
+    job = c.batch.submit_job(**p)
+    job_id = job.get("id") or job.get("job_id")
+    RAW.mkdir(parents=True, exist_ok=True)
+    JOB_FILE.write_text(str(job_id) + "\n", encoding="utf-8")
+    print(f"submitted: {job_id}")
+    print(f"state {job.get('state')}, recorded in {JOB_FILE}")
+    print("\nJobs are processed asynchronously. Check with --status; download with")
+    print("--download once the state is 'done'.")
+
+
+def saved_job_id() -> str:
+    if not JOB_FILE.exists():
+        sys.exit(f"No job recorded in {JOB_FILE}. Submit one with --submit, or "
+                 f"write an existing job id into that file.")
+    return JOB_FILE.read_text(encoding="utf-8").strip()
+
+
+def batch_status() -> None:
+    c = client()
+    job_id = saved_job_id()
+    jobs = {j.get("id", j.get("job_id")): j
+            for j in c.batch.list_jobs(states="received,queued,processing,done,expired")}
+    j = jobs.get(job_id)
+    if j is None:
+        sys.exit(f"{job_id} is not in the job list. It may have expired.")
+    print(f"{job_id}: state {j.get('state')}")
+    for k in ("progress", "record_count", "billed_size", "actual_size", "ts_expiration"):
+        if j.get(k) is not None:
+            print(f"   {k:<14}{j[k]}")
+    if j.get("state") == "done":
+        files = c.batch.list_files(job_id)
+        total = sum(f.get("size", 0) for f in files)
+        print(f"   {len(files)} files, {total/1e9:.2f} GB -- ready for --download")
+
+
+def batch_download() -> None:
+    c = client()
+    job_id = saved_job_id()
+    RAW.mkdir(parents=True, exist_ok=True)
+    print(f"downloading {job_id} into {RAW} ...")
+    paths = c.batch.download(job_id=job_id, output_dir=RAW)
+    print(f"{len(paths)} files written")
+    print("Now run --normalize, which reduces them to the minutes the correction")
+    print("needs. The raw files are large; keep them until the fix is validated.")
+
+
+def normalize() -> None:
+    """Reduce the batch output to the bars the correction actually reads.
+
+    The job delivers every GC contract at every minute. This keeps only the rows
+    that fall inside a day's window and belong to that day's lead or backup
+    contract, streaming file by file so the whole tape is never held in memory.
+    """
+    files = sorted(RAW.rglob("*.csv.zst")) + sorted(RAW.rglob("*.csv"))
+    if not files:
+        sys.exit(f"No downloaded files under {RAW}. Run --download first.")
+
+    t = instants()
+    t = t.sort_values("window_start_utc").reset_index(drop=True)
+    starts = (t.window_start_utc
+              - pd.to_timedelta(t.lookback_minutes, unit="m")).to_numpy()
+    ends = t.window_end_utc.to_numpy()
+
+    kept: list[pd.DataFrame] = []
+    for f in files:
+        df = pd.read_csv(f, compression="zstd" if f.suffix == ".zst" else None,
+                         usecols=lambda c: c in {"ts_event", "symbol", "close",
+                                                 "open", "high", "low", "volume"})
+        if df.empty or "ts_event" not in df.columns:
+            continue
+        df["ts"] = pd.to_datetime(df["ts_event"], utc=True, format="mixed")
+        # Assign each bar to the window it could belong to, then test that it
+        # really is inside that window and is the contract we want.
+        idx = np.searchsorted(starts, df.ts.to_numpy(), side="right") - 1
+        ok = idx >= 0
+        df, idx = df[ok], idx[ok]
+        if df.empty:
+            continue
+        w = t.iloc[idx]
+        inside = (df.ts.to_numpy() <= ends[idx])
+        wanted = (df.symbol.to_numpy() == w.lead_symbol.to_numpy()) | \
+                 (df.symbol.to_numpy() == w.backup_symbol.to_numpy())
+        take = inside & wanted
+        if not take.any():
+            continue
+        out = df[take].copy()
+        out["trade_date"] = w.date.to_numpy()[take]
+        out["requested_symbol"] = w.lead_symbol.to_numpy()[take]
+        kept.append(out[["ts", "symbol", "close", "trade_date", "requested_symbol"]])
+        print(f"   {f.name}: kept {take.sum():,} of {len(df):,} bars")
+
+    if not kept:
+        sys.exit("Nothing matched. Check that the job covered the right period.")
+    m = pd.concat(kept, ignore_index=True).sort_values("ts")
+    OUT.mkdir(parents=True, exist_ok=True)
+    for year, g in m.groupby(pd.to_datetime(m.trade_date).dt.year):
+        path = OUT / f"gc_minute_{year}.csv"
+        g.to_csv(path, index=False)
+        print(f"{year}: {len(g):,} bars -> {path}")
+    days = m.trade_date.nunique()
+    print(f"\n{len(m):,} bars across {days:,} of {len(t):,} trading days "
+          f"({100*days/len(t):.1f}%). Now run apply_timing_fix.py.")
 
 
 def pull(args) -> None:
@@ -201,21 +351,79 @@ def pull(args) -> None:
             print(f"{year}: wrote {path}")
 
 
+def selftest() -> None:
+    """Check --normalize keeps exactly the right bars, on fabricated files.
+
+    The window assignment is the one piece of arithmetic here that could be
+    quietly wrong on real data, so it is exercised against rows whose expected
+    fate is known: inside the window and the lead contract (keep), inside the
+    window but another contract (drop), and the right contract an hour early
+    (drop).
+    """
+    global RAW, OUT
+    import tempfile
+
+    t = instants().head(3)
+    rows = []
+    for _, r in t.iterrows():
+        rows += [
+            {"ts_event": r.auction_utc, "symbol": r.lead_symbol, "close": 1200.0},
+            {"ts_event": r.settle_utc, "symbol": r.lead_symbol, "close": 1201.0},
+            {"ts_event": r.auction_utc, "symbol": "GCZ9_OTHER", "close": 9999.0},
+            {"ts_event": r.auction_utc - pd.Timedelta(hours=1),
+             "symbol": r.lead_symbol, "close": 8888.0},
+        ]
+    expected = 2 * len(t)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        RAW, OUT = Path(tmp) / "raw", Path(tmp) / "out"
+        RAW.mkdir(parents=True)
+        pd.DataFrame(rows).to_csv(RAW / "fake-20150102.csv.zst",
+                                  index=False, compression="zstd")
+        normalize()
+        got = pd.concat([pd.read_csv(f) for f in OUT.glob("*.csv")], ignore_index=True)
+
+    assert len(got) == expected, f"kept {len(got)}, expected {expected}"
+    assert set(got.close) == {1200.0, 1201.0}, f"kept the wrong rows: {set(got.close)}"
+    print(f"selftest: kept {len(got)} of {len(rows)} fabricated bars, "
+          f"dropped the other contract and the early print -- PASS")
+
+
 def main() -> None:
-    p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("--quote", action="store_true")
-    p.add_argument("--batch", action="store_true")
-    p.add_argument("--pull", action="store_true")
+    p = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("--selftest", action="store_true",
+                   help="check the normalisation arithmetic on fabricated files")
+    p.add_argument("--quote", action="store_true",
+                   help="price the three ways of buying the correction (free)")
+    p.add_argument("--batch", "--batch-spec", dest="batch", action="store_true",
+                   help="print the batch job parameters without submitting")
+    p.add_argument("--submit", action="store_true",
+                   help="quote and submit the whole-tape batch job (needs --confirm)")
+    p.add_argument("--status", action="store_true",
+                   help="state and progress of the submitted job")
+    p.add_argument("--download", action="store_true",
+                   help="download a finished job into data/databento/minute_raw")
+    p.add_argument("--normalize", action="store_true",
+                   help="reduce downloaded files to the bars the correction needs")
+    p.add_argument("--pull", action="store_true",
+                   help="the windowed alternative: per-day requests (needs --confirm)")
     p.add_argument("--confirm", action="store_true",
-                   help="required alongside --pull; without it nothing is bought")
+                   help="required alongside --submit or --pull; nothing is bought "
+                        "without it")
     args = p.parse_args()
-    if args.batch:
-        batch_spec()
-    if args.quote:
-        quote(args)
-    if args.pull:
-        pull(args)
-    if not (args.batch or args.quote or args.pull):
+
+    actions = [(args.selftest, selftest),
+               (args.batch, batch_spec), (args.quote, lambda: quote(args)),
+               (args.submit, lambda: batch_submit(args)), (args.status, batch_status),
+               (args.download, batch_download), (args.normalize, normalize),
+               (args.pull, lambda: pull(args))]
+    ran = False
+    for flag, fn in actions:
+        if flag:
+            fn()
+            ran = True
+    if not ran:
         p.print_help()
 
 
