@@ -47,31 +47,49 @@ REQUEST_SPACING_S = 0.4
 QUOTE_SAMPLE_DAYS = 12          # days sampled to extrapolate the windowed cost
 
 
-def api_key() -> str | None:
-    """The key from the environment, or from a gitignored .env at the repo root.
+ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
-    The .env route exists so the key never has to be typed into a shell, pasted
-    into a conversation, or set as a machine-wide variable. It is read here and
-    never printed.
+
+def api_key() -> tuple[str | None, str]:
+    """The key, and a sentence about where it did or did not come from.
+
+    Read from DATABENTO_API_KEY in the environment, else from the gitignored
+    .env at the repo root. The .env route exists so the key never has to be
+    typed into a shell that records history, set as a machine-wide variable, or
+    pasted into a conversation. It is read here and never printed.
     """
-    key = os.environ.get("DATABENTO_API_KEY")
+    key = (os.environ.get("DATABENTO_API_KEY") or "").strip()
     if key:
-        return key.strip()
-    env = Path(".env")
-    if env.exists():
-        for line in env.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line.startswith("DATABENTO_API_KEY"):
-                return line.split("=", 1)[1].strip().strip("'\"")
-    return None
+        return key, "using DATABENTO_API_KEY from the environment"
+
+    if not ENV_FILE.exists():
+        return None, (f"No key found. Create {ENV_FILE} containing a line\n"
+                      f"    DATABENTO_API_KEY=db-...\n"
+                      f"(.env is gitignored.)")
+
+    for line in ENV_FILE.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line.startswith("#") or "=" not in line:
+            continue
+        name, _, value = line.partition("=")
+        if name.strip() != "DATABENTO_API_KEY":
+            continue
+        value = value.strip().strip("'\"")
+        if value:
+            return value, f"using the key in {ENV_FILE}"
+        return None, (f"{ENV_FILE} has a DATABENTO_API_KEY line but it is empty."
+                      f"\nPaste the key after the = , with no quotes or spaces, "
+                      f"and run this again.")
+
+    return None, (f"{ENV_FILE} exists but has no DATABENTO_API_KEY line. Add\n"
+                  f"    DATABENTO_API_KEY=db-...")
 
 
 def client():
-    key = api_key()
+    key, note = api_key()
     if not key:
-        sys.exit("No Databento key found. Put it in a .env at the repo root, as "
-                 "a line reading DATABENTO_API_KEY=db-... -- .env is gitignored. "
-                 "Costing calls need the key too, and they are free.")
+        sys.exit(note + "\nCosting calls need the key too, and they are free.")
+    print(f"({note})\n")
     try:
         import databento as db
     except ImportError:
