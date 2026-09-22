@@ -1,0 +1,604 @@
+% A model section for the paper, written entirely in reduced form.
+%
+% Purpose: take a stance where the project has been mixing two stances. The
+% structural system in claude/spread-explainer/spread_system.tex writes the
+% spread as a function of latent objects (location premium, lease rates in two
+% locations, a tariff hazard). Several of those are not identified with any
+% data we can obtain. This note instead defines every object the paper uses as
+% a projection of observable prices, and states what that costs us.
+%
+% No empirical work. The one numerical passage is an arithmetic illustration of
+% the definitions, using quantities already computed elsewhere in the project,
+% and is labelled as such.
+%
+% Build (from the repo root), keeping aux files out of the working tree:
+%   pdflatex -interaction=nonstopmode -output-directory=<build> \
+%     claude/spread-reduced-form/REDUCED_FORM_MODEL.tex        % run it twice
+%
+% Use pdflatex directly rather than latexmk: MiKTeX on this machine prints
+% "You are running MiKTeX on an unsupported version of Windows" and exits
+% non-zero even when the compile succeeded.
+%
+% Package set is the one the repo's other .tex files already compile with.
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{enumitem}
+\usepackage{parskip}
+\usepackage[hidelinks]{hyperref}
+
+\newcommand{\phat}{\widehat{p}_t}
+\newcommand{\omhat}{\widehat{\omega}_t}
+\newcommand{\Var}{\operatorname{Var}}
+\newcommand{\Cov}{\operatorname{Cov}}
+
+\title{\textbf{The Reduced-Form Model}\\[0.4em]
+\large From the Quoted Spread to a Measured New York Premium,\\
+and from that Premium to Metal in Motion}
+\author{Model section, GOLD project}
+\date{22 September 2026}
+
+\begin{document}
+\maketitle
+
+\noindent
+This section builds the paper's price variable from the number a trader
+quotes, shows why that number cannot be used as it stands, removes its time
+dimension by estimating carry rather than assuming it, and arrives at a
+premium that is defined by a projection of observed prices. It then connects
+that premium to physical shipments through a threshold. Every object below is
+a functional of observables. Nothing requires a lease rate, a storage
+schedule, or a model of tariff risk.
+
+\medskip
+\noindent\textbf{The stance, stated once.} The project has two models in it and
+has been sliding between them. One is \emph{structural}: the spread is written
+as a function of latent objects --- a location premium, a lease rate in each
+location, a hazard rate for a tariff --- and one asks which combinations the
+data identify. The other is \emph{reduced form}: an object is defined by the
+regression that produces it, and the paper's claims are claims about that
+object's behaviour. The two are not interchangeable, and the current headline
+variable is a hybrid of them, which is the worst of the three options. This
+section goes fully reduced form and says in \S\ref{sec:stance} what that costs.
+
+\tableofcontents
+
+\section{The starting point: the quoted spread}
+\label{sec:start}
+
+Let $S_t$ be the London benchmark price of gold at date $t$, in US dollars per
+troy ounce, for \emph{unallocated} metal in a London vault --- a claim on a
+bank's pooled holding, the gold analogue of a deposit rather than a safe
+deposit box. Let $F_t(\tau)$ be the price at the same date of a New York
+futures contract that delivers metal $\tau$ days hence, where delivery means a
+warrant: a title document to specific bars in an exchange-licensed New York
+vault.
+
+The number the market quotes is the difference:
+\begin{equation}
+b_t(\tau) \;=\; F_t(\tau) - S_t .
+\end{equation}
+
+The economic intuition the paper needs is already here. If New York metal is
+dear relative to London metal by more than it costs to ship metal between
+them, someone ships metal, and that shipment is recorded in trade statistics
+as an export and an import even though nothing about world gold consumption
+has changed. The paper's job is to make $b$ into a variable that can carry that
+argument.
+
+\section{Three reasons $b_t(\tau)$ cannot be used as it stands}
+\label{sec:breaks}
+
+\subsection*{It is denominated in a unit that is not comparable over time}
+
+$b$ is dollars per ounce, and the gold price roughly quadrupled across the
+sample. The same proportional gap between the two markets is about four times
+as many dollars at the end of the period as at the start. A regression that
+pools 2015 dollars with 2026 dollars is pooling incomparable units. This is
+fixed by working in logs, or equivalently by scaling by $S_t$.
+
+\subsection*{It contains carry, and carry moves with the delivery calendar}
+
+$F$ is a price for delivery later. Even if the two markets are perfectly
+integrated and metal is worth exactly the same in both places, $F$ exceeds $S$
+by the cost of carrying metal from now until delivery, and that cost is
+proportional to $\tau$.
+
+The difficulty is that $\tau$ is not a fixed feature of the data. Gold futures
+deliver in February, April, June, August, October and December, so the
+contract the market actually uses has a $\tau$ that falls from roughly two
+months to zero and then jumps back up when traders \emph{roll} --- close the
+expiring contract and open the next one. Carry inherits that sawtooth. At a
+4.5\% annual holding cost and a \$4{,}400 gold price, carry is about \$33 an
+ounce at sixty days and under \$3 at five days. That swing is produced by the
+delivery calendar and nothing else, and it is the same order of magnitude as
+the market dislocations the paper is trying to detect.
+
+\subsection*{It mixes a level with a rate}
+
+Two economically different things sit inside $b$.
+
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt,topsep=2pt]
+\item A \textbf{level}: whatever makes metal in New York worth more than metal
+in London at a given moment --- location, the bar form each market trades,
+the difference between an exchange warrant and a claim on a bank. A level is
+paid once. It does not care whether the contract expires in ten days or a
+hundred.
+\item A \textbf{rate}: financing, storage, and the income forgone by not
+lending the metal out. A rate accrues per unit of time and therefore scales
+with $\tau$.
+\end{itemize}
+
+Any single-number summary of $b$ must choose a horizon at which to compare the
+two, and that choice determines the answer. The project has already seen this:
+the same day reads as $6.9$, $2.8$ or $1.8$ percentage points annualised
+depending on whether the curve is read at thirty, ninety or one hundred and
+eighty days.
+
+\medskip
+\noindent The conclusion is not that $b$ is the wrong idea. It is that $b_t(\cdot)$ is a
+\emph{function of $\tau$}, not a scalar, and the paper's variable has to be a
+feature of that function rather than one of its values.
+
+\section{Carry, and the decision to estimate it}
+\label{sec:carry}
+
+\subsection*{What carry is}
+
+Carrying an ounce from today to date $\tau$ costs the interest on the money
+tied up, plus the cost of storing and insuring the metal, less the income the
+owner forgoes by not lending the metal out. That last term is the \emph{lease
+rate}: metal, unlike most commodities, can be lent, and the borrower pays for
+it.
+
+For a macroeconomist the whole structure is covered interest parity with gold
+in the role of the foreign currency. $S$ is the spot exchange rate, $F$ the
+forward rate, the dollar interest rate is the domestic rate, and the lease
+rate is the foreign rate. Carry is the forward points. Deviations from it are
+the gold analogue of a cross-currency basis.
+
+\subsection*{Why the conventional fix is not reduced form}
+
+The usual repair is to convert the spread into the annual financing rate it
+implies and then subtract an assumed carry:
+\begin{align}
+\text{implied rate}_t(\tau) &= \left(\frac{F_t(\tau)}{S_t}-1\right)\frac{365}{\tau},\\
+\text{dislocation}_t(\tau) &= \text{implied rate}_t(\tau) - \bigl(r_t + \bar{s}\bigr).
+\end{align}
+
+This has two defects, and naming them is the point of this section.
+
+\textbf{First, it is a hybrid.} The implied rate is a reduced-form measurement:
+it is a transformation of two observed prices. The subtracted term is a
+structural input: it asserts a storage cost $\bar s$ that is not observed and a
+lease rate of zero that is certainly wrong. So the headline variable is a
+measurement corrected by assumptions, and it inherits the fragility of the
+assumptions without gaining any of the discipline that a structural model
+would provide in exchange. Both errors are also signed and trending: storage is
+billed in dollars per ounce, so as a \emph{rate} it falls when the gold price
+rises, and a constant $\bar s$ therefore overstates carry by a growing amount
+across a sample in which gold quadrupled.
+
+\textbf{Second, it annualises a level.} Multiplying by $365/\tau$ is the right
+operation for something that accrues over time and the wrong one for something
+paid once. A constant level premium, put through this transformation, produces
+a fresh sawtooth pointing the other way, and diverges as $\tau\to 0$. The
+repair cures one calendar artefact by manufacturing another.
+
+\subsection*{The reduced-form alternative}
+
+Do not assume carry. \emph{Estimate} it. On any date the market quotes prices
+for several delivery months at once, and those prices trace out a term
+structure: a yield curve for New York gold. The slope of that curve is the
+market's own carry, revealed by the prices themselves. Nothing has to be
+assumed about storage, and no interest-rate series is needed to extract it.
+
+\section{The estimator}
+\label{sec:estimator}
+
+\subsection*{The daily cross-section}
+
+On date $t$, collect every listed contract $i=1,\dots,n_t$ with a settlement
+price $F_{it}$, a horizon $\tau_{it}$ and open interest $\mathrm{OI}_{it}$
+(the number of contracts outstanding, a liquidity measure). Run the weighted
+least-squares regression
+\begin{equation}
+\ln F_{it} \;=\; a_t \;+\; b_t\,\tau_{it} \;+\; u_{it},
+\qquad w_{it}=\sqrt{\mathrm{OI}_{it}} .
+\label{eq:cs}
+\end{equation}
+
+The functional form follows from compounding, not from a behavioural
+assumption: if metal is carried at a constant proportional cost $c$ per day
+then $F(\tau)=F(0)e^{c\tau}$, so $\ln F$ is linear in $\tau$ with slope $c$ and
+intercept $\ln F(0)$. The intercept is the extrapolation of the New York
+forward curve back to zero horizon --- the price today of New York-deliverable
+metal.
+
+Define the paper's two price variables:
+\begin{align}
+\phat &\;\equiv\; a_t - \ln S_t
+  &&\text{the \emph{New York premium}: a level, in log points of spot,}\label{eq:phat}\\
+\omhat &\;\equiv\; 365\,b_t - r_t
+  &&\text{\emph{excess carry}: a rate, in points a year.}\label{eq:omhat}
+\end{align}
+
+\subsection*{What this construction achieves}
+
+\begin{enumerate}[leftmargin=1.4em,itemsep=3pt,topsep=2pt]
+\item \textbf{No rate data enters $\phat$.} Carry loads entirely on $\tau$ and
+is absorbed by $b_t$. Whatever the true financing cost, storage fee or lease
+rate, they shift the slope, not the intercept. The premium is therefore free of
+every unobservable that has been blocking the project. Only $\omhat$ needs an
+interest rate, and only because subtracting $r_t$ is what makes a slope
+interpretable.
+\item \textbf{The roll cannot contaminate it.} Nothing here picks a front
+month. Contracts enter as a cross-section, so the sawtooth has no route in, and
+the short-$\tau$ filters that version~1 needed are no longer load-bearing.
+\item \textbf{The horizon choice disappears.} We do not read the curve at a
+chosen maturity; we report its intercept and its slope. The level and the rate
+are reported as the different objects they are, which removes the arbitrariness
+documented in \S\ref{sec:breaks}.
+\item \textbf{$\phat$ is defined by the projection.} This is the crucial point
+of the whole section. $\phat$ is not a parameter of a pricing model that may or
+may not be true; it is a number computed from prices by a stated rule. It
+exists, and means the same thing, whether or not any structural account of the
+gold market is correct. A structural model is then a \emph{claim about what
+$\phat$ should equal} --- which is a useful thing to have, and a different
+thing from the estimand.
+\end{enumerate}
+
+\subsection*{Choices that have to be stated, because they are choices}
+
+\begin{itemize}[leftmargin=1.2em,itemsep=2pt,topsep=2pt]
+\item \emph{Which contracts.} Restrict to $15\le\tau\le 400$ days and open
+interest above a floor. Contracts inside fifteen days are in the delivery
+period, where price behaviour is about warrants rather than carry; far-dated
+and thinly held contracts carry settlement prices that are marked rather than
+traded. This leaves a median of about six contracts a day.
+\item \emph{Weights.} Thin contracts have noisier settlements, so weighting by
+$\sqrt{\mathrm{OI}}$ is a proxy for inverse standard deviation. It is an
+assumption about the error structure, not a result, and the estimates should be
+shown unweighted as well.
+\item \emph{Linear, not quadratic.} A horizon-dependent risk --- the chance a
+tariff lands before delivery --- would curve the term structure, and fitting
+$\tau^2$ is tempting. With six points a day a quadratic is fragile and its
+coefficient is close to collinear with the slope. Baseline linear; curvature as
+a robustness exercise and as a diagnostic, never as a headline.
+\item \emph{Daily.} Equation~\eqref{eq:cs} is estimated separately each day
+rather than pooled with time fixed effects, because both $a_t$ and $b_t$ are
+the objects of interest and neither is a nuisance.
+\end{itemize}
+
+\subsection*{A sharper measurement of the same estimand}
+
+If a forward curve for \emph{London} metal is available at matched dates, the
+same projection can be run on it:
+$\ln F^{L}_{it} = a^{L}_t + b^{L}_t \tau_{it} + u^{L}_{it}$. Then
+\begin{equation}
+\widehat{\pi}_t \;\equiv\; a_t - a^{L}_t
+\label{eq:twocurve}
+\end{equation}
+is the log premium of New York metal over London metal at zero horizon,
+measured entirely inside futures markets. It needs no spot benchmark, no
+interest rate, and no storage figure; and if the two curves settle at the same
+instant it is free of the timing problem in \S\ref{sec:timing}. The slope
+difference $b_t-b^{L}_t$ is the cross-location carry differential, which is the
+natural place to look for a squeeze in the London lending market.
+
+This is not a different model. It is equation~\eqref{eq:phat} measured better,
+and it should be presented that way: the baseline result uses $\phat$, and
+$\widehat{\pi}_t$ is the robustness check that removes three assumptions at
+once.
+
+\section{What the premium contains, and why we do not decompose it}
+\label{sec:contains}
+
+$\phat$ contains, at least: the value of metal being in New York rather than
+London when policy might restrict moving it; the difference between the bar
+forms the two markets trade; the difference between an exchange warrant and an
+unallocated claim on a bank; and measurement error from pricing the two legs at
+different moments.
+
+The reduced-form stance is that we do not attempt to separate these, and the
+reason is not modesty but identification: with price data alone, a constant
+institutional wedge and a constant risk premium are observationally
+equivalent. Attributing a share of $\phat$ to any one component would be
+asserting, not estimating.
+
+What makes this stance workable is that the paper's three claims are invariant
+to the decomposition:
+
+\begin{enumerate}[leftmargin=1.4em,itemsep=2pt,topsep=2pt]
+\item $\phat$ \emph{moves on dated policy news}, which establishes that it is
+not a constant institutional wedge;
+\item $\phat$ \emph{predicts physical shipments}, and only above a threshold,
+which establishes that it is the price signal that actually moves metal;
+\item the shipments it predicts \emph{are relocation rather than absorption},
+which is what makes them a contaminant of trade statistics.
+\end{enumerate}
+
+None of the three requires knowing how much of the premium is bar form and how
+much is tariff risk. What we give up is equally clear and should be written in
+the paper rather than left for a referee to notice: we cannot decompose the
+premium, so we make no statement about the price of tariff risk as such, and no
+welfare claim that would require one.
+
+\section{Measurement error, and the one structural fact we do use}
+\label{sec:timing}
+
+The two legs are not observed at the same instant. The London benchmark is
+struck in the afternoon London auction; the New York settlement is calculated
+about three and a half hours later. Let $\varepsilon_t$ be gold's return over
+that window.
+
+One fact about the trading mechanism does real work here, and it is worth
+keeping precisely because it is a fact about the mechanism rather than an
+assumption about behaviour: \emph{every contract settles at the same instant}.
+So $\varepsilon_t$ multiplies all of that day's futures prices equally. In
+logs,
+\begin{equation}
+\widehat{a}_t = a_t + \varepsilon_t,
+\qquad
+\widehat{b}_t = b_t .
+\end{equation}
+The timing error is a pure \emph{level} contaminant. It biases the premium by
+$\mathbb{E}[\varepsilon_t]$ and adds $\Var(\varepsilon_t)$ to its variance, and
+it leaves the estimated carry slope untouched.
+
+Two consequences follow, and they determine the frequency at which each part of
+the paper should be run.
+
+\begin{itemize}[leftmargin=1.2em,itemsep=3pt,topsep=2pt]
+\item \textbf{As an outcome}, in the news regression, classical measurement
+error inflates standard errors but does not bias the coefficient --- provided
+the news does not arrive inside the three-and-a-half-hour window, which for
+some announcements it does. The defence is an event window that opens before
+and closes after the affected settlement, plus re-timing the New York leg to
+the London auction instant where intraday data allow.
+\item \textbf{As a regressor}, in the flow equation, the same error attenuates
+the slope towards zero and, because the specification has a kink, smooths the
+kink and biases the estimated threshold. The defences are averaging to monthly
+frequency, which shrinks the noise variance by the number of days in the month;
+re-timing; and instrumenting the premium with dated announcements.
+\end{itemize}
+
+That the news regression belongs at daily frequency and the flow regression at
+monthly is therefore not a convenience. It falls out of where the measurement
+error lands.
+
+\section{From premium to metal: the second reduced form}
+\label{sec:flow}
+
+Write the premium in dollars per ounce, $P_t = \phat\,S_t$, and let $Q_t$ be
+tonnes shipped along the relevant corridor in month $t$. Metal moves only when
+the premium covers the all-in cost of moving it: freight, insurance, recasting
+into the bar form the destination market accepts, and the financing of metal in
+transit. Below that cost, nothing happens; above it, the trade is profitable
+and scales with how far above it sits. The reduced-form representation is a
+hinge:
+\begin{equation}
+Q_t \;=\;
+\beta^{W}\max\!\left(0,\;P_t-\kappa^{W}\right)
+\;-\;\beta^{E}\max\!\left(0,\;-P_t-\kappa^{E}\right)
+\;+\;\gamma' x_t \;+\; u_t .
+\label{eq:hinge}
+\end{equation}
+
+Four features of this deserve a sentence each.
+
+\textbf{Dollars, not rates.} Freight, insurance and refining are charged by
+weight, so the threshold is naturally a dollar amount per ounce and should not
+be expressed as a percentage. This is a prior about the technology, not a
+fitted result, and the paper should say so plainly; the two specifications are
+only distinguishable when the gold price moves a lot.
+
+\textbf{A kink, not a slope.} A linear specification lets the many months in
+which nothing moves pull down the estimated response of the months in which a
+great deal moves. The kink is also the economically interesting parameter:
+$\kappa$ is the transatlantic transfer cost, which is not published anywhere,
+so estimating it is a contribution in its own right rather than a nuisance.
+
+\textbf{Two sides, separately.} Above the band New York is dear and metal flows
+west; below it New York is cheap and metal flows east. Both regimes occur. A
+single dummy or a symmetric specification would impose that the two thresholds
+and the two slopes are equal, which is exactly the kind of restriction the
+data can test.
+
+\textbf{Daily hinge, then aggregate.} Because $\max(0,\cdot)$ is convex,
+applying the hinge to a monthly average premium is not the same as averaging
+the daily hinge, and it systematically understates the response: a month
+containing a few days far above the threshold and many days below it looks, in
+its average, like a month that never crossed. Apply the hinge day by day and
+aggregate afterwards.
+
+Two further shifters belong in $x_t$, and both are reduced-form controls rather
+than structural amendments. Capacity --- refineries and secure freight can only
+move so much per month --- censors $Q$ from above, so a period of sustained
+high premia with flat flows is not evidence against the mechanism. And the
+stock of metal already inside the destination market matters: an arbitrage can
+be closed by re-warranting metal that is already in New York, which produces no
+cross-border shipment at all. That is not a defect of the specification but the
+central asymmetry of the whole project, and it belongs in the flow equation as a
+control and in the accounting as a bound.
+
+\section{How the pieces fit together}
+\label{sec:chain}
+
+\begin{center}
+\begin{tabular}{@{}p{0.055\textwidth}p{0.30\textwidth}p{0.20\textwidth}p{0.33\textwidth}@{}}
+\toprule
+\textbf{Step} & \textbf{What is estimated} & \textbf{Frequency} & \textbf{What it establishes} \\
+\midrule
+1 & Cross-sectional projection~\eqref{eq:cs}; the premium~\eqref{eq:phat} and
+excess carry~\eqref{eq:omhat} & daily & a price variable free of carry, the
+roll and any horizon choice \\
+2 & Response of $\Delta\phat$ to signed, timed policy announcements & daily &
+the premium is priced policy risk, not a constant wedge \\
+3 & The hinge~\eqref{eq:hinge}: $\beta$ and $\kappa$ & monthly & the premium
+moves metal, and only once it clears a cost \\
+4 & Fitted flows against absorption benchmarks and vault stocks & monthly &
+those flows are relocation, not consumption \\
+5 & Relocation flows applied to reported trade aggregates & monthly & the size
+of the contamination --- the paper's payoff \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Steps 2 and 3 can be run jointly, with the announcements instrumenting the
+premium in the flow equation. That buys consistency if the premium is measured
+with error, at the cost of an exclusion restriction: announcements must affect
+shipments only through the premium. Three things threaten it, and each has a
+reduced-form remedy rather than a structural one --- safe-haven demand shifting
+flows directly, which is why ETF and central-bank series enter as controls;
+precautionary relocation by owners who would move metal whatever the price,
+which is untestable and must be conceded; and country-wide tariff measures that
+affect all trade with a partner, which is why gold-specific events are
+preferred to broad ones.
+
+\section{Arithmetic illustration of the definitions}
+\label{sec:illustration}
+
+No estimation is reported in this note. To make the mapping concrete, here is
+one date run through the definitions, using quantities computed earlier in the
+project.
+
+On 29 January 2025 the fitted curve had an intercept implying a zero-horizon
+New York price of \$2{,}769.38 against a London benchmark of \$2{,}756.30. Then
+\[
+\phat=\ln\!\left(\frac{2769.38}{2756.30}\right)=0.473\%,
+\qquad
+P_t=\phat\,S_t=\$13.08\text{ per ounce},
+\]
+which, against a transfer cost of order \$3 an ounce, sits well inside the
+region where equation~\eqref{eq:hinge} predicts metal moves. The fitted slope on
+the same day was $5.22\%$ a year, so with an overnight rate of $4.35\%$ the
+excess carry was $\omhat\approx+0.9$ points before any storage adjustment.
+
+Two scale conversions make these numbers readable. One per cent of spot at a
+\$4{,}500 gold price is \$45 an ounce, or \$1.45 million a tonne. A \$3 per
+ounce threshold is about \$96{,}000 a tonne, which is where air freight,
+insurance and recasting plausibly sit --- a sanity check on the estimand, not a
+validation of it.
+
+\section{Notation, units and signs}
+\label{sec:units}
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} & \textbf{Unit} \\
+\midrule
+$S_t$ & London benchmark, unallocated metal & \$/oz \\
+$F_t(\tau)$ & New York futures price, delivery in $\tau$ days & \$/oz \\
+$\tau$ & calendar days to the delivery-relevant date & days \\
+$a_t,\ b_t$ & intercept and slope of the daily curve~\eqref{eq:cs} & log points; log points/day \\
+$\phat$ & New York premium, $a_t-\ln S_t$ & log points of spot \\
+$P_t$ & the same premium in money, $\phat S_t$ & \$/oz \\
+$\omhat$ & excess carry, $365b_t-r_t$ & points a year \\
+$\kappa$ & transfer cost threshold & \$/oz \\
+$\beta$ & flow response above the threshold & tonnes per month per \$/oz \\
+$Q_t$ & metal shipped & tonnes a month \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Conventions.} Rates are annualised decimals and differences
+between rates are quoted in percentage points. Day count is 365 throughout; if
+an overnight rate quoted on a 360-day basis is used in~\eqref{eq:omhat} it must
+be scaled by $365/360$ first. Mass is tonnes, with $1$~t${}=32{,}150.7$~oz, and
+prices are converted at the boundary rather than inside the analysis.
+
+\noindent\textbf{Signs.} $\phat>0$ means New York is dear, so metal flows west,
+towards New York. $\phat<0$ means the reverse. Both regimes occur in the
+sample, and~\eqref{eq:hinge} is written to handle both rather than assuming the
+westward case.
+
+\section{Assumptions, and where each one fails}
+\label{sec:assumptions}
+
+\begin{center}
+\begin{tabular}{@{}p{0.30\textwidth}p{0.30\textwidth}p{0.33\textwidth}@{}}
+\toprule
+\textbf{Assumption} & \textbf{Where it enters} & \textbf{How it fails} \\
+\midrule
+The log forward curve is linear in the horizon & \eqref{eq:cs} & horizon-dependent
+risk curves it; a tariff hazard bends it downward, loading onto the slope and
+biasing $\omhat$, not $\phat$ \\
+The timing shock is common to all contracts & \S\ref{sec:timing} & fails if
+contracts settle at different instants, or if a far month is marked rather than
+traded; then the error tilts the curve and contaminates $\phat$ as well \\
+Settlement noise falls with open interest & weights in~\eqref{eq:cs} & fails
+when a thin far contract is pinned to a model price and so looks \emph{less}
+noisy than it is \\
+The threshold is constant in dollars within the estimation window &
+\eqref{eq:hinge} & freight and insurance move with fuel and with wartime risk
+premia; a level shift in $\kappa$ mimics a change in $\beta$ \\
+Shipments are recorded in the month the premium was earned & aggregation &
+exporters record on departure and importers on arrival, so month-boundary
+crossings misalign the two sides \\
+Announcements move flows only through the premium & step 3 of
+\S\ref{sec:chain} & safe-haven demand and precautionary relocation both violate
+it; the second is untestable with available data \\
+The premium is a price signal, not a quantity constraint & \eqref{eq:hinge} &
+when capacity binds, $Q$ stops responding and $\beta$ is attenuated; treat the
+ceiling explicitly \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{What we give up by not going structural}
+\label{sec:stance}
+
+A structural version of this exercise would write the premium as a function of
+a location risk premium, a lease rate in each market and a hazard rate for
+tariff imposition, and would estimate those objects. It is worth being explicit
+about why the paper does not do that.
+
+\begin{enumerate}[leftmargin=1.4em,itemsep=3pt,topsep=2pt]
+\item \textbf{The central parameter has no data behind it.} There is no
+reported New York lending market for gold at any price. In the structural
+system the New York lease rate appears only in combination with the storage
+cost, so the futures curve alone can never separate them. A structural estimate
+would be an assumption wearing an estimate's clothes.
+\item \textbf{The components of the premium are observationally equivalent in
+price data.} Location risk, bar-form scarcity and warrant-versus-claim trust all
+enter as a level. No amount of price data separates them; only owner-level or
+transaction-level data would, and it does not exist publicly.
+\item \textbf{The claims the paper actually makes do not need the
+decomposition.} Everything in \S\ref{sec:contains} survives any allocation of
+the premium across its components.
+\end{enumerate}
+
+So the structural system belongs in an appendix, where it does two honest jobs:
+it explains what $\phat$ and $\omhat$ would equal under an explicit pricing
+model, which is how the reader knows what sign to expect; and it states
+precisely which combinations are not identified, which is how the reader knows
+the main text is not quietly claiming them.
+
+\medskip
+\noindent\textbf{Three consequences for the paper's prose, which are the
+practical content of taking this stance.}
+
+\begin{itemize}[leftmargin=1.2em,itemsep=3pt,topsep=2pt]
+\item \emph{Retire ``dislocation'' as the headline variable.} It is the hybrid
+object of \S\ref{sec:carry}: a measurement minus an assumption. Report $\phat$
+and $\omhat$ instead, which are both projections of observables. If a single
+annualised number is wanted for comparability with market commentary, report it
+in a footnote with the assumed storage rate stated next to it.
+\item \emph{Never attribute a share of $\phat$ to a named component.}
+Sentences of the form ``the tariff premium reached $x$ per cent'' should read
+``the New York premium reached $x$ per cent'', with the tariff attribution
+carried by the event study rather than by the label.
+\item \emph{Report the level and the rate separately, always.} They answer
+different questions --- how much more a dealer will pay to have metal in New
+York today, versus how expensive it is to hold it there --- and collapsing them
+into one number was the source of the confusion this section exists to remove.
+\end{itemize}
+
+\end{document}
