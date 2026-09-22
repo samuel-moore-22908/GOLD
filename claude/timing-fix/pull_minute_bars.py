@@ -12,15 +12,18 @@ tape.
     --batch     print the parameters for the same pull through the web UI
 
 Costing calls are free; nothing is downloaded without --confirm. The API
-signatures here were checked against the installed databento client (0.86.0);
-the calls themselves have not been run, because no API key is present on this
-machine.
+signatures here were checked against the installed databento client (0.86.0).
+
+The key is read from DATABENTO_API_KEY in the environment, or from a line
+reading DATABENTO_API_KEY=db-... in a .env at the repo root, which is
+gitignored. Keeping it in .env means it never has to be typed into a shell
+that records history, set machine-wide, or pasted into a conversation.
 
 Reads   claude/timing-fix/timing_instants.csv
+        .env                                         (the key, never printed)
 Writes  data/databento/minute/gc_minute_<year>.csv   (gitignored, like all data)
 
-Run from the repo root, with a key in the environment:
-    export DATABENTO_API_KEY=db-...
+Run from the repo root:
     .venv/Scripts/python.exe claude/timing-fix/pull_minute_bars.py --quote
 """
 from __future__ import annotations
@@ -44,11 +47,31 @@ REQUEST_SPACING_S = 0.4
 QUOTE_SAMPLE_DAYS = 12          # days sampled to extrapolate the windowed cost
 
 
-def client():
+def api_key() -> str | None:
+    """The key from the environment, or from a gitignored .env at the repo root.
+
+    The .env route exists so the key never has to be typed into a shell, pasted
+    into a conversation, or set as a machine-wide variable. It is read here and
+    never printed.
+    """
     key = os.environ.get("DATABENTO_API_KEY")
+    if key:
+        return key.strip()
+    env = Path(".env")
+    if env.exists():
+        for line in env.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line.startswith("DATABENTO_API_KEY"):
+                return line.split("=", 1)[1].strip().strip("'\"")
+    return None
+
+
+def client():
+    key = api_key()
     if not key:
-        sys.exit("DATABENTO_API_KEY is not set. Costing calls need it too, and "
-                 "they are free.")
+        sys.exit("No Databento key found. Put it in a .env at the repo root, as "
+                 "a line reading DATABENTO_API_KEY=db-... -- .env is gitignored. "
+                 "Costing calls need the key too, and they are free.")
     try:
         import databento as db
     except ImportError:

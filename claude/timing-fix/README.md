@@ -19,9 +19,20 @@ against predictions written down in advance.
 
 **Status.** The specification and both scripts are built and the correction is
 tested end to end on fabricated bars (`apply_timing_fix.py --selftest`, which
-recovers a known shock to 1e-16). Nothing has been bought: no Databento key is
-present on this machine, and costing calls need one even though they are free.
-Running `apply_timing_fix.py` today prints the predictions rather than results.
+recovers a known shock to 1e-16). Nothing has been bought yet.
+
+**The key.** Put it in a `.env` at the repo root, as a single line:
+
+```
+DATABENTO_API_KEY=db-...
+```
+
+`.env` is gitignored under the credentials block, so it stays out of the
+repository. That route is preferred over exporting the key in a shell, which
+records it in shell history, and over a machine-wide variable, which exposes it
+to every process on the machine. The scripts read it and never print it. If the
+key has ever been pasted somewhere shared, rotate it in the Databento portal
+rather than reusing it.
 
 ---
 
