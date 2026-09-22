@@ -19,6 +19,13 @@ interest rate at all. The method is the one in
 | `make_premium_carry_figure.py` → `premium_carry.pdf`/`.png` | the two panels |
 | `raw_cache/` | LBMA and FRED responses, fetched once and reused |
 
+The two CSVs and the cache are not in git: the repository's policy is that data
+regenerates from source rather than being committed (`*.csv` is gitignored at
+the root, with the fetch procedures in `DATA_SOURCES.md`). The builder rebuilds
+both files, and re-fetches the public series it needs, in one command and under
+a minute. The script, the diagnostics it printed, and the figure are the
+committed record.
+
 ---
 
 ## The recipe
