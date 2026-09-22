@@ -1,0 +1,24 @@
+No minute data found under data/databento/minute/.
+
+Nothing to correct yet. pull_minute_bars.py --quote prices the pull;
+timing_instants.csv is the specification of exactly which minutes are
+needed. The predictions below are what the correction should deliver,
+recorded now so they cannot be adjusted after the fact.
+
+1. The premium stops predicting the next day's London return
+   test: corr(premium, next-day London return) falls from 0.394 to |corr| < 0.10
+2. Daily noise falls
+   test: sd of the daily premium falls from 0.499 pp by at least a fifth
+3. The calm/volatile noise gap closes
+   test: sd on volatile days falls from 0.674 towards the 0.420 of calm days, the ratio moving from 1.60 to under 1.25
+4. The extreme days were the clock, not the market
+   test: 30 Jan 2026 moves from -5.55% to |premium| < 1.5%, and the 12 days beyond +/-2% fall to fewer than 5
+5. Monthly means barely move
+   test: the Jan 2025 mean stays within 0.10 pp of 0.523, because a common shock averages out over a month -- if this one fails, the correction is wrong
+
+Prediction 5 is the important one. The first four say the correction
+removes noise; the fifth says it removes noise rather than signal. A
+common timing shock has no reason to line up with calendar months, so
+monthly means should survive it almost untouched. If January 2025
+moves materially, the correction is picking up something other than
+the clock and should not be used.
