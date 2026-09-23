@@ -696,3 +696,48 @@ Primary-source pulls (all in `src/`, output to `data/processed/`, gitignored per
 | `pull_usgs_gold_series.py` | Pulls USGS Monthly Mineral Industry Surveys → `usgs_gold_monthly.csv` (production, price, import/export totals) |
 | `pull_usgs_historical.py` | Pulls USGS Data Series 140 (1900–2022) and Minerals Yearbook world production by country (2002–2022) |
 | `extend_usgs_production_series.py` | Splices Mineral Commodity Summaries onto the Minerals Yearbook series → country production through ~2025 for CHN/USA (not IND/GBR/CHE — too small to be named in MCS) |
+
+| File | Contents |
+|---|---|
+| `claude/pipeline-runner/run_pipeline.py` | Bare clone → re-timed premium on any machine: re-buys the source data, rebuilds the panels, buys the minutes, applies the timing correction. Stops at each purchase (§10) |
+
+## 10. Code conventions
+
+### Code that gets run on more than one machine
+
+Any script written here to be *used* rather than read must run on any machine
+once its paths are changed. That means four things.
+
+**All machine-specific values sit in one marked block at the top of the file.**
+Repository root, data directories, the interpreter, any external drive, the
+credentials file. The block is commented with what each value means and what
+happens if it is left blank, and nothing machine-specific is buried further
+down. `claude/pipeline-runner/run_pipeline.py` is the reference implementation.
+
+**Paths resolve from a stated root, never from the working directory.** A
+script may be launched from an editor, a scheduler, or another folder
+entirely. Deriving the root from the file's own location, or from a configured
+value, and changing directory once at the start, costs three lines and removes
+a whole class of failure.
+
+**No assumptions that hold only on the machine it was written on.** The
+recurring one in this project is the virtual environment layout —
+`.venv/Scripts/python.exe` on Windows against `.venv/bin/python` everywhere
+else — but the same applies to installed tools, drive letters and shell
+built-ins. Detect, or expose it in the configuration block.
+
+**Self-contained, and honest about its preconditions.** A script should do the
+whole job it names rather than assuming earlier steps were run by hand, check
+what it needs before it starts, and say plainly what is missing instead of
+failing halfway through with a library traceback. Where it spends money or
+writes irreversibly, it quotes first, stops, and tells the user the exact
+command that continues.
+
+### Why this is a convention and not a preference
+
+The data in this project is not committed — it regenerates from source — so a
+second machine starts from working code and no inputs. Every implicit
+dependency on the first machine becomes an hour of archaeology at exactly the
+moment someone is trying to reproduce a result. The cost of the convention is a
+few lines per script; the cost of not having it is paid by whoever next tries
+to run the pipeline, including a future version of oneself.
