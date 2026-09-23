@@ -176,6 +176,52 @@ argued about.
 | carry, open-interest weights | 0.9991 | 0.035 | 0.745 |
 | carry, quadratic fit | 0.9697 | 0.256 | 3.835 |
 
+### Volume, open interest, and what the weights are actually for
+
+`weighting_diagnostics.py` tests the justification, rather than the choice.
+Open interest is a **stock** — contracts outstanding at the close. Volume is a
+**flow** — contracts traded during the day. They correlate 0.78 in logs across
+the fitted panel but are not interchangeable: trading between existing holders
+moves volume and leaves open interest alone.
+
+Every document in this project justifies weighting on inverse-variance
+grounds — thin contracts are said to carry noisier settlements, so they should
+count for less. **That claim does not survive contact with the residuals.**
+
+The raw residuals appear to support it, and then do not. Contracts that never
+traded look tidier than traded ones (median absolute residual 1.16 versus 1.57
+basis points of price). But untraded contracts are overwhelmingly deferred
+ones, sitting at the far end of the horizon range where leverage is high and
+least squares pulls the fitted line towards them — mean leverage 0.351 against
+0.313, median horizon 303 days against 170. Studentizing removes that, and the
+difference goes with it: median absolute studentized residual 0.864 for
+untraded contracts against 0.881 for traded, and the same flatness across
+quintiles of either measure.
+
+| Quintile | 1 | 2 | 3 | 4 | 5 |
+|---|---:|---:|---:|---:|---:|
+| median abs. studentized, by open interest | 1.139 | 0.671 | 0.809 | 0.904 | 1.002 |
+| median abs. studentized, by volume | 0.876 | 0.784 | 0.869 | 0.888 | 1.002 |
+
+So liquidity does not predict how noisy a settlement is, and no weighting can
+be defended here as efficient. Two things follow.
+
+**Weighting by open interest is a statement about leverage, not precision.** It
+tilts the fit towards near-dated contracts, which is where the intercept is
+extrapolated to, so it reduces the variance of that extrapolation. That is a
+defensible reason to keep it — and it is not the reason the documents give.
+The paper should make the leverage argument and drop the efficiency one.
+
+**Volume carries the one thing open interest cannot.** 6.9% of contract-days
+in the fit have no trades at all, and 38.8% have fewer than a hundred. A
+settlement for a contract that did not trade is not a traded price; the
+exchange derives it from the rest of the curve. Those observations are not
+noisier, but they are not independent either, so they flatter the fit
+statistics and understate the standard error on the intercept. The honest
+robustness check is the intercept's standard error computed on traded
+contracts only, and volume is what makes that possible. It belongs in the
+pipeline as a filter, not as a weight.
+
 **A discrepancy in the project's existing code, recorded rather than quietly
 fixed.** Every document here specifies weighting by `√(open interest)`, and
 `claude/mechanism-figures/validate_mechanism.py` implements it as
