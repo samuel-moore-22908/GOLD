@@ -6,35 +6,57 @@ machine-specific sits in a marked block at the top, and nothing else needs
 touching to move it to another computer.
 
 ```
-python claude/pipeline-runner/run_pipeline.py                     # check, quote, stop
-python claude/pipeline-runner/run_pipeline.py --confirm-rebuy     # + buy source data
-python claude/pipeline-runner/run_pipeline.py --confirm-minutes   # + buy the minutes
+run_pipeline.py                     # check, quote both, buy nothing
+run_pipeline.py --confirm-rebuy     # + buy the source jobs
+run_pipeline.py --confirm-minutes   # + buy the minutes
+run_pipeline.py --confirm-all       # + buy both, in one run
 ```
+
+**From an IDE: press run.** It uses the interpreter it was started with, so
+whichever environment the IDE has selected is the one the whole pipeline uses,
+and there is no interpreter path to configure. It also changes directory to the
+repository root before doing anything, so the IDE's working directory does not
+matter either.
 
 ## What you edit
 
+Two settings, and only two, are machine-specific:
+
 ```python
-REPO_ROOT          = ""         # blank = infer from this file's location
-PYTHON             = ""         # blank = the repo's .venv, else this interpreter
-DATA_ROOT          = ""         # blank = REPO_ROOT/data
-ENV_FILE           = ""         # blank = REPO_ROOT/.env
-MINUTE_ROUTE       = "windowed" # or "batch"
-PRICE_CEILING_USD  = 5.00
-JOB_WAIT_MINUTES   = 90
+REPO_ROOT = ""        # blank = infer from this file's location
+ENV_FILE  = ".env"    # relative to REPO_ROOT, or an absolute path
 ```
 
-Every one of them may be left blank on a normal clone, because each has a
-sensible derivation. Set `REPO_ROOT` if you move this script out of the
-repository, `DATA_ROOT` if the clone sits on a small disk, `PYTHON` if the
-interpreter is somewhere unusual. The Windows and POSIX virtual-environment
-layouts are both detected, so the same file runs on either.
+`REPO_ROOT` can stay blank on a normal clone — the script finds the repository
+from its own location — and needs setting only if you move this file out of the
+repository. `ENV_FILE` takes an absolute path if you keep the key outside the
+clone.
+
+Everything else is a relative path into the repository, grouped just below
+those two:
+
+```python
+DATABENTO_DIR = "data/databento"          # the delivered source jobs
+PROCESSED_DIR = "data/processed"          # panels derived from them
+MINUTE_DIR    = "data/databento/minute"   # minute bars, after reduction
+SERIES_DIR    = "claude/premium-carry-series"
+TIMING_DIR    = "claude/timing-fix"
+```
+
+These mirror the paths the pipeline scripts use internally, so change them only
+if you move the data and change those scripts to match. If the two ever drift
+apart, the runner says so by name — "`X` ran, but `Y` is not there" — rather
+than failing obscurely two steps later.
+
+Then three behaviour settings: `MINUTE_ROUTE` (`"windowed"` or `"batch"`),
+`PRICE_CEILING_USD`, and `JOB_WAIT_MINUTES`.
 
 ## What it does
 
 | Step | Action | Cost |
 |---|---|---|
-| 0 | Preflight: repository markers, interpreter, packages, key, disk | — |
-| 1 | Re-buy the two expired Databento source jobs, wait, download | **$1.91** |
+| 0 | Preflight: repository markers, packages, key, interpreter | — |
+| 1 | Buy the two Databento source jobs, wait for them, download, unpack | **$1.90** |
 | 2 | `src/build_efp_from_databento.py` → the contract panel | — |
 | 3 | `build_premium_carry.py` → the premium and carry series | — |
 | 4 | Verify against the reference run on the original machine | — |
@@ -47,12 +69,16 @@ to re-run and picks up where it stopped. `--force` redoes them anyway.
 
 ## How it handles money
 
-It stops at each of the two purchases. Every spend is quoted first through
-Databento's free costing endpoint, printed, and then **not made** unless the
-matching flag is present — the script exits cleanly with the exact command to
-continue, rather than failing. `PRICE_CEILING_USD` is a backstop rather than a
-budget: any quote above it aborts the run, so a mistyped date range cannot
-become a large bill.
+It buys twice — the source jobs, then the minutes — and stops at each. Every
+spend is quoted first through Databento's free costing endpoint, printed, and
+then **not made** unless the matching flag is present; the script exits cleanly
+with the exact command to continue, rather than failing. `--confirm-all`
+authorises both in a single run.
+
+`PRICE_CEILING_USD` is a backstop rather than a budget: any quote above it
+aborts the run, so a mistyped date range cannot become a large bill. Raise it
+deliberately before switching `MINUTE_ROUTE` to `"batch"`, which quotes at
+about $43.
 
 ## Step 4, the part worth keeping
 
@@ -73,10 +99,11 @@ be trusted until that is understood.
 
 ## Notes
 
-- The script changes directory to the repository root before doing anything,
-  so the scripts it calls — all of which expect to be run from there — work
-  regardless of where you launch it from.
-- `--bootstrap-venv` creates `.venv` and installs `requirements.txt` first, for
-  a machine with nothing set up.
 - `--dry-run` prints every step and buys nothing, which is the safe first run
   on an unfamiliar machine.
+- If the interpreter is missing a package, preflight names it and prints the
+  `pip install -r requirements.txt` line for that exact interpreter — the usual
+  IDE failure is simply the wrong environment being selected.
+- The source jobs both expired on 20 September 2026, which is why step 1 buys
+  rather than downloads. At about $1.90 for the pair that is cheaper than
+  moving 236 MB between machines.
