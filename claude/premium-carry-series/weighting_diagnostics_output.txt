@@ -1,0 +1,83 @@
+==============================================================================
+WHAT THE TWO LIQUIDITY MEASURES LOOK LIKE
+==============================================================================
+contract-days in the fit : 22,310
+open interest, median    : 14,994 contracts
+volume, median           : 242 contracts
+no trades at all         : 1,541 (6.9%)
+fewer than 100 traded    : 8,652 (38.8%)
+corr(log OI, log volume) : 0.778
+
+A settlement for a contract that did not trade is not a traded price. The
+exchange derives it from the rest of the curve, so it is not an
+independent observation of the curve being fitted.
+
+==============================================================================
+RAW RESIDUALS SUGGEST THINNER CONTRACTS FIT BETTER -- WHICH IS AN ARTEFACT
+==============================================================================
+
+by open interest quintile (basis points of price):
+               median_abs_bp  sd_bp     n
+open_interest                            
+0                       1.79   5.03  4462
+1                       1.09   3.83  4461
+2                       1.40   4.20  4462
+3                       1.84   4.38  4461
+4                       1.62   4.89  4462
+
+by volume quintile (basis points of price):
+        median_abs_bp  sd_bp     n
+volume                            
+0                1.31   4.45  4462
+1                1.44   4.34  4461
+2                1.68   4.64  4462
+3                1.56   4.56  4461
+4                1.74   4.97  4462
+
+never traded : n=1,541  median |residual| 1.16 bp
+traded       : n=20,767  median |residual| 1.57 bp
+
+The untraded contracts look tidier. They are not. They are deferred
+contracts sitting at the far end of the horizon range, where leverage is
+high and the fitted line is pulled towards them:
+            n  mean_leverage  median_tau
+traded                                  
+False    1541          0.351       303.0
+True    20767          0.313       170.0
+
+==============================================================================
+STUDENTIZED, AND WITHIN HORIZON BUCKETS: NEITHER MEASURE PREDICTS NOISE
+==============================================================================
+median |studentized residual|:
+            not traded  traded  n not traded  n traded
+tau_bucket                                            
+15-60            1.354   1.244            17      3960
+60-120           0.625   0.650            18      3524
+120-200          0.892   0.943           149      4485
+200-400          0.858   0.780          1357      8665
+
+   not traded   n= 1,541  median |t| 0.864   sd 1.062
+   traded       n=20,767  median |t| 0.881   sd 1.041
+
+median |studentized| across open interest quintiles: 1.139, 0.671, 0.809, 0.904, 1.002
+median |studentized| across volume quintiles: 0.876, 0.784, 0.869, 0.888, 1.002
+
+==============================================================================
+WHAT THIS MEANS FOR THE WEIGHTS
+==============================================================================
+The inverse-variance case for weighting by liquidity is not supported in
+this panel: residual dispersion is flat across open-interest quintiles,
+flat across volume quintiles, and the same for contracts that traded and
+contracts that did not, once leverage is accounted for.
+
+That does not make weighting wrong, but it changes what it is for. Open
+interest tilts the fit towards near-dated contracts, which is where the
+intercept is extrapolated to, so it reduces the variance of the
+extrapolation. That is an argument about leverage and influence, not
+about precision, and it is the one the paper should make.
+
+Volume carries the one thing open interest cannot: whether a settlement
+is a traded price at all. Untraded settlements are not noisier, but they
+are not independent either, so they flatter the fit statistics. Reporting
+the intercept's standard error on traded contracts only is the honest
+robustness check, and volume is what makes it possible.
