@@ -192,18 +192,32 @@ def report(d: pd.DataFrame, window: int) -> str:
     P("move the slope of the curve. Nothing in the carry series changes.")
     P("")
     P("Against the predictions recorded before the pull:")
+    # A check the sample cannot speak to is reported as such. Scoring it FAIL
+    # would read as evidence against the correction when it is only evidence
+    # that the relevant months have not been bought yet.
+    episode_present = "2025-01-01" in mm.index.strftime("%Y-%m-%d").tolist()
+    had_extremes = (s.premium_pct.abs() > 2).sum() > 0
     checks = [
-        (abs(s.premium_pct_retimed.corr(s.ret_next)) < 0.10, "1 next-day return"),
-        (s.premium_pct_retimed.std() < 0.8 * s.premium_pct.std(), "2 noise falls"),
+        (abs(s.premium_pct_retimed.corr(s.ret_next)) < 0.10, True,
+         "1 next-day return"),
+        (s.premium_pct_retimed.std() < 0.8 * s.premium_pct.std(), True,
+         "2 noise falls"),
         (vol.premium_pct_retimed.std() / calm.premium_pct_retimed.std() < 1.25,
-         "3 calm/volatile gap closes"),
-        ((s.premium_pct_retimed.abs() > 2).sum() < 5, "4 extremes were the clock"),
-        (abs(mm.loc["2025-01", "premium_pct_retimed"] - 0.523) < 0.10
-         if "2025-01-01" in mm.index.strftime("%Y-%m-%d").tolist() else False,
-         "5 monthly means survive"),
+         True, "3 calm/volatile gap closes"),
+        ((s.premium_pct_retimed.abs() > 2).sum() < 5, had_extremes,
+         "4 extremes were the clock"),
+        (episode_present
+         and abs(mm.loc["2025-01", "premium_pct_retimed"] - 0.523) < 0.10,
+         episode_present, "5 monthly means survive"),
     ]
-    for passed, name in checks:
-        P(f"   [{'PASS' if passed else 'FAIL'}] {name}")
+    for passed, testable, name in checks:
+        verdict = ("PASS" if passed else "FAIL") if testable else " -- "
+        P(f"   [{verdict}] {name}"
+          + ("" if testable else "   (no days in the sample to test it on)"))
+    if len(ok) < len(d):
+        P("")
+        P(f"NOTE: only {len(ok):,} of {len(d):,} days carry minute data, so every")
+        P("number above describes that subsample, not the full series.")
     return "\n".join(L)
 
 
