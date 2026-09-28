@@ -315,20 +315,47 @@ def normalize() -> None:
           f"({100*days/len(t):.1f}%). Now run apply_timing_fix.py.")
 
 
+def chunk_paths(year: int, month: int) -> tuple[Path, Path]:
+    """Where a month's bars live, and the whole-year file that may supersede it.
+
+    Early runs of this puller wrote one file per year. Those are still valid, so
+    a month is considered done if either its own file or its year's file exists.
+    """
+    return OUT / f"gc_minute_{year}{month:02d}.csv", OUT / f"gc_minute_{year}.csv"
+
+
+def months_to_fetch(t: pd.DataFrame) -> list[tuple[int, int]]:
+    """The (year, month) chunks with no data on disk yet."""
+    todo = []
+    for (year, month), _ in t.groupby([t.date.dt.year, t.date.dt.month]):
+        month_file, year_file = chunk_paths(int(year), int(month))
+        if not month_file.exists() and not year_file.exists():
+            todo.append((int(year), int(month)))
+    return todo
+
+
 def pull(args) -> None:
+    """Fetch the windows, writing a file per month.
+
+    A month is the checkpoint rather than a year because this runs for hours
+    and can be interrupted: a year's worth of requests is half an hour of
+    spending to lose, a month's is two or three minutes.
+    """
     if not args.confirm:
         sys.exit("Refusing to spend money without --confirm. Run --quote first.")
     c = client()
     t = instants()
     OUT.mkdir(parents=True, exist_ok=True)
 
-    for year, g in t.groupby(t.date.dt.year):
-        path = OUT / f"gc_minute_{year}.csv"
-        if path.exists():
-            print(f"{year}: already present, skipping")
-            continue
+    todo = months_to_fetch(t)
+    done = len(t.groupby([t.date.dt.year, t.date.dt.month])) - len(todo)
+    print(f"{done} months already on disk, {len(todo)} to fetch")
+
+    for year, month in todo:
+        g = t[(t.date.dt.year == year) & (t.date.dt.month == month)]
+        path, _ = chunk_paths(year, month)
         frames = []
-        for i, (_, r) in enumerate(g.iterrows(), 1):
+        for _, r in g.iterrows():
             time.sleep(REQUEST_SPACING_S)
             start = r.window_start_utc - pd.Timedelta(minutes=int(r.lookback_minutes))
             try:
@@ -344,11 +371,9 @@ def pull(args) -> None:
             df["trade_date"] = r.date
             df["requested_symbol"] = r.lead_symbol
             frames.append(df.reset_index())
-            if i % 25 == 0:
-                print(f"   {year}: {i}/{len(g)} days")
         if frames:
             pd.concat(frames, ignore_index=True).to_csv(path, index=False)
-            print(f"{year}: wrote {path}")
+            print(f"{year}-{month:02d}: {len(g)} days -> {path.name}", flush=True)
 
 
 def selftest() -> None:
