@@ -380,31 +380,36 @@ def step_instants(cfg: Config, args) -> None:
         expect(cfg, target, script)
 
 
-def missing_minute_years(cfg: Config) -> list[int]:
-    """Years in the specification with no minute file yet.
+def missing_minute_chunks(cfg: Config) -> list[tuple[int, int]]:
+    """Months in the specification with no minute data yet.
 
-    The puller resumes a year at a time, so "some files exist" is not the same
-    as "the data is here". Treating it as the same silently skipped ten of
+    The puller checkpoints a month at a time, so "some files exist" is not the
+    same as "the data is here". Treating it as the same silently skipped ten of
     twelve years once, and the correction then ran on the two that happened to
-    be present without saying so.
+    be present without saying so. Whole-year files from earlier runs still
+    count: a month is done if its own file or its year's file is there.
     """
     import pandas as pd
     spec = pd.read_csv(cfg.timing / "timing_instants.csv", parse_dates=["date"])
-    want = set(spec.date.dt.year)
-    have = {int(p.stem.split("_")[-1]) for p in cfg.minutes.glob("gc_minute_*.csv")}
-    return sorted(want - have)
+    todo = []
+    for (year, month), _ in spec.groupby([spec.date.dt.year, spec.date.dt.month]):
+        month_file = cfg.minutes / f"gc_minute_{int(year)}{int(month):02d}.csv"
+        year_file = cfg.minutes / f"gc_minute_{int(year)}.csv"
+        if not month_file.exists() and not year_file.exists():
+            todo.append((int(year), int(month)))
+    return todo
 
 
 def step_minutes(cfg: Config, args) -> None:
     say("STEP 6  Minute data")
-    missing = missing_minute_years(cfg) if cfg.minutes.exists() else None
+    missing = missing_minute_chunks(cfg) if cfg.minutes.exists() else None
     if missing == [] and not args.force:
-        say("", f"all years present in {cfg.minutes}, skipping")
+        say("", f"all months present in {cfg.minutes}, skipping")
         return
     if missing:
-        say("", f"{len(missing)} of "
-                f"{len(missing) + len(list(cfg.minutes.glob('gc_minute_*.csv')))} "
-                f"years still to fetch: {missing[0]}-{missing[-1]}")
+        say("", f"{len(missing)} months still to fetch, "
+                f"{missing[0][0]}-{missing[0][1]:02d} to "
+                f"{missing[-1][0]}-{missing[-1][1]:02d}")
     if MINUTE_ROUTE not in ("windowed", "batch"):
         die(f'MINUTE_ROUTE must be "windowed" or "batch", not "{MINUTE_ROUTE}"')
 
