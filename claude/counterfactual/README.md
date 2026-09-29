@@ -21,16 +21,20 @@ for value but carry no mass at all, so tonnage has to come from the other side.
 ## The number
 
 The fitted line runs at **-0.19 tonnes a month**, reaching 6.9 tonnes by
-January 2025 against a pre-period averaging 11.7.
+January 2025 against a pre-period averaging 11.7. The headline is the whole
+area after the break, not the episode alone.
 
 | | actual | baseline | excess |
 |---|---:|---:|---:|
-| episode, tonnes | 734 | 35 | **699** |
-| episode, \$bn | 65.5 | 2.6 | **62.9** |
-| to date, tonnes | 896 | 110 | 786 |
-| to date, \$bn | 81.8 | 9.4 | 72.3 |
+| **all 20 months since, tonnes** | 896 | 110 | **786** |
+| **all 20 months since, \$bn** | 81.8 | 9.4 | **72.3** |
+| of which the episode, tonnes | 734 | 35 | 699 |
+| of which the episode, \$bn | 65.5 | 2.6 | 62.9 |
 
-The implied price of the excess is **\$2,799 an ounce**, which is where gold
+Seven of the twenty months fall below the line and net off 11 tonnes; counting
+only the months above it would give 796 instead of 786.
+
+The implied price of the excess is **\$2,864 an ounce**, which is where gold
 traded over those months - the tonnage and the value agree rather than telling
 two stories, which is the first thing to check when a counterfactual is this
 simple.
@@ -45,8 +49,14 @@ Where the pre-period starts moves it, but not much over the episode:
 
 ## For scale
 
-\$63bn is **4.3% of US goods imports** over those five months and **10% of the
-goods deficit**.
+The US trade series stops in November 2025 while the gold series runs to July
+2026, so the share is computed on the thirteen months both cover. Over those,
+**\$71bn of excess against a goods deficit of \$1,267bn - 5.6% of it**, and 2.0%
+of imports.
+
+Over the five episode months alone the same comparison gives 10% of the
+deficit, because almost all of the excess is concentrated there while the
+denominator keeps accumulating.
 
 None of this metal was consumed, imported for use, or in any economic sense
 bought by America. It was moved between vaults because a tariff might otherwise
@@ -67,8 +77,10 @@ verify. Three specific threats:
   the election, the baseline is contaminated upward and the excess understated.
 - **The end date.** Ending at March 2025 captures the episode and excludes the
   reversal. That is the right window for "how much extra crossed" and the wrong
-  one for "how much extra ended up there". Months after March add a further
-  87 tonnes, which the headline excludes and the figure leaves unshaded.
+  one for "how much extra ended up there". The headline now counts every month
+  after the election, so the reversal months are netted in rather than ignored
+  - but a month of metal going back out does not cancel a month of it going in
+  as far as the trade statistics are concerned, since both are recorded gross.
 
 ## The whole chain in one panel
 

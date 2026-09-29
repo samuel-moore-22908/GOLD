@@ -70,9 +70,12 @@ def main() -> None:
     spread = pd.read_csv(ROOT / "claude/spread-vs-hurdle/spread_vs_hurdle_monthly.csv",
                          parse_dates=["date"], index_col="date")
 
+    # The whole area after the event, not the episode alone. Seven months fall
+    # below the line and are netted off rather than ignored.
     ep = cf.index <= EPISODE_END
-    excess_t = (cf.actual_t - cf.baseline_t)[ep].sum()
-    excess_v = (cf.actual_usd_bn - cf.baseline_usd_bn)[ep].sum()
+    excess_t = (cf.actual_t - cf.baseline_t).sum()
+    excess_v = (cf.actual_usd_bn - cf.baseline_usd_bn).sum()
+    episode_t = (cf.actual_t - cf.baseline_t)[ep].sum()
     cleared = spread[spread.days_west >= CLEARED_DAYS].index
     cleared = cleared[cleared >= START]
 
@@ -88,11 +91,12 @@ def main() -> None:
              f"Gold shipped to the United States from Switzerland and the United "
              f"Kingdom, against a line fitted to the 46 months before the "
              f"election;\n"
-             f"the shaded area is worth ${excess_v:.0f}bn, or 10% of the US goods "
-             f"trade deficit over those months. The spread cleared the cost of "
-             f"shipping in\n"
-             f"{len(cleared)} of these months but the metal moved in bulk in five: "
-             f"clearing pays for a shipment, it does not compel one",
+             f"the shaded area is everything above it since, worth "
+             f"${excess_v:.0f}bn. The spread cleared the cost of shipping in "
+             f"{len(cleared)} of these\n"
+             f"months but the metal moved in bulk in five, which account for "
+             f"{episode_t:,.0f} of the {excess_t:,.0f} tonnes: clearing pays for a "
+             f"shipment, it does not compel one",
              fontsize=12, color=INK, ha="left", va="top", linespacing=1.35)
 
     ax.set_facecolor(SURFACE)
@@ -115,7 +119,7 @@ def main() -> None:
     ax.plot(cf.index, cf.baseline_t, color=INK, linewidth=1.0,
             linestyle=(0, (4, 3)), zorder=4)
     ax.fill_between(cf.index, cf.baseline_t, cf.actual_t,
-                    where=(cf.actual_t > cf.baseline_t) & ep,
+                    where=cf.actual_t > cf.baseline_t,
                     color=RED, alpha=0.22, zorder=2, interpolate=True)
     ax.axvline(pd.Timestamp(BREAK), color=SOFT, linewidth=0.8,
                linestyle=(0, (2, 2)), zorder=1)
@@ -144,8 +148,8 @@ def main() -> None:
                 arrowprops=dict(arrowstyle="-", color=SOFT, linewidth=0.8))
 
     src = (f"A month counts as cleared when the premium beat carry plus shipping "
-           f"on {CLEARED_DAYS} days or more. Only the episode is shaded: months "
-           f"after March 2025\nadd a further 87 tonnes\n"
+           f"on {CLEARED_DAYS} days or more. The shaded area covers every month "
+           f"after the election, netting the\nseven that fall below the line\n"
            " \n"
            "Source: Swiss Federal Office for Customs and Border Security; "
            "HM Revenue and Customs; Databento; LBMA; US Census Bureau")

@@ -117,7 +117,16 @@ def main() -> None:
     note(f"   {'to date, $bn':<14}{post_v.sum():>10,.1f}{cf_v.sum():>11,.1f}"
          f"{(post_v - cf_v).sum():>10,.1f}")
 
-    ex_t, ex_v = (post_t[ep] - cf_t[ep]).sum(), (post_v[ep] - cf_v[ep]).sum()
+    # The headline is the whole area after the event, not the episode alone.
+    ex_t, ex_v = (post_t - cf_t).sum(), (post_v - cf_v).sum()
+    below = (post_t - cf_t).clip(upper=0)
+    note("")
+    note(f"   The headline is the whole area after the break: {ex_t:,.0f} tonnes and "
+         f"${ex_v:.1f}bn")
+    note(f"   over {len(post_t)} months. Seven of them fall below the line and net off "
+         f"{below.sum():.0f}")
+    note("   tonnes; counting only the months above it would give "
+         f"{(post_t - cf_t).clip(lower=0).sum():,.0f} t.")
     note("")
     note(f"   implied price of the excess ${1e9*ex_v/(ex_t*32150.7):,.0f} an ounce,")
     note("   which is where gold traded over those months - so the tonnage and")
@@ -136,15 +145,23 @@ def main() -> None:
                     parse_dates=["date"])
     tot = u.pivot_table(index="date", columns="flow", values="value_usd",
                         aggfunc="sum") / 1e9
-    imports = tot["imports"].loc[BREAK:EPISODE_END].sum()
-    deficit = imports - tot["exports"].loc[BREAK:EPISODE_END].sum()
+    # The US series stops before the gold series does, so the share is computed
+    # on the months both cover rather than on mismatched windows.
+    overlap_end = min(post_t.index.max(), tot.index.max())
+    imports = tot["imports"].loc[BREAK:overlap_end].sum()
+    deficit = imports - tot["exports"].loc[BREAK:overlap_end].sum()
+    ex_overlap = (post_v - cf_v).loc[BREAK:overlap_end].sum()
     note("")
-    note(f"   For scale: ${ex_v:.0f}bn is {100*ex_v/imports:.1f}% of US goods "
-         f"imports over those five")
-    note(f"   months and {100*ex_v/deficit:.0f}% of the goods deficit. None of it was "
-         f"consumed or")
-    note("   bought in any economic sense, and a fifth went back out within five")
-    note("   months - but it enters the trade balance at full value.")
+    note(f"   For scale, over the {len(tot.loc[BREAK:overlap_end])} months where US "
+         f"trade figures also exist")
+    note(f"   ({BREAK[:7]} to {overlap_end:%Y-%m}): ${ex_overlap:.0f}bn of excess "
+         f"against a goods")
+    note(f"   deficit of ${deficit:,.0f}bn, so {100*ex_overlap/deficit:.1f}% of it, "
+         f"and {100*ex_overlap/imports:.1f}% of imports.")
+    note("")
+    note("   None of it was consumed or bought in any economic sense, and a fifth")
+    note("   went back out within five months - but it enters the trade balance at")
+    note("   full value.")
 
     monthly = pd.DataFrame({"actual_t": post_t, "baseline_t": cf_t,
                             "actual_usd_bn": post_v, "baseline_usd_bn": cf_v})
@@ -171,8 +188,8 @@ def figure(tonnes, monthly, ex_t, ex_v, deficit) -> None:
              f"Gold shipped to the United States from Switzerland and the United "
              f"Kingdom, against a straight line fitted to\n"
              f"January 2021 - October 2024 and carried forward. The shaded area "
-             f"is worth ${ex_v:.0f}bn, or {100*ex_v/deficit:.0f}% of the US goods "
-             f"trade deficit over the same months",
+             f"is worth ${ex_v:.0f}bn - {100*ex_v/deficit:.0f}% of the US goods "
+             f"deficit over the months both series cover",
              fontsize=12, color=INK, ha="left", va="top", linespacing=1.35)
 
     ax.set_facecolor(SURFACE)
@@ -191,10 +208,9 @@ def figure(tonnes, monthly, ex_t, ex_v, deficit) -> None:
     # Shade only what the headline number counts. Later months add more excess,
     # and showing it shaded while quoting the episode figure would overstate
     # what the annotation refers to.
-    inside = (monthly.actual_t > monthly.baseline_t) &              (monthly.index <= EPISODE_END)
     ax.fill_between(monthly.index, monthly.baseline_t, monthly.actual_t,
-                    where=inside, color=RED, alpha=0.22, zorder=2,
-                    interpolate=True)
+                    where=monthly.actual_t > monthly.baseline_t,
+                    color=RED, alpha=0.22, zorder=2, interpolate=True)
     ax.axvline(pd.Timestamp(BREAK), color=SOFT, linewidth=0.8,
                linestyle=(0, (2, 2)), zorder=1)
     ax.set_ylabel("Tonnes a month", color=SOFT, fontsize=11)
