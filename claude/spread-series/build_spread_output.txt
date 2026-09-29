@@ -1,0 +1,127 @@
+
+==============================================================================
+STEP 0  What is on disk
+==============================================================================
+   projection, re-timed : 2,857 days  2015-01-02 to 2026-08-20
+   quoted spread        : 2,857 days, front contract by open interest
+   merged               : 2,857 days
+
+   The two come from the same settlements. The quoted spread reads one
+   contract; the projection reads the whole curve that day.
+
+==============================================================================
+STEP 1  The number the market quotes:  b = F - S
+==============================================================================
+   mean   $   8.64/oz
+   sd     $  16.63/oz
+   range  $-236.75 to $ 112.95
+
+   If New York is dear relative to London by more than it costs to ship
+   metal, metal ships. That is the intuition the paper needs. But this
+   number cannot carry it, for three reasons.
+
+==============================================================================
+STEP 2  Why it breaks
+==============================================================================
+   (a) It is denominated in a unit that is not comparable over time.
+       2015: gold $1,160, spread sd $ 4.17   (0.1% of spot = $1.16)
+       2026: gold $4,574, spread sd $39.81   (0.1% of spot = $4.57)
+       gold x3.9, dispersion x9.6. The same proportional gap is
+       worth 3.9 times the dollars at the end of the sample as at
+       the start, so pooling the two pools incomparable units.
+       corr(spread, gold price) = +0.402
+
+   (b) It contains carry, and carry moves with the delivery calendar.
+       The front contract's horizon cycles from about two months to zero
+       and resets. Carry is proportional to it, so the spread inherits a
+       sawtooth made by the calendar and nothing else:
+       tau (0, 15]      mean spread $  2.79   (245 days)
+       tau (15, 30]     mean spread $  3.02   (590 days)
+       tau (30, 45]     mean spread $  6.99   (553 days)
+       tau (45, 60]     mean spread $  8.08   (603 days)
+       tau (60, 90]     mean spread $ 12.40   (532 days)
+       tau (90, 200]    mean spread $ 20.60   (334 days)
+       corr(spread, days to delivery) = +0.327
+
+   (c) It mixes a level with a rate. Location, bar form and counterparty
+       trust are paid once. Financing, storage and the forgone lease rate
+       accrue per day. Any single summary of b must pick a horizon at
+       which to compare them, and the pick decides the answer.
+
+   So b is a function of the horizon, not a variable. The object the
+   paper needs is a feature of that function.
+
+==============================================================================
+STEP 3  Estimate carry instead of assuming it
+==============================================================================
+   Each day the listed contracts trace a curve. Fitting
+       ln F(tau_i) = a + b*tau_i          weighted by open interest
+   splits it into a level and a rate, and the rate is the market's own
+   carry - revealed by prices, not asserted.
+
+   contracts in the fit : median 6 a day (range 4-9)
+   fit quality          : median R2 0.9987, residual 2.7 bp of price
+   fitted carry         : mean 2.75% a year, correlation with SOFR 0.952
+
+   No interest rate enters that fit. Carry tracking SOFR at 0.95 is
+   therefore a check on the projection, not an input to it.
+
+==============================================================================
+STEP 4  The spread:  p_hat = a - ln S
+==============================================================================
+   The intercept is the curve extrapolated to zero horizon: the price
+   today of New-York-deliverable metal. Against London spot, that is
+   the premium - a level, in per cent of spot.
+
+   Carry has gone, because it loads on the horizon and the intercept
+   does not. The test is whether the delivery calendar still shows:
+       corr(quoted spread, days to delivery) = +0.327
+       corr(premium,       days to delivery) = -0.046
+   The sawtooth is gone. That is the whole point of the projection.
+
+   The New York leg is read at the London auction rather than at its own
+   settlement three and a half hours later, which removed 55% of the
+   daily variance: sd 0.499 -> 0.225 pp of spot.
+
+   usable days          : 2,820 of 2,857 (98.7%)
+      not re-timed      : 5 (market holidays)
+      curve fit broken  : 32 (all in 2020)
+   Both are flagged rather than dropped, so a user can choose.
+
+==============================================================================
+STEP 5  What the spread looks like
+==============================================================================
+                              mean       sd      min      max
+   spread, % of spot        -0.017    0.169   -0.815    1.489
+   spread, $/oz             -0.036    3.946  -30.169   50.929
+   excess carry, pp          0.634    0.591   -3.096    3.272
+
+   A mean of essentially zero over eleven years is the first thing to
+   check: arbitrage pins New York to London, as it should.
+
+   The ten largest monthly readings:
+      2020-04   +1.028%   $ +17.59/oz   (4 days)
+      2025-01   +0.499%   $ +13.64/oz   (21 days)
+      2020-05   +0.436%   $  +7.51/oz   (10 days)
+      2025-08   +0.302%   $ +10.25/oz   (20 days)
+      2020-06   +0.283%   $  +4.98/oz   (21 days)
+      2020-07   +0.236%   $  +4.27/oz   (21 days)
+      2025-09   +0.191%   $  +6.89/oz   (21 days)
+      2024-12   +0.167%   $  +4.47/oz   (18 days)
+      2024-09   +0.165%   $  +4.25/oz   (20 days)
+      2025-12   +0.161%   $  +6.94/oz   (19 days)
+
+==============================================================================
+STEP 6  The figure
+==============================================================================
+   frame set to +/-1.0 pp, the 99.5th percentile rounded up
+   5 days fall outside it and are marked at the edge
+   panel A framed at +/-$90, 9 days outside it
+   wrote C:\Users\smoor\GitHub\GOLD\claude\spread-series\spread.pdf and .png
+
+==============================================================================
+DONE
+==============================================================================
+   C:\Users\smoor\GitHub\GOLD\claude\spread-series\spread_daily.csv
+   C:\Users\smoor\GitHub\GOLD\claude\spread-series\spread_monthly.csv
+   C:\Users\smoor\GitHub\GOLD\claude\spread-series\spread.pdf
