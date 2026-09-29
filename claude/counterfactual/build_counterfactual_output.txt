@@ -15,7 +15,11 @@ EXCESS GOLD TRADE: THE AREA BETWEEN ACTUAL AND A PRE-TREND LINE
    to date, t           896        110       786
    to date, $bn        81.8        9.4      72.3
 
-   implied price of the excess $2,799 an ounce,
+   The headline is the whole area after the break: 786 tonnes and $72.3bn
+   over 20 months. Seven of them fall below the line and net off -11
+   tonnes; counting only the months above it would give 796 t.
+
+   implied price of the excess $2,864 an ounce,
    which is where gold traded over those months - so the tonnage and
    the value agree rather than telling two stories.
 
@@ -25,9 +29,12 @@ EXCESS GOLD TRADE: THE AREA BETWEEN ACTUAL AND A PRE-TREND LINE
       from 2019: slope -0.220 t a month, episode excess 693 t
       from 2015: slope +0.109 t a month, episode excess 645 t
 
-   For scale: $63bn is 4.3% of US goods imports over those five
-   months and 10% of the goods deficit. None of it was consumed or
-   bought in any economic sense, and a fifth went back out within five
-   months - but it enters the trade balance at full value.
+   For scale, over the 13 months where US trade figures also exist
+   (2024-11 to 2025-11): $71bn of excess against a goods
+   deficit of $1,267bn, so 5.6% of it, and 2.0% of imports.
+
+   None of it was consumed or bought in any economic sense, and a fifth
+   went back out within five months - but it enters the trade balance at
+   full value.
 
    wrote C:\Users\smoor\GitHub\GOLD\claude\counterfactual\counterfactual.pdf
