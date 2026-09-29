@@ -70,11 +70,26 @@ verify. Three specific threats:
   one for "how much extra ended up there". Months after March add a further
   87 tonnes, which the headline excludes and the figure leaves unshaded.
 
+## The whole chain in one panel
+
+`make_whole_chain_panel.py` puts the price signal and the physical response on
+one axis: shipments, the extrapolated line, the shaded excess, and underneath
+them a strip marking every month the spread cleared carry plus shipping.
+
+It makes one thing plain that the excess figure alone does not. **The spread
+cleared the cost of shipping in 36 of these months and the metal moved in bulk
+in five.** Clearing pays for a shipment; it does not compel one. Most of 2024
+clears with flows flat, and almost every month after the April 2025 exemption
+clears while nothing moves - which is the inventory channel the carry-threshold
+work points at, visible here as a picture rather than a table.
+
 ## Files
 
 | File | What it is |
 |---|---|
 | `build_counterfactual.py` | the estimate, narrating its own argument |
+| `make_whole_chain_panel.py` | the single panel: signal, response and excess |
+| `whole_chain.pdf` / `.png` | that panel |
 | `build_counterfactual_output.txt` | that narration, saved |
 | `counterfactual_monthly.csv` | actual, baseline, excess and cumulative excess by month |
 | `counterfactual.pdf` / `.png` | the figure |
