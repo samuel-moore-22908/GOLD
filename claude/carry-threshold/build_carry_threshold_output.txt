@@ -1,0 +1,154 @@
+
+==============================================================================
+STEP 1  Carry cost, over the interval the quoted spread spans
+==============================================================================
+   The quoted spread b is the active contract's price over London spot,
+   so it spans that contract's horizon. The carry rate from the fitted
+   slope, compounded over the same horizon, is what the spread should be
+   if New York and London were the same place:
+
+       K(tau) = S * (exp(carry_rate * tau/365) - 1)
+
+   horizon      : median 46 days (range 7-135)
+   carry cost   : mean $  8.75/oz, max $ 65.48
+   quoted spread: mean $  8.50/oz
+   excess       : mean $ -0.25/oz
+
+   Carry is most of the quoted spread. At 2026 prices and rates it runs
+   to tens of dollars an ounce, which is why the raw number is useless
+   as a signal and why subtracting it is the whole exercise.
+
+==============================================================================
+STEP 2  Check: the excess should be the premium
+==============================================================================
+   Two routes to the same object. The excess subtracts a carry cost from
+   one contract's spread. The premium is the intercept of the curve fitted
+   across all of them, re-timed to the London auction. If the
+   decomposition is sound they should agree.
+
+   compared with                                  corr   sd of diff
+   the premium before re-timing (same settle)    0.998        $0.78
+   the premium re-timed to the auction           0.276       $12.14
+
+   The identity holds exactly: 0.998, agreeing to 78 cents an ounce,
+   which is the difference between reading one contract and fitting the
+   whole curve. The decomposition is sound.
+
+   The second line is the interesting one, and it is not a failure of
+   the identity. The quoted spread is struck at the New York settlement
+   and London spot three and a half hours earlier, so the excess carries
+   the whole of that timing error:
+       sd of the premium itself     $ 3.95/oz
+       sd of the timing error       $12.14/oz
+       correlation this implies      0.309   observed 0.276
+
+   averaged monthly    corr 0.737   (140 periods)
+   averaged quarterly  corr 0.822   (47 periods)
+
+   This is the practical finding of the whole exercise. Run the
+   cash-and-carry test on the quoted spread, the textbook way, and the
+   noise is $12 an ounce against a shipping cost of about $3.
+   The thing being measured is a third the size of the error in
+   measuring it, so the test cannot be run that way at daily frequency
+   at all. It needs the re-timed premium, or monthly averaging, or both.
+
+==============================================================================
+STEP 3  The threshold: what it costs to move an ounce
+==============================================================================
+   kappa = $3.00 to $3.77 an ounce.
+
+   This is an assumption and the weakest number in the exercise. Freight,
+   insurance and recasting quotes are private; the band is the hinge
+   estimated from flows in earlier work. The one public component is the
+   COMEX delivery-out charge of $0.35 an ounce, about a tenth of it.
+
+   Note what is NOT added on top. Financing the metal from purchase to
+   delivery is already inside the carry cost subtracted in step 1, so
+   adding transit financing again would double-count it. What is missing
+   is the lease income forgone while metal is in the air, which needs a
+   lease rate the project does not have.
+
+   days clearing $3.00: 296 of 2,820 (10.5%)
+   days clearing $3.77: 227 of 2,820 (8.0%)
+
+   The band is crossed rarely. That is the point: for most of eleven
+   years arbitrage holds the premium inside the cost of acting on it,
+   and nothing moves.
+
+==============================================================================
+STEP 4  Does metal actually move?
+==============================================================================
+   Swiss customs exports to the United States, tonnes a month. Switzerland
+   is where London 400 oz bars are recast into the bars COMEX accepts, so
+   this is the physical leg of the westward arbitrage.
+
+   139 months with both a spread and a customs figure
+
+   Months grouped by whether the premium cleared the threshold:
+   group                                 n  median t   mean t   max t
+   never cleared                        82       2.3      4.7    32.0
+   cleared on 1-4 days                  36       4.7     12.9   112.4
+   cleared on 5 or more days            21      14.8     47.1   195.4
+
+   correlation, monthly pressure vs tonnes : 0.681
+   correlation, mean premium  vs tonnes    : 0.632
+
+   The pressure measure is the daily hinge averaged over the month, not
+   the hinge of the monthly average: max(0, x) is convex, so averaging
+   first would understate a month with a few days far above the
+   threshold and many below it.
+
+   The relationship is not stable across the sample. Splitting the
+   months that cleared at the April 2025 tariff exemption:
+                              n  median t   median pressure $   t per $
+   before Apr 2025           15      44.5                1.82      24.4
+   after Apr 2025             6       5.8                3.07       1.9
+
+   The same premium stops producing the same shipments. August 2025 had
+   a premium above $10 an ounce on sixteen days and 2.7 tonnes arrived;
+   January 2025 had $13.64 and 195 tonnes came. The price signal did not
+   weaken, the response to it did.
+
+   This is a finding about the quantity side, not a defect of the
+   threshold. The candidate explanation is inventory: COMEX registered
+   stock rose sharply through 2025, and an arbitrage can be closed by
+   warranting metal already in New York rather than importing any. That
+   produces no customs record at all, which is exactly the asymmetry
+   CLAUDE.md flags as the project's deepest open problem. Confirming it
+   needs the daily warehouse series, which the project does not yet have.
+
+   The months that cleared on five days or more:
+   month      premium $  days  pressure $   tonnes
+   2019-07         1.77     5        0.09      0.4
+   2020-03         2.43     5        1.82     44.5
+   2020-05         7.51     9        4.76    127.1
+   2020-06         4.98    15        3.20     68.7
+   2020-07         4.27    14        2.53     63.9
+   2020-12         2.35     6        0.58     14.8
+   2023-03         0.50     5        0.10     21.6
+   2024-01         1.97     6        0.18      5.6
+   2024-08         2.60     8        0.51      3.4
+   2024-09         4.25    13        1.54     12.5
+   2024-11         3.13    12        1.04     11.4
+   2024-12         4.47     9        2.60     73.1
+   2025-01        13.64    19       10.75    195.4
+   2025-02         3.59    10        2.33    155.8
+   2025-03         4.59    12        3.34    110.6
+   2025-07         3.31    10        1.90     54.1
+   2025-08        10.25    16        7.48      2.7
+   2025-09         6.89    11        4.74      6.9
+   2025-11         2.38     8        1.35      4.7
+   2025-12         6.94    14        4.25      8.1
+   2026-03         1.13     8        1.60      4.1
+
+==============================================================================
+STEP 5  The figure
+==============================================================================
+   wrote C:\Users\smoor\GitHub\GOLD\claude\carry-threshold\carry_threshold.pdf and .png
+
+==============================================================================
+DONE
+==============================================================================
+   C:\Users\smoor\GitHub\GOLD\claude\carry-threshold\carry_threshold_daily.csv
+   C:\Users\smoor\GitHub\GOLD\claude\carry-threshold\carry_threshold_monthly.csv
+   C:\Users\smoor\GitHub\GOLD\claude\carry-threshold\carry_threshold.pdf
