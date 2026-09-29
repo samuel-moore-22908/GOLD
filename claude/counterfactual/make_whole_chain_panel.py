@@ -63,19 +63,19 @@ def shipments() -> pd.Series:
 
 def main() -> None:
     os.chdir(ROOT)
-    t = shipments()
-    t = t[t.index >= START]
     cf = pd.read_csv(OUT / "counterfactual_monthly.csv", parse_dates=["month"],
                      index_col="month")
+    t = cf.actual_t                       # the whole series, for the frame
+    pre, post = cf[~cf.post_break], cf[cf.post_break]
     spread = pd.read_csv(ROOT / "claude/spread-vs-hurdle/spread_vs_hurdle_monthly.csv",
                          parse_dates=["date"], index_col="date")
 
     # The whole area after the event, not the episode alone. Seven months fall
     # below the line and are netted off rather than ignored.
-    ep = cf.index <= EPISODE_END
-    excess_t = (cf.actual_t - cf.baseline_t).sum()
-    excess_v = (cf.actual_usd_bn - cf.baseline_usd_bn).sum()
-    episode_t = (cf.actual_t - cf.baseline_t)[ep].sum()
+    ep = post.index <= EPISODE_END
+    excess_t = (post.actual_t - post.baseline_t).sum()
+    excess_v = (post.actual_usd_bn - post.baseline_usd_bn).sum()
+    episode_t = (post.actual_t - post.baseline_t)[ep].sum()
     cleared = spread[spread.days_west >= CLEARED_DAYS].index
     cleared = cleared[cleared >= START]
 
@@ -114,12 +114,14 @@ def main() -> None:
     ax.set_ylim(strip_bottom - 6, top + 20)
     ax.set_yticks([y for y in ax.get_yticks() if y >= 0])
 
-    ax.plot(t.index, t.values, color=GREY, linewidth=1.5, zorder=3)
-    ax.plot(cf.index, cf.actual_t, color=RED, linewidth=2.0, zorder=5)
+    # The line runs the whole width: through the months it was fitted to, then
+    # on as the counterfactual.
     ax.plot(cf.index, cf.baseline_t, color=INK, linewidth=1.0,
             linestyle=(0, (4, 3)), zorder=4)
-    ax.fill_between(cf.index, cf.baseline_t, cf.actual_t,
-                    where=cf.actual_t > cf.baseline_t,
+    ax.plot(pre.index, pre.actual_t, color=GREY, linewidth=1.5, zorder=3)
+    ax.plot(post.index, post.actual_t, color=RED, linewidth=2.0, zorder=5)
+    ax.fill_between(post.index, post.baseline_t, post.actual_t,
+                    where=post.actual_t > post.baseline_t,
                     color=RED, alpha=0.22, zorder=2, interpolate=True)
     ax.axvline(pd.Timestamp(BREAK), color=SOFT, linewidth=0.8,
                linestyle=(0, (2, 2)), zorder=1)

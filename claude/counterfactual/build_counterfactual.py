@@ -67,13 +67,18 @@ def series(f: pd.DataFrame, reporter: str, col: str, scale: float) -> pd.Series:
 
 
 def extrapolate(y: pd.Series, pre_start: str = PRE_START) -> tuple[pd.Series, float]:
-    """Straight line through the pre-period, carried forward. Returns the line
-    over the post-period and its slope in units a month."""
+    """Straight line fitted to the pre-period, evaluated over the whole series.
+
+    The line is returned across every month from pre_start onward, not only the
+    months after the break, so a chart can show it running through the data it
+    was fitted to as well as the extrapolation. Slicing it at the break gives
+    the counterfactual.
+    """
     pre = y[(y.index >= pre_start) & (y.index < BREAK)]
-    post = y[y.index >= BREAK]
     slope, intercept = np.polyfit(np.arange(len(pre)), pre.values, 1)
-    future = np.arange(len(pre), len(pre) + len(post))
-    line = pd.Series(np.clip(slope * future + intercept, 0, None), index=post.index)
+    whole = y[y.index >= pre_start]
+    line = pd.Series(np.clip(slope * np.arange(len(whole)) + intercept, 0, None),
+                     index=whole.index)
     return line, float(slope)
 
 
@@ -96,8 +101,11 @@ def main() -> None:
     note("   carry no mass.")
     note("")
 
-    cf_t, slope_t = extrapolate(tonnes)
-    cf_v, _ = extrapolate(value)
+    # The line spans the whole series; its post-break slice is the counterfactual
+    # everything below is measured against.
+    line_t, slope_t = extrapolate(tonnes)
+    line_v, _ = extrapolate(value)
+    cf_t, cf_v = line_t[line_t.index >= BREAK], line_v[line_v.index >= BREAK]
     post_t, post_v = tonnes[tonnes.index >= BREAK], value[value.index >= BREAK]
     pre = tonnes[(tonnes.index >= PRE_START) & (tonnes.index < BREAK)]
     ep = post_t.index <= EPISODE_END
@@ -138,6 +146,7 @@ def main() -> None:
     for start, label in ((PRE_START, "2021"), ("2019-01-01", "2019"),
                          ("2015-01-01", "2015")):
         alt, sl = extrapolate(tonnes, start)
+        alt = alt[alt.index >= BREAK]
         note(f"      from {label}: slope {sl:+.3f} t a month, "
              f"episode excess {(post_t[ep] - alt[ep]).sum():,.0f} t")
 
@@ -163,20 +172,28 @@ def main() -> None:
     note("   went back out within five months - but it enters the trade balance at")
     note("   full value.")
 
-    monthly = pd.DataFrame({"actual_t": post_t, "baseline_t": cf_t,
-                            "actual_usd_bn": post_v, "baseline_usd_bn": cf_v})
-    monthly["excess_t"] = monthly.actual_t - monthly.baseline_t
-    monthly["cumulative_excess_t"] = monthly.excess_t.cumsum()
+    monthly = pd.DataFrame({
+        "actual_t": tonnes[tonnes.index >= PRE_START],
+        "baseline_t": line_t,
+        "actual_usd_bn": value[value.index >= PRE_START],
+        "baseline_usd_bn": line_v,
+    })
+    monthly["post_break"] = monthly.index >= BREAK
+    monthly["excess_t"] = (monthly.actual_t - monthly.baseline_t).where(
+        monthly.post_break)
+    monthly["cumulative_excess_t"] = monthly.excess_t.fillna(0).cumsum().where(
+        monthly.post_break)
     monthly.index.name = "month"
     monthly.to_csv(OUT / "counterfactual_monthly.csv")
 
-    figure(tonnes, monthly, ex_t, ex_v, deficit)
+    figure(monthly, ex_t, ex_v, deficit)
     (OUT / "build_counterfactual_output.txt").write_text("\n".join(LOG) + "\n",
                                                          encoding="utf-8")
 
 
-def figure(tonnes, monthly, ex_t, ex_v, deficit) -> None:
-    hist = tonnes[tonnes.index >= PRE_START]
+def figure(monthly, ex_t, ex_v, deficit) -> None:
+    pre = monthly[~monthly.post_break]
+    post = monthly[monthly.post_break]
     fig, ax = plt.subplots(figsize=(11.0, 6.4))
     fig.patch.set_facecolor(SURFACE)
 
@@ -201,15 +218,14 @@ def figure(tonnes, monthly, ex_t, ex_v, deficit) -> None:
     ax.xaxis.set_major_locator(mdates.YearLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
 
-    ax.plot(hist.index, hist.values, color=GREY, linewidth=1.5, zorder=3)
-    ax.plot(monthly.index, monthly.actual_t, color=RED, linewidth=2.0, zorder=5)
+    # The line is drawn across the whole chart: through the months it was fitted
+    # to, then on as the counterfactual. Shading starts at the break.
     ax.plot(monthly.index, monthly.baseline_t, color=INK, linewidth=1.0,
             linestyle=(0, (4, 3)), zorder=4)
-    # Shade only what the headline number counts. Later months add more excess,
-    # and showing it shaded while quoting the episode figure would overstate
-    # what the annotation refers to.
-    ax.fill_between(monthly.index, monthly.baseline_t, monthly.actual_t,
-                    where=monthly.actual_t > monthly.baseline_t,
+    ax.plot(pre.index, pre.actual_t, color=GREY, linewidth=1.5, zorder=3)
+    ax.plot(post.index, post.actual_t, color=RED, linewidth=2.0, zorder=5)
+    ax.fill_between(post.index, post.baseline_t, post.actual_t,
+                    where=post.actual_t > post.baseline_t,
                     color=RED, alpha=0.22, zorder=2, interpolate=True)
     ax.axvline(pd.Timestamp(BREAK), color=SOFT, linewidth=0.8,
                linestyle=(0, (2, 2)), zorder=1)
@@ -222,9 +238,14 @@ def figure(tonnes, monthly, ex_t, ex_v, deficit) -> None:
                 fontsize=11, color=INK, ha="left", va="center", linespacing=1.4,
                 arrowprops=dict(arrowstyle="-", color=SOFT, linewidth=0.8))
 
-    src = ("The line is fitted to the 46 months before the election and simply "
-           "extrapolated; starting it in 2019 or 2015 instead moves the\n"
-           "episode figure to 693 or 645 tonnes\n"
+    src = (f"The line is fitted to the 46 months before the election, drawn "
+           f"through them and then carried forward. The shaded area is "
+           f"everything\n"
+           f"after the election, netting the seven months below the line; the "
+           f"five to March 2025 account for 699 of the {ex_t:,.0f} tonnes. "
+           f"Starting\n"
+           f"the line in 2019 or 2015 instead moves that episode figure to 693 "
+           f"or 645\n"
            " \n"
            "Source: Swiss Federal Office for Customs and Border Security; "
            "HM Revenue and Customs; US Census Bureau")
