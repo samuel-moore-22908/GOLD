@@ -6,32 +6,44 @@ EXCESS GOLD TRADE: THE AREA BETWEEN ACTUAL AND A PRE-TREND LINE
    are the exporters' own customs figures, because US import figures
    carry no mass.
 
-   pre-period   2021-01 to 2024-10, 46 months, mean 11.7 t a month
-   fitted line  -0.187 tonnes a month, reaching 6.9 t by January 2025
+   pre-period   2015-01 to 2024-10, 118 months, mean 11.1 t a month
+   The line is fitted to the whole series before the break, not a
+   recent slice, so the baseline is not chosen to flatter the result.
+   fitted line  +0.109 tonnes a month, reaching 17.8 t by January 2025
 
                      actual   baseline    excess
-   episode, t           734         35       699
-   episode, $bn        65.5        2.6      62.9
-   to date, t           896        110       786
-   to date, $bn        81.8        9.4      72.3
+   episode, t           734         89       645
+   episode, $bn        65.5        5.5      60.0
+   to date, t           896        372       524
+   to date, $bn        81.8       23.3      58.4
 
-   The headline is the whole area after the break: 786 tonnes and $72.3bn
-   over 20 months. Seven of them fall below the line and net off -11
-   tonnes; counting only the months above it would give 796 t.
+   The headline is the whole area after the break: 524 tonnes over 20 months.
+   12 of them fall below the line and net off -171
+   tonnes; counting only the months above it would give 695 t.
 
-   implied price of the excess $2,864 an ounce,
-   which is where gold traded over those months - so the tonnage and
-   the value agree rather than telling two stories.
+   TONNES NET CLEANLY; DOLLARS DO NOT. Metal went west at about
+   $2,778 an ounce during the episode and came back east later at well
+   over four thousand, so a dollar figure netted across the whole window
+   depends more on the price path than on the trade:
+      fitting a separate line to the value series   $  58.4bn
+      valuing the excess tonnes month by month      $  41.3bn
+   Those differ by more than a third for the same 524 tonnes, which is a
+   sign the object is ill-defined rather than that one method is wrong.
+
+   So the dollar figure quoted is the episode: $60.0bn of excess over the
+   five months to March 2025, at the $2,778 an ounce those shipments
+   actually moved at. That is also the number that matters for the trade
+   statistics, which record gross flows rather than net ones - a tonne
+   leaving later adds to exports, it does not subtract from imports.
 
    Starting the pre-period elsewhere moves it, but not much over the
    episode:
-      from 2021: slope -0.187 t a month, episode excess 699 t
-      from 2019: slope -0.220 t a month, episode excess 693 t
       from 2015: slope +0.109 t a month, episode excess 645 t
+      from 2019: slope -0.220 t a month, episode excess 693 t
+      from 2021: slope -0.187 t a month, episode excess 699 t
 
-   For scale, over the 13 months where US trade figures also exist
-   (2024-11 to 2025-11): $71bn of excess against a goods
-   deficit of $1,267bn, so 5.6% of it, and 2.0% of imports.
+   For scale, over the same five months: $60bn of excess against a goods
+   deficit of $615bn, so 10% of it, and 4.1% of imports.
 
    None of it was consumed or bought in any economic sense, and a fifth
    went back out within five months - but it enters the trade balance at

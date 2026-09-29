@@ -11,7 +11,7 @@ python claude/counterfactual/build_counterfactual.py
 | | |
 |---|---|
 | series | Swiss and UK exports to the US, tonnes and dollars, both HS headings |
-| baseline | a straight line fitted to January 2021 - October 2024, 46 months |
+| baseline | a straight line fitted to **all 118 months**, January 2015 - October 2024 |
 | break | **November 2024**, the US election, when tariff risk became priceable |
 | episode | November 2024 - March 2025, ending the month before the April exemption |
 
@@ -20,43 +20,50 @@ for value but carry no mass at all, so tonnage has to come from the other side.
 
 ## The number
 
-The fitted line runs at **-0.19 tonnes a month**, reaching 6.9 tonnes by
-January 2025 against a pre-period averaging 11.7. The headline is the whole
-area after the break, not the episode alone.
+The line is fitted to the **whole series before the break**, not a recent
+slice, so the baseline cannot be accused of being chosen to flatter the
+result. It runs at **+0.11 tonnes a month**, reaching 17.8 tonnes by January
+2025 against a pre-period averaging 11.1, and it is drawn across the whole
+chart so the fit can be judged against the data that produced it.
 
 | | actual | baseline | excess |
 |---|---:|---:|---:|
-| **all 20 months since, tonnes** | 896 | 110 | **786** |
-| **all 20 months since, \$bn** | 81.8 | 9.4 | **72.3** |
-| of which the episode, tonnes | 734 | 35 | 699 |
-| of which the episode, \$bn | 65.5 | 2.6 | 62.9 |
+| **all 20 months since, tonnes** | 896 | 372 | **524** |
+| of which the episode, tonnes | 734 | 89 | 645 |
 
-Seven of the twenty months fall below the line and net off 11 tonnes; counting
-only the months above it would give 796 instead of 786.
+Twelve of the twenty months fall below the line and net off 171 tonnes;
+counting only the months above it would give 695 instead of 524.
 
-The implied price of the excess is **\$2,864 an ounce**, which is where gold
-traded over those months - the tonnage and the value agree rather than telling
-two stories, which is the first thing to check when a counterfactual is this
-simple.
+### Tonnes net cleanly; dollars do not
+
+Metal went west at about \$2,800 an ounce during the episode and came back east
+later above \$4,000, so a dollar figure netted across the whole window turns on
+the price path rather than on the trade. Two defensible methods disagree by
+more than a third on the same 524 tonnes:
+
+| | |
+|---|---:|
+| fitting a separate line to the value series | \$58.4bn |
+| valuing the excess tonnes at each month's realised price | \$41.3bn |
+
+So the dollar figure quoted is the **episode**: **\$60.0bn** over the five
+months to March 2025, at the \$2,778 an ounce those shipments actually moved
+at. That is also the number that matters for the trade statistics, which record
+gross flows rather than net ones - a tonne leaving later adds to exports, it
+does not subtract from imports.
 
 Where the pre-period starts moves it, but not much over the episode:
 
 | line fitted from | slope | episode excess |
 |---|---:|---:|
-| January 2021 | -0.19 t a month | **699 t** |
+| January 2015 | +0.11 t a month | **645 t** |
 | January 2019 | -0.22 t a month | 693 t |
-| January 2015 | +0.11 t a month | 645 t |
+| January 2021 | -0.19 t a month | 699 t |
 
 ## For scale
 
-The US trade series stops in November 2025 while the gold series runs to July
-2026, so the share is computed on the thirteen months both cover. Over those,
-**\$71bn of excess against a goods deficit of \$1,267bn - 5.6% of it**, and 2.0%
-of imports.
-
-Over the five episode months alone the same comparison gives 10% of the
-deficit, because almost all of the excess is concentrated there while the
-denominator keeps accumulating.
+Measured over the same five months the dollar figure refers to: **\$60bn of
+excess against a goods deficit of \$615bn - 10% of it**, and 4.1% of imports.
 
 None of this metal was consumed, imported for use, or in any economic sense
 bought by America. It was moved between vaults because a tariff might otherwise
@@ -89,7 +96,7 @@ one axis: shipments, the extrapolated line, the shaded excess, and underneath
 them a strip marking every month the spread cleared carry plus shipping.
 
 It makes one thing plain that the excess figure alone does not. **The spread
-cleared the cost of shipping in 36 of these months and the metal moved in bulk
+cleared the cost of shipping in 60 of these months and the metal moved in bulk
 in five.** Clearing pays for a shipment; it does not compel one. Most of 2024
 clears with flows flat, and almost every month after the April 2025 exemption
 clears while nothing moves - which is the inventory channel the carry-threshold

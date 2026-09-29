@@ -23,7 +23,7 @@ from __future__ import annotations
 REPO_ROOT = ""        # blank = infer from this file's location
 # ============================================================================
 
-START = "2021-01-01"        # where the chart and the fitted line both begin
+START = "2015-01-01"        # where the chart and the fitted line both begin
 BREAK = "2024-11-01"
 EPISODE_END = "2025-03-31"
 CLEARED_DAYS = 5            # a month "cleared" if the spread beat the hurdle on
@@ -47,6 +47,9 @@ OUT = ROOT / "claude/counterfactual"
 RED, GREY, INK, RULE, SOFT = "#E3120B", "#758D99", "#121212", "#E0E4E7", "#707070"
 SURFACE, TAB = "#FFFFFF", "███"
 mpl.rcParams["font.family"] = ["Arial Narrow", "Liberation Sans Narrow", "Arial"]
+# Two dollar signs in one string would otherwise be read as mathtext and
+# rendered in italics, which is how "$2,800 ... $4,000" came out wrong once.
+mpl.rcParams["text.parse_math"] = False
 
 
 def shipments() -> pd.Series:
@@ -70,12 +73,13 @@ def main() -> None:
     spread = pd.read_csv(ROOT / "claude/spread-vs-hurdle/spread_vs_hurdle_monthly.csv",
                          parse_dates=["date"], index_col="date")
 
-    # The whole area after the event, not the episode alone. Seven months fall
-    # below the line and are netted off rather than ignored.
+    # The whole area after the event, not the episode alone; the months that
+    # fall below the line are netted off rather than ignored.
     ep = post.index <= EPISODE_END
     excess_t = (post.actual_t - post.baseline_t).sum()
     excess_v = (post.actual_usd_bn - post.baseline_usd_bn).sum()
     episode_t = (post.actual_t - post.baseline_t)[ep].sum()
+    n_below = int(((post.actual_t - post.baseline_t) < 0).sum())
     cleared = spread[spread.days_west >= CLEARED_DAYS].index
     cleared = cleared[cleared >= START]
 
@@ -89,13 +93,14 @@ def main() -> None:
              fontsize=17, color=INK, ha="left", va="top", fontweight="bold")
     fig.text(0.030, 0.882,
              f"Gold shipped to the United States from Switzerland and the United "
-             f"Kingdom, against a line fitted to the 46 months before the "
-             f"election;\n"
-             f"the shaded area is everything above it since, worth "
-             f"${excess_v:.0f}bn. The spread cleared the cost of shipping in "
-             f"{len(cleared)} of these\n"
-             f"months but the metal moved in bulk in five, which account for "
-             f"{episode_t:,.0f} of the {excess_t:,.0f} tonnes: clearing pays for a "
+             f"Kingdom, against a line fitted to all {len(pre)} months from "
+             f"{pre.index[0]:%B %Y} to {pre.index[-1]:%B %Y} and then\n"
+             f"carried forward unchanged. The shaded area since is "
+             f"{excess_t:,.0f} tonnes, after netting off the {n_below} months that "
+             f"fall below the line; the five-month episode alone is "
+             f"{episode_t:,.0f}.\n"
+             f"The spread cleared the cost of shipping in {len(cleared)} of these "
+             f"months but the metal moved in bulk in five: clearing pays for a "
              f"shipment, it does not compel one",
              fontsize=12, color=INK, ha="left", va="top", linespacing=1.35)
 
@@ -142,16 +147,21 @@ def main() -> None:
     ax.set_ylabel("Tonnes a month", color=SOFT, fontsize=11)
     ax.text(pd.Timestamp(BREAK) - pd.Timedelta(days=40), top + 14,
             "US election", fontsize=10, color=SOFT, ha="right", va="top")
-    ax.annotate(f"{excess_t:,.0f} tonnes, ${excess_v:.0f}bn\n"
-                f"more than the line implies",
+    ax.annotate(f"{excess_t:,.0f} tonnes more\nthan the line implies",
                 xy=(pd.Timestamp("2025-01-20"), 150),
                 xytext=(pd.Timestamp("2022-11-01"), 185),
                 fontsize=11, color=INK, ha="left", va="center", linespacing=1.4,
                 arrowprops=dict(arrowstyle="-", color=SOFT, linewidth=0.8))
 
+    # Wrapped by hand: matplotlib will not wrap a long line, it just runs it off
+    # the canvas, so keep each one under about 210 characters.
     src = (f"A month counts as cleared when the premium beat carry plus shipping "
            f"on {CLEARED_DAYS} days or more. The shaded area covers every month "
-           f"after the election, netting the\nseven that fall below the line\n"
+           f"after the election, netting the {n_below} months that fall below "
+           f"the line.\n"
+           f"No dollar value is put on a netted area: metal went west at about "
+           f"$2,800 an ounce and came back east above $4,000, so the figure would "
+           f"turn on the price path rather than on the trade\n"
            " \n"
            "Source: Swiss Federal Office for Customs and Border Security; "
            "HM Revenue and Customs; Databento; LBMA; US Census Bureau")
