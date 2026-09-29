@@ -180,6 +180,71 @@ should not be used.
 
 ---
 
+## Results
+
+Run on 29 September 2026, on 2,852 of 2,857 days.
+
+| | before | after |
+|---|---:|---:|
+| standard deviation, pp of spot | 0.499 | **0.225** |
+| correlation with next-day London return | 0.394 | **0.051** |
+| sd on calm days | 0.420 | 0.228 |
+| sd on volatile days | 0.674 | 0.280 |
+| days beyond ±2 pp | 12 | 5 |
+
+The correction removes **55% of the daily variance** and almost all of the
+next-day-return predictability. The calm/volatile ratio falls from 1.60 to
+1.23: volatile days are no longer much noisier than quiet ones, which is what
+should happen if their excess dispersion was the three-and-a-half-hour gap
+rather than the market.
+
+The two independent measurements of the shock agree — minute-to-minute against
+settlement-based, correlation 0.9955, mean difference 0.17 basis points.
+
+### Against the predictions recorded beforehand
+
+| # | Claim | Verdict |
+|---|---|---|
+| 1 | premium stops predicting the next day's London return | **PASS** — 0.394 → 0.051 |
+| 2 | daily noise falls by at least a fifth | **PASS** — 0.499 → 0.225 |
+| 3 | calm/volatile sd ratio below 1.25 | **PASS** — 1.60 → 1.23 |
+| 4 | fewer than 5 days beyond ±2 pp | **FAIL** — 5, one too many |
+| 5 | Jan 2025 monthly mean within 0.10 pp of 0.523 | **PASS** — 0.499, a move of 0.024 |
+
+Prediction 5 is the one that mattered and it holds: monthly means barely move,
+so the correction removes noise rather than signal. The episode survives it —
+January 2025 reads 0.499 instead of 0.523.
+
+**Prediction 4 failed on the letter and passed on the substance**, which is
+worth recording precisely rather than rounding either way. Every extreme
+outside March–April 2020 collapsed:
+
+| Day | before | after |
+|---|---:|---:|
+| 30 Jan 2026 | −5.55% | **−0.24%** |
+| 12 Feb 2026 | −2.42% | **+0.00%** |
+| 13 Mar 2020 | −3.00% | **−0.06%** |
+| 7 Apr 2025 | −2.05% | **−0.12%** |
+| 10 Jun 2022 | +2.01% | **−0.30%** |
+
+The five that remain are all March and April 2020, and all of them are days
+when the curve fit itself had broken: R² of 0.008, 0.019, 0.020, 0.115 and
+0.302, against a median of 0.9987. These are the days flagged `fit_ok = False`
+in the premium series. Their premium is not a timing artefact and the
+correction should not remove it — during the COVID dislocation the COMEX curve
+genuinely stopped being one log-linear object, and no shift of the intercept
+can fix a curve that is not a line.
+
+### The five days with no minute data
+
+`2017-11-23`, `2019-11-28`, `2020-11-26`, `2021-11-25` and `2026-02-25`. The
+first four are US Thanksgiving: the London auction runs, New York does not
+trade, and so no print exists in the window at any staleness. They are flagged
+`retimed = False` rather than silently left uncorrected, which is the whole
+point of carrying the flag.
+
+---
+
 ## Choices that are parameters, not facts
 
 - **The auction window.** The LBMA auction opens at 15:00 London and settles
