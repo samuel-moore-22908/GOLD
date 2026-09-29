@@ -82,5 +82,21 @@ the 99.5th percentile with the nine days beyond it marked at the edge — the
 January 2026 print of −\$237 would otherwise flatten eleven years into a line.
 Panel B is the spread the paper uses, daily and monthly, in per cent of spot.
 
+**Panel B is shaded by direction.** Above the band the premium pays for moving
+metal west to New York; below it, east to London. The fill between the monthly
+line and zero is blue above and orange below, so the direction of pressure is
+readable at a glance and the 2020 and 2024–25 episodes stand out as sustained
+westward periods against the long orange stretch through 2022.
+
+The grey band between them is the **no-trade region**, estimated from the flows
+in `claude/carry-threshold/estimate_threshold.py`: +\$0.78 an ounce westward
+and −\$0.95 eastward. It is drawn as a time-varying envelope rather than two
+horizontal lines, because the threshold is a dollar cost while the panel is in
+per cent of spot. That makes it narrow over time — 0.067% of spot at \$1,172
+gold in 2015, 0.017% at \$4,483 in 2026 — which is itself worth seeing: the
+same physical cost is a fourfold smaller hurdle now than at the start of the
+sample, so the band is crossed more easily even with no change in freight
+rates.
+
 Both panels show gaps as gaps and mark what falls outside the frame rather than
 cropping it silently.

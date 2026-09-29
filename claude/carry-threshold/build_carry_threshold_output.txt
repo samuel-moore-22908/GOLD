@@ -47,20 +47,27 @@ STEP 2  Check: the excess should be the premium
 
    This is the practical finding of the whole exercise. Run the
    cash-and-carry test on the quoted spread, the textbook way, and the
-   noise is $12 an ounce against a shipping cost of about $3.
-   The thing being measured is a third the size of the error in
+   noise is $12 an ounce against a shipping cost of about $-0.
+   The thing being measured is a small fraction of the error in
    measuring it, so the test cannot be run that way at daily frequency
    at all. It needs the re-timed premium, or monthly averaging, or both.
 
 ==============================================================================
 STEP 3  The threshold: what it costs to move an ounce
 ==============================================================================
-   kappa = $3.00 to $3.77 an ounce.
+   kappa = $0.78 an ounce westward, 90% CI [$-0.46, $+2.43]
+           $-0.95 an ounce eastward
 
-   This is an assumption and the weakest number in the exercise. Freight,
-   insurance and recasting quotes are private; the band is the hinge
-   estimated from flows in earlier work. The one public component is the
-   COMEX delivery-out charge of $0.35 an ounce, about a tenth of it.
+   Estimated, not assumed: estimate_threshold.py finds the kink in the
+   premium-tonnage relationship by profile least squares. Freight and
+   recasting quotes are private, so the flows are the only evidence
+   available. The one public component is the COMEX delivery-out charge
+   of $0.35 an ounce, which is about half of the westward estimate.
+
+   This supersedes the $2.99-$3.77 used in earlier work, which was
+   fitted to the premium BEFORE re-timing. Noise in a regressor smears
+   a kink and pushes the estimated threshold outward, so the old figure
+   was too high. The interval still spans zero either way.
 
    Note what is NOT added on top. Financing the metal from purchase to
    delivery is already inside the carry cost subtracted in step 1, so
@@ -68,12 +75,14 @@ STEP 3  The threshold: what it costs to move an ounce
    is the lease income forgone while metal is in the air, which needs a
    lease rate the project does not have.
 
-   days clearing $3.00: 296 of 2,820 (10.5%)
-   days clearing $3.77: 227 of 2,820 (8.0%)
+   days clearing $0.78: 798 of 2,820 (28.3%)
+   days clearing $2.43: 368 of 2,820 (13.0%)
 
-   The band is crossed rarely. That is the point: for most of eleven
-   years arbitrage holds the premium inside the cost of acting on it,
-   and nothing moves.
+   With the lower threshold the premium clears on nearly a third of days
+   rather than a tenth, which is the practical consequence of re-timing:
+   the band is narrower and it is crossed more often than earlier work
+   suggested. Whether the metal then moves is a separate question, and
+   step 4 is where the answer stops being automatic.
 
 ==============================================================================
 STEP 4  Does metal actually move?
@@ -86,11 +95,11 @@ STEP 4  Does metal actually move?
 
    Months grouped by whether the premium cleared the threshold:
    group                                 n  median t   mean t   max t
-   never cleared                        82       2.3      4.7    32.0
-   cleared on 1-4 days                  36       4.7     12.9   112.4
-   cleared on 5 or more days            21      14.8     47.1   195.4
+   never cleared                        30       1.7      2.9    14.5
+   cleared on 1-4 days                  50       2.5      7.3   112.4
+   cleared on 5 or more days            59       6.6     23.4   195.4
 
-   correlation, monthly pressure vs tonnes : 0.681
+   correlation, monthly pressure vs tonnes : 0.699
    correlation, mean premium  vs tonnes    : 0.632
 
    The pressure measure is the daily hinge averaged over the month, not
@@ -101,8 +110,8 @@ STEP 4  Does metal actually move?
    The relationship is not stable across the sample. Splitting the
    months that cleared at the April 2025 tariff exemption:
                               n  median t   median pressure $   t per $
-   before Apr 2025           15      44.5                1.82      24.4
-   after Apr 2025             6       5.8                3.07       1.9
+   before Apr 2025           49      11.4                0.84      13.6
+   after Apr 2025            10       4.4                2.45       1.8
 
    The same premium stops producing the same shipments. August 2025 had
    a premium above $10 an ounce on sixteen days and 2.7 tonnes arrived;
@@ -119,27 +128,65 @@ STEP 4  Does metal actually move?
 
    The months that cleared on five days or more:
    month      premium $  days  pressure $   tonnes
-   2019-07         1.77     5        0.09      0.4
-   2020-03         2.43     5        1.82     44.5
-   2020-05         7.51     9        4.76    127.1
-   2020-06         4.98    15        3.20     68.7
-   2020-07         4.27    14        2.53     63.9
-   2020-12         2.35     6        0.58     14.8
-   2023-03         0.50     5        0.10     21.6
-   2024-01         1.97     6        0.18      5.6
-   2024-08         2.60     8        0.51      3.4
-   2024-09         4.25    13        1.54     12.5
-   2024-11         3.13    12        1.04     11.4
-   2024-12         4.47     9        2.60     73.1
-   2025-01        13.64    19       10.75    195.4
-   2025-02         3.59    10        2.33    155.8
-   2025-03         4.59    12        3.34    110.6
-   2025-07         3.31    10        1.90     54.1
-   2025-08        10.25    16        7.48      2.7
-   2025-09         6.89    11        4.74      6.9
-   2025-11         2.38     8        1.35      4.7
-   2025-12         6.94    14        4.25      8.1
-   2026-03         1.13     8        1.60      4.1
+   2015-01         0.05     6        0.24      0.7
+   2016-02        -0.10     5        0.08      1.5
+   2016-03         0.52    10        0.16      0.8
+   2016-04         0.65     9        0.31      2.4
+   2016-05         0.96    12        0.43     19.1
+   2016-06         1.16    15        0.60     20.8
+   2016-09         0.24     5        0.07      6.2
+   2016-12         0.09     5        0.21      2.8
+   2017-08         0.07     5        0.13      0.3
+   2019-06         0.82     7        0.49      0.5
+   2019-07         1.77    16        1.09      0.4
+   2019-08         1.42    16        0.94      2.6
+   2019-09         1.22    14        0.84      0.7
+   2019-10         0.85    14        0.44      0.9
+   2019-11         1.18    12        0.72     10.9
+   2019-12         0.91     9        0.32      1.3
+   2020-03         2.43     8        2.61     44.5
+   2020-05         7.51     9        6.76    127.1
+   2020-06         4.98    17        4.98     68.7
+   2020-07         4.27    17        4.15     63.9
+   2020-09         0.89     9        0.97     14.1
+   2020-10         1.26    15        0.88     18.3
+   2020-11         0.76    10        1.22     21.0
+   2020-12         2.35    16        1.85     14.8
+   2021-01         0.20     8        0.69     18.5
+   2021-06         0.02     9        0.38     31.0
+   2021-07        -0.02     5        0.12     13.6
+   2021-10        -0.32     5        0.39      5.7
+   2021-11         1.42    13        1.10     25.6
+   2022-03         0.42     8        0.84     85.5
+   2023-03         0.50    11        0.80     21.6
+   2023-05         0.48     8        0.40     13.4
+   2023-11         0.75    11        0.50      4.7
+   2023-12         1.86    15        1.20      6.6
+   2024-01         1.97    17        1.37      5.6
+   2024-02         0.82    12        0.40      3.2
+   2024-03         1.68    16        1.11      4.1
+   2024-04         1.07    10        0.97      3.9
+   2024-05         0.46     8        0.48      4.4
+   2024-06         0.45     8        0.40      5.1
+   2024-07         0.28    10        0.57     12.5
+   2024-08         2.60    19        1.98      3.4
+   2024-09         4.25    20        3.47     12.5
+   2024-10         1.44    16        0.97     14.4
+   2024-11         3.13    19        2.72     11.4
+   2024-12         4.47    15        4.06     73.1
+   2025-01        13.64    21       12.86    195.4
+   2025-02         3.59    12        3.62    155.8
+   2025-03         4.59    13        4.69    110.6
+   2025-07         3.31    14        3.09     54.1
+   2025-08        10.25    19        9.48      2.7
+   2025-09         6.89    17        6.39      6.9
+   2025-10        -1.20     7        1.90      6.6
+   2025-11         2.38    12        2.37      4.7
+   2025-12         6.94    19        6.16      8.1
+   2026-01        -0.31     5        2.48      3.1
+   2026-03         1.13    10        2.43      4.1
+   2026-04         0.51     8        1.48      4.1
+   2026-06        -1.73     7        1.11      2.6
 
 ==============================================================================
 STEP 5  The figure
