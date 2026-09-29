@@ -1,23 +1,18 @@
 #!/usr/bin/env python3
 """
-How much gold trade was there that would not otherwise have happened?
+How much gold trade would not otherwise have happened? Back of the envelope.
 
-A back-of-the-envelope counterfactual. Fit a baseline to gold shipments into
-the United States before the tariff episode, project it through the episode,
-and call the gap excess trade.
+Fit a straight line to gold shipments into the United States before the tariff
+episode, extrapolate it, and measure the area between the actual series and
+that line. That area is the excess trade.
 
-The method is deliberately simple and the point of the exercise is to find out
-how much the answer depends on that simplicity. It does, and in an informative
-way: over the five months of the episode the estimate barely moves across
-sixteen baseline specifications, and over the full period since it moves by a
-factor of two. The short-window number is the one worth quoting.
-
-    baseline    fitted on months before November 2024
-    excess      actual shipments minus the projected baseline
-    episode     November 2024 to March 2025
+    baseline    a straight line fitted to January 2021 - October 2024
+    excess      the area between actual shipments and the extrapolated line
+    episode     November 2024 to March 2025, ending the month before the
+                April exemption
 
 Reads   data/processed/bilateral_panel_2015_2026.csv   (Swiss and UK customs)
-        data/processed/us_hs4_universe_monthly.csv     (US trade, for context)
+        data/processed/us_hs4_universe_monthly.csv     (US trade, for scale)
 Writes  claude/counterfactual/counterfactual_monthly.csv
         claude/counterfactual/counterfactual.pdf and .png
         claude/counterfactual/build_counterfactual_output.txt
@@ -33,9 +28,9 @@ from __future__ import annotations
 REPO_ROOT = ""        # blank = infer from this file's location
 # ============================================================================
 
-BREAK = "2024-11-01"        # the US election: when tariff risk became priceable
+PRE_START = "2021-01-01"    # after the covid distortion
+BREAK = "2024-11-01"        # the US election, when tariff risk became priceable
 EPISODE_END = "2025-03-31"  # the last month before the April exemption
-PRE_START = "2021-01-01"    # headline baseline starts after the covid distortion
 
 import os
 from pathlib import Path
@@ -64,75 +59,22 @@ def note(text: str = "") -> None:
     LOG.append(text)
 
 
-def heading(text: str) -> None:
-    note("")
-    note("=" * 78)
-    note(text)
-    note("=" * 78)
-
-
-# --- the series --------------------------------------------------------------
-
-def leg(f: pd.DataFrame, reporter: str, col: str, scale: float) -> pd.Series:
+def series(f: pd.DataFrame, reporter: str, col: str, scale: float) -> pd.Series:
     s = f[(f.reporter_iso3 == reporter) & (f.country_iso3 == "USA")
           & (f.flow == "export")]
     g = s.groupby("date")[col].sum() / scale
     return g[g.index >= "2015-01-01"]
 
 
-# --- the counterfactual ------------------------------------------------------
-
-def design(index, offset: int, seasonal: bool, trend: bool) -> pd.DataFrame:
-    X = pd.DataFrame({"const": 1.0}, index=index)
-    if trend:
-        X["trend"] = np.arange(offset, offset + len(index))
-    if seasonal:
-        for m in range(2, 13):
-            X[f"m{m}"] = (index.month == m).astype(float)
-    return X
-
-
-def counterfactual(y: pd.Series, pre_start: str, seasonal: bool, trend: bool,
-                   logs: bool, drop_2020: bool = False) -> pd.Series:
-    """Fit a baseline before the break and project it forward."""
+def extrapolate(y: pd.Series, pre_start: str = PRE_START) -> tuple[pd.Series, float]:
+    """Straight line through the pre-period, carried forward. Returns the line
+    over the post-period and its slope in units a month."""
     pre = y[(y.index >= pre_start) & (y.index < BREAK)]
-    if drop_2020:
-        pre = pre[pre.index.year != 2020]
     post = y[y.index >= BREAK]
-    X = design(pre.index, 0, seasonal, trend)
-    target = np.log(pre.values) if logs else pre.values
-    beta, *_ = np.linalg.lstsq(X.values, target, rcond=None)
-    resid = target - X.values @ beta
-    Xf = design(post.index, len(pre), seasonal, trend)[X.columns]
-    fitted = Xf.values @ beta
-    if logs:
-        # Duan's smearing: exponentiating a log fit understates the mean, and
-        # with a residual standard deviation above half a log point here the
-        # correction is not a rounding detail.
-        fitted = np.exp(fitted) * np.exp(resid).mean()
-    return pd.Series(np.clip(fitted, 0, None), index=post.index)
-
-
-SPECS = [(pre_label, pre_start, drop20, seas, tr, lg)
-         for pre_label, pre_start, drop20 in
-         (("2021-24", PRE_START, False), ("2015-24 ex 2020", "2015-01-01", True))
-         for seas in (False, True) for tr in (False, True) for lg in (False, True)]
-
-
-def spec_range(y: pd.Series) -> pd.DataFrame:
-    rows = []
-    post = y[y.index >= BREAK]
-    ep = post.index <= EPISODE_END
-    for pre_label, pre_start, drop20, seas, tr, lg in SPECS:
-        cf = counterfactual(y, pre_start, seas, tr, lg, drop20)
-        rows.append({
-            "baseline": pre_label,
-            "spec": ("trend" if tr else "mean")
-                     + (" + seasonality" if seas else "") + (", log" if lg else ""),
-            "cf_total": cf.sum(), "excess_total": (post - cf).sum(),
-            "excess_episode": (post[ep] - cf[ep]).sum(),
-        })
-    return pd.DataFrame(rows)
+    slope, intercept = np.polyfit(np.arange(len(pre)), pre.values, 1)
+    future = np.arange(len(pre), len(pre) + len(post))
+    line = pd.Series(np.clip(slope * future + intercept, 0, None), index=post.index)
+    return line, float(slope)
 
 
 def main() -> None:
@@ -140,196 +82,139 @@ def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     f = pd.read_csv("data/processed/bilateral_panel_2015_2026.csv",
                     parse_dates=["date"])
+    tonnes = (series(f, "CHE", "net_mass_kg", 1000)
+              + series(f, "GBR", "net_mass_kg", 1000)).dropna()
+    value = (series(f, "CHE", "value_usd", 1e9)
+             + series(f, "GBR", "value_usd", 1e9)).dropna()
 
-    che_t, gbr_t = leg(f, "CHE", "net_mass_kg", 1000), leg(f, "GBR", "net_mass_kg", 1000)
-    che_v, gbr_v = leg(f, "CHE", "value_usd", 1e9), leg(f, "GBR", "value_usd", 1e9)
-    both_t = (che_t + gbr_t).dropna()
-    both_v = (che_v + gbr_v).dropna()
+    note("=" * 74)
+    note("EXCESS GOLD TRADE: THE AREA BETWEEN ACTUAL AND A PRE-TREND LINE")
+    note("=" * 74)
+    note("   Gold shipped to the United States from Switzerland and the United")
+    note("   Kingdom, the two places it comes from when the arbitrage runs. Both")
+    note("   are the exporters' own customs figures, because US import figures")
+    note("   carry no mass.")
+    note("")
 
-    heading("STEP 1  What is being counterfactualled")
-    note("   Gold shipped to the United States from the two places it comes from")
-    note("   when the arbitrage runs: Switzerland, where London bars are recast")
-    note("   into the sizes COMEX accepts, and the United Kingdom directly.")
-    note("")
-    note("   Both legs are the exporters' own customs figures. US import figures")
-    note("   would do for value but carry no mass, so tonnage has to come from")
-    note("   the other side.")
-    note("")
-    note(f"   Switzerland   {len(che_t)} months, {che_t.index.min():%Y-%m} to "
-         f"{che_t.index.max():%Y-%m}")
-    note(f"   United Kingdom{len(gbr_t):>4} months, {gbr_t.index.min():%Y-%m} to "
-         f"{gbr_t.index.max():%Y-%m}")
-    note(f"   break at {BREAK[:7]}, the US election, when tariff risk became")
-    note(f"   priceable; episode ends {EPISODE_END[:7]}, the last month before")
-    note("   the April exemption")
+    cf_t, slope_t = extrapolate(tonnes)
+    cf_v, _ = extrapolate(value)
+    post_t, post_v = tonnes[tonnes.index >= BREAK], value[value.index >= BREAK]
+    pre = tonnes[(tonnes.index >= PRE_START) & (tonnes.index < BREAK)]
+    ep = post_t.index <= EPISODE_END
 
-    heading("STEP 2  The baseline is fragile, and that is the finding")
-    note("   A single baseline would hide how much the answer depends on it, so")
-    note("   sixteen are fitted: two pre-periods, with and without a trend, with")
-    note("   and without seasonality, in levels and in logs.")
+    note(f"   pre-period   {pre.index.min():%Y-%m} to {pre.index.max():%Y-%m}, "
+         f"{len(pre)} months, mean {pre.mean():.1f} t a month")
+    note(f"   fitted line  {slope_t:+.3f} tonnes a month, "
+         f"reaching {cf_t.loc['2025-01-01']:.1f} t by January 2025")
     note("")
-    r = spec_range(both_t)
-    note(f"   {'baseline':<18}{'shape':<30}{'excess, full':>14}{'episode':>10}")
-    for _, row in r.iterrows():
-        note(f"   {row.baseline:<18}{row.spec:<30}{row.excess_total:>14,.0f}"
-             f"{row.excess_episode:>10,.0f}")
-    note("")
-    note(f"   full window   {r.excess_total.min():,.0f} to "
-         f"{r.excess_total.max():,.0f} t, a factor of "
-         f"{r.excess_total.max()/max(r.excess_total.min(), 1):.1f}")
-    note(f"   episode only  {r.excess_episode.min():,.0f} to "
-         f"{r.excess_episode.max():,.0f} t, a spread of "
-         f"{100*(r.excess_episode.max()/r.excess_episode.min() - 1):.0f}%")
-    note("")
-    note("   Over five months any sane baseline predicts a small number against")
-    note("   an actual one that is very large, so the choice barely matters. Over")
-    note("   twenty-one months the baseline accumulates and the trend assumption")
-    note("   starts to drive the answer. Quote the episode; treat the longer")
-    note("   window as an illustration, not an estimate.")
+    note(f"   {'':<14}{'actual':>10}{'baseline':>11}{'excess':>10}")
+    note(f"   {'episode, t':<14}{post_t[ep].sum():>10,.0f}{cf_t[ep].sum():>11,.0f}"
+         f"{(post_t[ep] - cf_t[ep]).sum():>10,.0f}")
+    note(f"   {'episode, $bn':<14}{post_v[ep].sum():>10,.1f}{cf_v[ep].sum():>11,.1f}"
+         f"{(post_v[ep] - cf_v[ep]).sum():>10,.1f}")
+    note(f"   {'to date, t':<14}{post_t.sum():>10,.0f}{cf_t.sum():>11,.0f}"
+         f"{(post_t - cf_t).sum():>10,.0f}")
+    note(f"   {'to date, $bn':<14}{post_v.sum():>10,.1f}{cf_v.sum():>11,.1f}"
+         f"{(post_v - cf_v).sum():>10,.1f}")
 
-    heading("STEP 3  The back-of-the-envelope number")
-    headline = {}
-    for label, y_t, y_v in (("Switzerland", che_t, che_v),
-                            ("United Kingdom", gbr_t, gbr_v),
-                            ("Both legs", both_t, both_v)):
-        cf_t = counterfactual(y_t, PRE_START, True, False, False)
-        cf_v = counterfactual(y_v, PRE_START, True, False, False)
-        post_t, post_v = y_t[y_t.index >= BREAK], y_v[y_v.index >= BREAK]
-        ep = post_t.index <= EPISODE_END
-        ex_t, ex_v = (post_t[ep] - cf_t[ep]).sum(), (post_v[ep] - cf_v[ep]).sum()
-        headline[label] = (ex_t, ex_v, post_t[ep].sum(), cf_t, post_t)
-        note(f"   {label:<16} actual {post_t[ep].sum():6.0f} t   baseline "
-             f"{cf_t[ep].sum():5.0f} t   excess {ex_t:6.0f} t   ${ex_v:5.1f}bn")
-    ex_t, ex_v = headline["Both legs"][0], headline["Both legs"][1]
+    ex_t, ex_v = (post_t[ep] - cf_t[ep]).sum(), (post_v[ep] - cf_v[ep]).sum()
     note("")
     note(f"   implied price of the excess ${1e9*ex_v/(ex_t*32150.7):,.0f} an ounce,")
-    note("   which is where gold traded over those months - the tonnage and the")
-    note("   value are telling the same story rather than two different ones.")
+    note("   which is where gold traded over those months - so the tonnage and")
+    note("   the value agree rather than telling two stories.")
 
-    heading("STEP 4  What that is next to the trade statistics it lands in")
+    note("")
+    note("   Starting the pre-period elsewhere moves it, but not much over the")
+    note("   episode:")
+    for start, label in ((PRE_START, "2021"), ("2019-01-01", "2019"),
+                         ("2015-01-01", "2015")):
+        alt, sl = extrapolate(tonnes, start)
+        note(f"      from {label}: slope {sl:+.3f} t a month, "
+             f"episode excess {(post_t[ep] - alt[ep]).sum():,.0f} t")
+
     u = pd.read_csv("data/processed/us_hs4_universe_monthly.csv",
                     parse_dates=["date"])
     tot = u.pivot_table(index="date", columns="flow", values="value_usd",
                         aggfunc="sum") / 1e9
     imports = tot["imports"].loc[BREAK:EPISODE_END].sum()
-    exports = tot["exports"].loc[BREAK:EPISODE_END].sum()
-    deficit = imports - exports
-    note(f"   US goods imports, Nov 2024 - Mar 2025   ${imports:,.0f}bn")
-    note(f"   US goods deficit, same months           ${deficit:,.0f}bn")
-    note(f"   excess gold                             ${ex_v:,.1f}bn")
+    deficit = imports - tot["exports"].loc[BREAK:EPISODE_END].sum()
     note("")
-    note(f"   {100*ex_v/imports:.1f}% of imports and {100*ex_v/deficit:.1f}% of the "
-         f"goods deficit over those five months.")
-    note("")
-    note("   That is the point of the exercise. None of this metal was consumed,")
-    note("   imported for use, or in any economic sense bought by America: it was")
-    note("   moved between vaults because a tariff might otherwise have applied to")
-    note("   it, and a fifth of it went back out within five months. It still")
-    note("   enters the trade balance at full value.")
+    note(f"   For scale: ${ex_v:.0f}bn is {100*ex_v/imports:.1f}% of US goods "
+         f"imports over those five")
+    note(f"   months and {100*ex_v/deficit:.0f}% of the goods deficit. None of it was "
+         f"consumed or")
+    note("   bought in any economic sense, and a fifth went back out within five")
+    note("   months - but it enters the trade balance at full value.")
 
-    # --- outputs ----------------------------------------------------------
-    cf_t, post_t = headline["Both legs"][3], headline["Both legs"][4]
-    monthly = pd.DataFrame({"actual_t": post_t, "counterfactual_t": cf_t})
-    monthly["excess_t"] = monthly.actual_t - monthly.counterfactual_t
+    monthly = pd.DataFrame({"actual_t": post_t, "baseline_t": cf_t,
+                            "actual_usd_bn": post_v, "baseline_usd_bn": cf_v})
+    monthly["excess_t"] = monthly.actual_t - monthly.baseline_t
     monthly["cumulative_excess_t"] = monthly.excess_t.cumsum()
     monthly.index.name = "month"
     monthly.to_csv(OUT / "counterfactual_monthly.csv")
-    r.to_csv(OUT / "counterfactual_specifications.csv", index=False)
 
-    figure(both_t, monthly, r, ex_t, ex_v, deficit)
+    figure(tonnes, monthly, ex_t, ex_v, deficit)
     (OUT / "build_counterfactual_output.txt").write_text("\n".join(LOG) + "\n",
                                                          encoding="utf-8")
 
 
-def style(ax) -> None:
+def figure(tonnes, monthly, ex_t, ex_v, deficit) -> None:
+    hist = tonnes[tonnes.index >= PRE_START]
+    fig, ax = plt.subplots(figsize=(11.0, 6.4))
+    fig.patch.set_facecolor(SURFACE)
+
+    fig.text(0.030, 0.965, TAB, fontsize=11, color=RED, ha="left", va="top")
+    fig.text(0.030, 0.930,
+             f"About {ex_t:,.0f} tonnes of gold crossed that otherwise would not have",
+             fontsize=17, color=INK, ha="left", va="top", fontweight="bold")
+    fig.text(0.030, 0.882,
+             f"Gold shipped to the United States from Switzerland and the United "
+             f"Kingdom, against a straight line fitted to\n"
+             f"January 2021 - October 2024 and carried forward. The shaded area "
+             f"is worth ${ex_v:.0f}bn, or {100*ex_v/deficit:.0f}% of the US goods "
+             f"trade deficit over the same months",
+             fontsize=12, color=INK, ha="left", va="top", linespacing=1.35)
+
     ax.set_facecolor(SURFACE)
     for side in ax.spines:
         ax.spines[side].set_visible(False)
     ax.grid(True, axis="both", color=RULE, linewidth=0.8)
     ax.set_axisbelow(True)
-    ax.tick_params(colors=SOFT, labelsize=9, length=0)
+    ax.tick_params(colors=SOFT, labelsize=10, length=0)
+    ax.xaxis.set_major_locator(mdates.YearLocator())
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
 
+    ax.plot(hist.index, hist.values, color=GREY, linewidth=1.5, zorder=3)
+    ax.plot(monthly.index, monthly.actual_t, color=RED, linewidth=2.0, zorder=5)
+    ax.plot(monthly.index, monthly.baseline_t, color=INK, linewidth=1.0,
+            linestyle=(0, (4, 3)), zorder=4)
+    # Shade only what the headline number counts. Later months add more excess,
+    # and showing it shaded while quoting the episode figure would overstate
+    # what the annotation refers to.
+    inside = (monthly.actual_t > monthly.baseline_t) &              (monthly.index <= EPISODE_END)
+    ax.fill_between(monthly.index, monthly.baseline_t, monthly.actual_t,
+                    where=inside, color=RED, alpha=0.22, zorder=2,
+                    interpolate=True)
+    ax.axvline(pd.Timestamp(BREAK), color=SOFT, linewidth=0.8,
+               linestyle=(0, (2, 2)), zorder=1)
+    ax.set_ylabel("Tonnes a month", color=SOFT, fontsize=11)
+    ax.text(pd.Timestamp(BREAK) - pd.Timedelta(days=40), ax.get_ylim()[1] * 0.97,
+            "US election", fontsize=10, color=SOFT, ha="right", va="top")
+    ax.annotate(f"the area between them:\n{ex_t:,.0f} tonnes, ${ex_v:.0f}bn",
+                xy=(pd.Timestamp("2025-01-15"), 150),
+                xytext=(pd.Timestamp("2023-02-01"), 175),
+                fontsize=11, color=INK, ha="left", va="center", linespacing=1.4,
+                arrowprops=dict(arrowstyle="-", color=SOFT, linewidth=0.8))
 
-def panel_head(ax, title: str, deck: str) -> None:
-    ax.set_title(title, color=INK, fontsize=13, loc="left", pad=22)
-    ax.text(0.0, 1.035, deck, transform=ax.transAxes, fontsize=9.5,
-            color=SOFT, ha="left", va="bottom")
-
-
-def figure(both_t, monthly, r, ex_t, ex_v, deficit) -> None:
-    hist = both_t[both_t.index >= "2021-01-01"]
-    fig, (ax1, ax2) = plt.subplots(
-        2, 1, figsize=(11.0, 8.2),
-        gridspec_kw={"height_ratios": [1.25, 1], "hspace": 0.40})
-    fig.patch.set_facecolor(SURFACE)
-
-    fig.text(0.030, 0.972, TAB, fontsize=11, color=RED, ha="left", va="top")
-    fig.text(0.030, 0.944,
-             f"About {ex_t:,.0f} tonnes of gold crossed that otherwise "
-             f"would not have",
-             fontsize=17, color=INK, ha="left", va="top", fontweight="bold")
-    fig.text(0.030, 0.906,
-             f"Gold shipped to the United States from Switzerland and the "
-             f"United Kingdom, against a baseline fitted before\n"
-             f"the November 2024 election. The five-month excess is worth "
-             f"${ex_v:.0f}bn, or {100*ex_v/deficit:.0f}% of the US goods "
-             f"trade deficit over the same months",
-             fontsize=12, color=INK, ha="left", va="top", linespacing=1.35)
-
-    style(ax1)
-    ax1.xaxis.set_major_locator(mdates.YearLocator())
-    ax1.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-    ax1.plot(hist.index, hist.values, color=GREY, linewidth=1.4, zorder=3)
-    ax1.plot(monthly.index, monthly.actual_t, color=RED, linewidth=1.8, zorder=5)
-    ax1.plot(monthly.index, monthly.counterfactual_t, color=INK, linewidth=1.0,
-             linestyle=(0, (4, 3)), zorder=4)
-    ax1.fill_between(monthly.index, monthly.counterfactual_t, monthly.actual_t,
-                     where=monthly.actual_t > monthly.counterfactual_t,
-                     color=RED, alpha=0.20, zorder=2, interpolate=True)
-    ax1.axvline(pd.Timestamp(BREAK), color=SOFT, linewidth=0.8,
-                linestyle=(0, (2, 2)), zorder=1)
-    ax1.set_ylabel("Tonnes a month", color=SOFT, fontsize=10)
-    panel_head(ax1, "Shipments, and the baseline they left behind",
-               "Switzerland and the United Kingdom to the United States. "
-               "Dashed: the projected baseline. Shaded: the excess")
-    ax1.text(pd.Timestamp(BREAK) - pd.Timedelta(days=40), ax1.get_ylim()[1] * 0.96,
-             "US election", fontsize=9, color=SOFT, ha="right", va="top")
-
-    style(ax2)
-    # A dot strip rather than bars: the message is how tightly the sixteen
-    # estimates cluster, and overlaid bars hide exactly that.
-    rows = [("Episode\nNov 24 - Mar 25", r.excess_episode, GREY),
-            ("Full window\nNov 24 - Jul 26", r.excess_total, RED)]
-    for i, (label, vals, colour) in enumerate(rows):
-        y = len(rows) - 1 - i
-        ax2.hlines(y, vals.min(), vals.max(), color=colour, linewidth=1.2,
-                   alpha=0.55, zorder=2)
-        ax2.scatter(vals, np.full(len(vals), y), s=55, color=colour, alpha=0.55,
-                    linewidths=0, zorder=3)
-        ax2.scatter([vals.median()], [y], s=90, color=colour, zorder=4,
-                    marker="|", linewidths=2.2)
-        ax2.text(vals.max() + 18, y, f"{vals.min():,.0f} to {vals.max():,.0f} t"
-                 f"   (median {vals.median():,.0f})",
-                 fontsize=10, color=INK, ha="left", va="center")
-    ax2.set_yticks([1, 0])
-    ax2.set_yticklabels([rows[0][0], rows[1][0]], fontsize=10, color=INK)
-    ax2.tick_params(axis="y", labelsize=10)
-    ax2.set_ylim(-0.7, 1.7)
-    ax2.set_xlim(0, max(r.excess_total.max(), r.excess_episode.max()) * 1.32)
-    ax2.grid(False, axis="y")
-    ax2.set_xlabel("Tonnes of excess trade", color=SOFT, fontsize=10)
-    panel_head(ax2, "How much the answer depends on the baseline",
-               "Each dot is one of sixteen specifications: two pre-periods, "
-               "with and without trend and seasonality, in levels and logs")
-
-    src = ("Baseline is a seasonal monthly mean fitted to January 2021 - October "
-           "2024 and projected forward; the dots show all sixteen\n"
+    src = ("The line is fitted to the 46 months before the election and simply "
+           "extrapolated; starting it in 2019 or 2015 instead moves the\n"
+           "episode figure to 693 or 645 tonnes\n"
            " \n"
            "Source: Swiss Federal Office for Customs and Border Security; "
            "HM Revenue and Customs; US Census Bureau")
     fig.text(0.030, 0.012, src, fontsize=9, color=SOFT, ha="left", va="bottom",
              linespacing=1.35)
-    fig.subplots_adjust(left=0.105, right=0.985, top=0.780, bottom=0.140)
+    fig.subplots_adjust(left=0.075, right=0.985, top=0.720, bottom=0.185)
     for ext in ("pdf", "png"):
         fig.savefig(OUT / f"counterfactual.{ext}", dpi=200,
                     facecolor=fig.get_facecolor())
