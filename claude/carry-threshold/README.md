@@ -33,6 +33,40 @@ Panel A shows why the raw number is useless as a signal: the carry line is
 itself a sawtooth resetting every delivery cycle, with the quoted spread
 oscillating around it. Almost everything in `F − S` is the calendar.
 
+## The all-in hurdle: carry plus shipping
+
+Carry is not the whole cost of the trade. The metal also has to be flown and
+recast, so the spread has to clear
+
+```
+carry(tau)  +  kappa        the westward trigger
+```
+
+**Shipping is a level, not a rate.** It is paid once, so it is added once
+rather than entering the slope. A cost inside the slope would make the hurdle
+grow with the horizon, and freight does not care whether the contract expires
+in ten days or a hundred. That is why the test compares the *excess* — the
+spread already net of carry — against a constant, rather than adding anything
+to the fitted carry rate.
+
+What the decomposition has done over eleven years:
+
+| year | gold | carry | ship | hurdle | shipping share |
+|---|---:|---:|---:|---:|---:|
+| 2015 | $1,160 | $0.71 | $0.78 | $1.49 | **57.3%** |
+| 2019 | $1,392 | $4.40 | $0.78 | $5.18 | 19.3% |
+| 2022 | $1,800 | $9.01 | $0.78 | $9.79 | 13.7% |
+| 2025 | $3,434 | $21.28 | $0.78 | $22.06 | 5.1% |
+| 2026 | $4,571 | $24.96 | $0.78 | $25.74 | **4.8%** |
+
+Shipping was the majority of the barrier in 2015 and is a twentieth of it now:
+carry went from 43% of the hurdle to 95%. Rates and the gold price both rose
+while freight stayed flat in dollars, so **what stops metal moving is now
+almost entirely a financing cost** — one that moves with monetary policy rather
+than with logistics. A paper about relocation flows should say that, because it
+means the barrier to relocation is set by the Federal Reserve and the gold
+price, not by Brink's.
+
 ## The decomposition checks out — and the check is the finding
 
 | Excess compared with | corr | sd of difference |

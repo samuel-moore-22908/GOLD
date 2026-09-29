@@ -30,6 +30,31 @@ STEP 1  Carry cost, over the interval the quoted spread spans
       2025: gold $3,434   carry $ 21.28   90% [ 20.45,  22.12]   width $1.68
       2026: gold $4,571   carry $ 24.96   90% [ 24.30,  25.61]   width $1.32
 
+
+   THE ALL-IN HURDLE. Carry is not the whole cost of the trade. The
+   metal also has to be flown and recast, so the spread has to clear
+
+       carry(tau)  +  kappa        the westward trigger
+
+   Shipping is a LEVEL, not a rate. It is paid once, so it is added
+   once rather than entering the slope: a cost inside the slope would
+   make the hurdle grow with the horizon, and freight does not care
+   when the contract expires.
+
+   What that decomposition has done over eleven years:
+      year      gold    carry   ship   hurdle  ship share
+      2015     1,160     0.71   0.78     1.49       57.3%
+      2019     1,392     4.40   0.78     5.18       19.3%
+      2022     1,800     9.01   0.78     9.79       13.7%
+      2025     3,434    21.28   0.78    22.06        5.1%
+      2026     4,571    24.96   0.78    25.74        4.8%
+
+   Shipping was the majority of the barrier in 2015 and is a twentieth
+   of it now: carry went from 43% of the hurdle to 95%. Rates and the
+   gold price both rose while freight stayed flat in dollars, so what
+   stops metal moving is now almost entirely a financing cost, which
+   moves with monetary policy rather than with logistics.
+
    That width is worth holding against the threshold metal has to
    clear, $0.78 an ounce: at the median the carry band is
    44% of it, and since 2020 it has been wider than
@@ -66,7 +91,7 @@ STEP 2  Check: the excess should be the premium
 
    This is the practical finding of the whole exercise. Run the
    cash-and-carry test on the quoted spread, the textbook way, and the
-   noise is $12 an ounce against a shipping cost of about $-0.
+   noise is $12 an ounce against a shipping cost of $0.78.
    The thing being measured is a small fraction of the error in
    measuring it, so the test cannot be run that way at daily frequency
    at all. It needs the re-timed premium, or monthly averaging, or both.

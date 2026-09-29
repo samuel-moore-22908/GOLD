@@ -124,6 +124,14 @@ def step_carry() -> pd.DataFrame:
     d["excess_lo"] = d.basis_usd - d.carry_cost_hi     # a dearer carry leaves less
     d["excess_hi"] = d.basis_usd - d.carry_cost_lo
 
+    # The all-in cost of the westward trade: carry to the delivery date plus the
+    # one-off cost of moving the metal. Shipping is a LEVEL, not a rate, so it
+    # is added once rather than entering the slope - flying an ounce costs the
+    # same whether the contract expires in ten days or a hundred.
+    d["hurdle_west"] = d.carry_cost_usd + KAPPA_WEST
+    d["hurdle_east"] = d.carry_cost_usd + KAPPA_EAST
+    d["shipping_share_pct"] = 100.0 * KAPPA_WEST / d.hurdle_west
+
     # The premium as measured before re-timing, for the comparison in step 2.
     # It shares the quoted spread's 13:30 settlement, so it isolates what the
     # clock contributes from what the curve fit contributes.
@@ -162,6 +170,34 @@ def step_carry() -> pd.DataFrame:
         r = by_year.loc[year]
         note(f"      {year}: gold ${r.gold:,.0f}   carry ${r.carry:6.2f}   "
              f"90% [{r.lo:6.2f}, {r.hi:6.2f}]   width ${r.hi - r.lo:.2f}")
+    note("")
+    note("")
+    note("   THE ALL-IN HURDLE. Carry is not the whole cost of the trade. The")
+    note("   metal also has to be flown and recast, so the spread has to clear")
+    note("")
+    note("       carry(tau)  +  kappa        the westward trigger")
+    note("")
+    note("   Shipping is a LEVEL, not a rate. It is paid once, so it is added")
+    note("   once rather than entering the slope: a cost inside the slope would")
+    note("   make the hurdle grow with the horizon, and freight does not care")
+    note("   when the contract expires.")
+    note("")
+    note("   What that decomposition has done over eleven years:")
+    note(f"      {'year':<6}{'gold':>8}{'carry':>9}{'ship':>7}{'hurdle':>9}"
+         f"{'ship share':>12}")
+    for year, sub in d.groupby(d.date.dt.year):
+        if year not in (2015, 2019, 2022, 2025, 2026):
+            continue
+        note(f"      {year:<6}{sub.lbma_pm_usd.mean():>8,.0f}"
+             f"{sub.carry_cost_usd.mean():>9.2f}{KAPPA_WEST:>7.2f}"
+             f"{sub.hurdle_west.mean():>9.2f}"
+             f"{sub.shipping_share_pct.mean():>11.1f}%")
+    note("")
+    note("   Shipping was the majority of the barrier in 2015 and is a twentieth")
+    note("   of it now: carry went from 43% of the hurdle to 95%. Rates and the")
+    note("   gold price both rose while freight stayed flat in dollars, so what")
+    note("   stops metal moving is now almost entirely a financing cost, which")
+    note("   moves with monetary policy rather than with logistics.")
     note("")
     note(f"   That width is worth holding against the threshold metal has to")
     note(f"   clear, ${KAPPA_WEST:.2f} an ounce: at the median the carry band is")
@@ -209,8 +245,8 @@ def step_identity(d: pd.DataFrame) -> None:
     note("")
     note("   This is the practical finding of the whole exercise. Run the")
     note("   cash-and-carry test on the quoted spread, the textbook way, and the")
-    note(f"   noise is ${noise:.0f} an ounce against a shipping cost of about "
-         f"${KAPPA_LOW:.0f}.")
+    note(f"   noise is ${noise:.0f} an ounce against a shipping cost of "
+         f"${KAPPA_WEST:.2f}.")
     note("   The thing being measured is a small fraction of the error in")
     note("   measuring it, so the test cannot be run that way at daily frequency")
     note("   at all. It needs the re-timed premium, or monthly averaging, or both.")
@@ -378,6 +414,8 @@ def figure(d: pd.DataFrame, monthly: pd.DataFrame) -> None:
                      alpha=0.45, zorder=3, linewidth=0)
     ax1.plot(d.date, d.carry_cost_usd, color=AQUA, linewidth=1.3, zorder=4,
              label="Cost of carry over the same horizon")
+    ax1.plot(d.date, d.hurdle_west, color=INK2, linewidth=0.7, zorder=5,
+             label=f"+ shipping (${KAPPA_WEST:.2f}): the westward trigger")
     ax1.set_ylim(-lim1 * 0.6, lim1)
     ax1.set_ylabel("Dollars per ounce", color=INK2, fontsize=9)
     ax1.set_title("A.  The quoted spread against the cost of carry",
@@ -387,8 +425,9 @@ def figure(d: pd.DataFrame, monthly: pd.DataFrame) -> None:
     n_out1 = int(((d.basis_usd > lim1) | (d.basis_usd < -lim1 * 0.6)).sum())
     width = (d.carry_cost_hi - d.carry_cost_lo).median()
     ax1.text(0.995, 0.04,
-             f"{n_out1} days outside the frame  ·  the carry line carries a 90% "
-             f"band, median ${width:.2f} wide, thinner here than the line itself",
+             f"{n_out1} days outside the frame  ·  carry's 90% band, median "
+             f"${width:.2f}, and the ${KAPPA_WEST:.2f} of shipping above it are "
+             f"both thinner than the line at this scale",
              transform=ax1.transAxes, fontsize=7.5, color=MUTED, ha="right")
 
     lim2 = float(np.ceil(d.spread_usd.abs().quantile(0.995) / 5) * 5)
