@@ -47,6 +47,11 @@ REPO_ROOT = ""        # blank = infer from this file's location
 # the model calls for: $0.78 an ounce, 90% block-bootstrap CI [-0.46, +2.43].
 # Eastward, from Swiss imports: -$0.95, CI [-1.78, +0.80].
 KAPPA_WEST, KAPPA_EAST = 0.78, -0.95
+# The westward threshold's 90% block-bootstrap interval, turned into a standard
+# error so it can be combined with the carry estimate's own.
+KAPPA_CI = (-0.46, 2.43)
+KAPPA_SE = (KAPPA_CI[1] - KAPPA_CI[0]) / (2 * 1.645)
+OZ_PER_TONNE = 32150.7
 KAPPA_LOW, KAPPA_HIGH = -0.46, 2.43        # the westward interval, for shading
 
 import os
@@ -132,6 +137,25 @@ def step_carry() -> pd.DataFrame:
     d["hurdle_east"] = d.carry_cost_usd + KAPPA_EAST
     d["shipping_share_pct"] = 100.0 * KAPPA_WEST / d.hurdle_west
 
+    # A second version at a fixed horizon. The hurdle at the active contract's
+    # tau is the right thing to compare with that contract's quoted spread, but
+    # tau cycles with the delivery calendar, so the series is not comparable
+    # with itself over time. Ninety days is the project's constant-maturity
+    # convention and gives a hurdle that is.
+    d["carry90_usd"] = d.lbma_pm_usd * np.expm1(b * 90.0)
+    d["hurdle90_usd"] = d.carry90_usd + KAPPA_WEST
+    d["hurdle90_per_tonne"] = d.hurdle90_usd * OZ_PER_TONNE
+    d["hurdle90_pct_spot"] = 100.0 * d.hurdle90_usd / d.lbma_pm_usd
+
+    # The two sources of error are independent - one is the daily curve fit, the
+    # other a bootstrap over months of flow data - so the variances add.
+    se_carry = (d.carry_cost_hi - d.carry_cost_lo) / (2.0 * tq(d.n_contracts))
+    se_hurdle = np.sqrt(se_carry ** 2 + KAPPA_SE ** 2)
+    d["hurdle_se"] = se_hurdle
+    d["hurdle_lo"] = d.hurdle_west - 1.645 * se_hurdle
+    d["hurdle_hi"] = d.hurdle_west + 1.645 * se_hurdle
+    d["carry_var_share_pct"] = 100.0 * se_carry ** 2 / se_hurdle ** 2
+
     # The premium as measured before re-timing, for the comparison in step 2.
     # It shares the quoted spread's 13:30 settlement, so it isolates what the
     # clock contributes from what the curve fit contributes.
@@ -192,6 +216,59 @@ def step_carry() -> pd.DataFrame:
              f"{sub.carry_cost_usd.mean():>9.2f}{KAPPA_WEST:>7.2f}"
              f"{sub.hurdle_west.mean():>9.2f}"
              f"{sub.shipping_share_pct.mean():>11.1f}%")
+    note("")
+    note("")
+    note("   THE COMPOSITE, AND WHERE ITS ERROR BAR COMES FROM. The two pieces")
+    note("   are estimated independently - carry from the day's curve fit,")
+    note("   shipping from a bootstrap over months of customs data - so their")
+    note("   variances add:")
+    note("")
+    note("       hurdle = S*(exp(b*tau) - 1) + kappa")
+    note(f"       se     = sqrt( se(carry)^2 + se(kappa)^2 ),  se(kappa) = "
+         f"${KAPPA_SE:.2f}")
+    note("")
+    note(f"      {'year':<6}{'hurdle':>9}{'90% band':>18}"
+         f"{'carry % of level':>18}{'carry % of variance':>21}")
+    for year, sub in d.groupby(d.date.dt.year):
+        if year not in (2015, 2020, 2025, 2026):
+            continue
+        note(f"      {year:<6}{sub.hurdle_west.mean():>9.2f}"
+             f"{f'[{sub.hurdle_lo.mean():.2f}, {sub.hurdle_hi.mean():.2f}]':>18}"
+             f"{100 - sub.shipping_share_pct.mean():>17.1f}%"
+             f"{sub.carry_var_share_pct.mean():>20.1f}%")
+    note("")
+    last = d[d.date.dt.year == d.date.dt.year.max()]
+    note(f"   That is the useful asymmetry. In {d.date.dt.year.max()} the hurdle is "
+         f"{100 - last.shipping_share_pct.mean():.0f}% carry")
+    note(f"   while its error bar is {100 - last.carry_var_share_pct.mean():.0f}% "
+         f"shipping: the large component is the")
+    note("   precisely measured one and the small component is the guess.")
+    note("   Sharpening the hurdle therefore means getting a freight quote, not")
+    note("   a better curve fit.")
+    note("")
+    note("   At a fixed ninety-day horizon, which is comparable over time:")
+    note(f"      {'year':<6}{'$/oz':>8}{'% of spot':>12}{'$ per tonne':>15}")
+    for year, sub in d.groupby(d.date.dt.year):
+        if year not in (2015, 2020, 2025, 2026):
+            continue
+        note(f"      {year:<6}{sub.hurdle90_usd.mean():>8.2f}"
+             f"{sub.hurdle90_pct_spot.mean():>11.3f}%"
+             f"{sub.hurdle90_per_tonne.mean():>15,.0f}")
+    first90 = d[d.date.dt.year == d.date.dt.year.min()]
+    last90 = d[d.date.dt.year == d.date.dt.year.max()]
+    note("")
+    note(f"   Relocating a tonne cost ${first90.hurdle90_per_tonne.mean():,.0f} in "
+         f"{d.date.dt.year.min()} and ${last90.hurdle90_per_tonne.mean():,.0f} in "
+         f"{d.date.dt.year.max()},")
+    note(f"   and as a share of the metal's value it rose from "
+         f"{first90.hurdle90_pct_spot.mean():.2f}% to "
+         f"{last90.hurdle90_pct_spot.mean():.2f}% - a sixfold")
+    note("   increase. That is worth being careful about, because it cuts against")
+    note("   the intuition that a rising gold price makes a fixed physical cost")
+    note("   matter less. It does, but the physical cost is the small part: the")
+    note("   hurdle is mostly carry, carry is a rate, and rates went from zero to")
+    note("   five per cent. The barrier to relocation grew because money got")
+    note("   expensive, not because freight did.")
     note("")
     note("   Shipping was the majority of the barrier in 2015 and is a twentieth")
     note("   of it now: carry went from 43% of the hurdle to 95%. Rates and the")
