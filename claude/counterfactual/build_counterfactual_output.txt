@@ -1,0 +1,79 @@
+
+==============================================================================
+STEP 1  What is being counterfactualled
+==============================================================================
+   Gold shipped to the United States from the two places it comes from
+   when the arbitrage runs: Switzerland, where London bars are recast
+   into the sizes COMEX accepts, and the United Kingdom directly.
+
+   Both legs are the exporters' own customs figures. US import figures
+   would do for value but carry no mass, so tonnage has to come from
+   the other side.
+
+   Switzerland   139 months, 2015-01 to 2026-07
+   United Kingdom 138 months, 2015-01 to 2026-06
+   break at 2024-11, the US election, when tariff risk became
+   priceable; episode ends 2025-03, the last month before
+   the April exemption
+
+==============================================================================
+STEP 2  The baseline is fragile, and that is the finding
+==============================================================================
+   A single baseline would hide how much the answer depends on it, so
+   sixteen are fitted: two pre-periods, with and without a trend, with
+   and without seasonality, in levels and in logs.
+
+   baseline          shape                           excess, full   episode
+   2021-24           mean                                     662       675
+   2021-24           mean, log                                662       675
+   2021-24           trend                                    786       699
+   2021-24           trend, log                               747       693
+   2021-24           mean + seasonality                       650       667
+   2021-24           mean + seasonality, log                  666       676
+   2021-24           trend + seasonality                      761       690
+   2021-24           trend + seasonality, log                 753       695
+   2015-24 ex 2020   mean                                     751       697
+   2015-24 ex 2020   mean, log                                751       697
+   2015-24 ex 2020   trend                                    628       670
+   2015-24 ex 2020   trend, log                               457       639
+   2015-24 ex 2020   mean + seasonality                       743       693
+   2015-24 ex 2020   mean + seasonality, log                  746       696
+   2015-24 ex 2020   trend + seasonality                      617       665
+   2015-24 ex 2020   trend + seasonality, log                 457       637
+
+   full window   457 to 786 t, a factor of 1.7
+   episode only  637 to 699 t, a spread of 10%
+
+   Over five months any sane baseline predicts a small number against
+   an actual one that is very large, so the choice barely matters. Over
+   twenty-one months the baseline accumulates and the trend assumption
+   starts to drive the answer. Quote the episode; treat the longer
+   window as an illustration, not an estimate.
+
+==============================================================================
+STEP 3  The back-of-the-envelope number
+==============================================================================
+   Switzerland      actual    546 t   baseline    64 t   excess    483 t   $ 45.0bn
+   United Kingdom   actual    187 t   baseline     3 t   excess    185 t   $ 16.5bn
+   Both legs        actual    734 t   baseline    66 t   excess    667 t   $ 61.5bn
+
+   implied price of the excess $2,867 an ounce,
+   which is where gold traded over those months - the tonnage and the
+   value are telling the same story rather than two different ones.
+
+==============================================================================
+STEP 4  What that is next to the trade statistics it lands in
+==============================================================================
+   US goods imports, Nov 2024 - Mar 2025   $1,451bn
+   US goods deficit, same months           $615bn
+   excess gold                             $61.5bn
+
+   4.2% of imports and 10.0% of the goods deficit over those five months.
+
+   That is the point of the exercise. None of this metal was consumed,
+   imported for use, or in any economic sense bought by America: it was
+   moved between vaults because a tariff might otherwise have applied to
+   it, and a fifth of it went back out within five months. It still
+   enters the trade balance at full value.
+
+   wrote C:\Users\smoor\GitHub\GOLD\claude\counterfactual\counterfactual.pdf
