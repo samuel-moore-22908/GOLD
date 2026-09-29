@@ -396,7 +396,11 @@ def main() -> None:
 
     cols = ["date", "lbma_pm_usd", "spread_pct", "spread_usd", "excess_carry_pp",
             "carry_pct", "short_rate_pct", "basis_usd", "days_to_first_notice",
-            "active_contract", "n_contracts", "r2", "retimed", "fit_ok", "usable"]
+            "active_contract", "n_contracts", "r2", "retimed", "fit_ok", "usable",
+            # The regression's own standard errors, carried through so anything
+            # downstream can put a confidence band on the level and the slope
+            # rather than treating either as known.
+            "se_a", "se_b", "premium_se_pct", "carry_se_pct"]
     d[cols].to_csv(OUT / "spread_daily.csv", index=False)
     monthly.to_csv(OUT / "spread_monthly.csv", index=False)
 
