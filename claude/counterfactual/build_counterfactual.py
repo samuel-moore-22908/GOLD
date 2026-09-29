@@ -6,7 +6,7 @@ Fit a straight line to gold shipments into the United States before the tariff
 episode, extrapolate it, and measure the area between the actual series and
 that line. That area is the excess trade.
 
-    baseline    a straight line fitted to January 2021 - October 2024
+    baseline    a straight line fitted to January 2015 - October 2024
     excess      the area between actual shipments and the extrapolated line
     episode     November 2024 to March 2025, ending the month before the
                 April exemption
@@ -28,7 +28,7 @@ from __future__ import annotations
 REPO_ROOT = ""        # blank = infer from this file's location
 # ============================================================================
 
-PRE_START = "2021-01-01"    # after the covid distortion
+PRE_START = "2015-01-01"    # the whole series before the break
 BREAK = "2024-11-01"        # the US election, when tariff risk became priceable
 EPISODE_END = "2025-03-31"  # the last month before the April exemption
 
@@ -50,6 +50,9 @@ OUT = ROOT / "claude/counterfactual"
 RED, GREY, INK, RULE, SOFT = "#E3120B", "#758D99", "#121212", "#E0E4E7", "#707070"
 SURFACE, TAB = "#FFFFFF", "███"
 mpl.rcParams["font.family"] = ["Arial Narrow", "Liberation Sans Narrow", "Arial"]
+# Two dollar signs in one string would otherwise be read as mathtext and
+# rendered in italics, which is how "$2,800 ... $4,000" came out wrong once.
+mpl.rcParams["text.parse_math"] = False
 
 LOG: list[str] = []
 
@@ -77,8 +80,13 @@ def extrapolate(y: pd.Series, pre_start: str = PRE_START) -> tuple[pd.Series, fl
     pre = y[(y.index >= pre_start) & (y.index < BREAK)]
     slope, intercept = np.polyfit(np.arange(len(pre)), pre.values, 1)
     whole = y[y.index >= pre_start]
-    line = pd.Series(np.clip(slope * np.arange(len(whole)) + intercept, 0, None),
-                     index=whole.index)
+    # Not clipped at zero: a clip would put a kink in what is meant to be a
+    # straight line. With the fit starting in 2015 the slope is positive and the
+    # line never approaches zero, but a warning fires if that ever changes.
+    line = pd.Series(slope * np.arange(len(whole)) + intercept, index=whole.index)
+    if line.min() < 0:
+        print(f"WARNING: the fitted line goes negative "
+              f"({line.min():.1f}) - the area below zero is not meaningful")
     return line, float(slope)
 
 
@@ -112,6 +120,8 @@ def main() -> None:
 
     note(f"   pre-period   {pre.index.min():%Y-%m} to {pre.index.max():%Y-%m}, "
          f"{len(pre)} months, mean {pre.mean():.1f} t a month")
+    note("   The line is fitted to the whole series before the break, not a")
+    note("   recent slice, so the baseline is not chosen to flatter the result.")
     note(f"   fitted line  {slope_t:+.3f} tonnes a month, "
          f"reaching {cf_t.loc['2025-01-01']:.1f} t by January 2025")
     note("")
@@ -126,29 +136,55 @@ def main() -> None:
          f"{(post_v - cf_v).sum():>10,.1f}")
 
     # The headline is the whole area after the event, not the episode alone.
-    ex_t, ex_v = (post_t - cf_t).sum(), (post_v - cf_v).sum()
+    # Tonnes net cleanly; dollars do not, so the dollar figure is quoted for the
+    # episode at the prices of those months rather than netted across twenty.
+    ex_t = (post_t - cf_t).sum()
+    ex_v = (post_v[ep] - cf_v[ep]).sum()
     below = (post_t - cf_t).clip(upper=0)
     note("")
-    note(f"   The headline is the whole area after the break: {ex_t:,.0f} tonnes and "
-         f"${ex_v:.1f}bn")
-    note(f"   over {len(post_t)} months. Seven of them fall below the line and net off "
-         f"{below.sum():.0f}")
+    n_below = int((below < 0).sum())
+    note(f"   The headline is the whole area after the break: {ex_t:,.0f} tonnes "
+         f"over {len(post_t)} months.")
+    note(f"   {n_below} of them fall below the line and net off {below.sum():.0f}")
     note("   tonnes; counting only the months above it would give "
          f"{(post_t - cf_t).clip(lower=0).sum():,.0f} t.")
     note("")
-    note(f"   implied price of the excess ${1e9*ex_v/(ex_t*32150.7):,.0f} an ounce,")
-    note("   which is where gold traded over those months - so the tonnage and")
-    note("   the value agree rather than telling two stories.")
+    # Why the dollar figure is quoted for the episode and not the full window.
+    price = post_v * 1e9 / (post_t * 32150.7)
+    netted_line = (post_v - cf_v).sum()
+    netted_px = ((post_t - cf_t) * price * 32150.7 / 1e9).sum()
+    ep_price = 1e9 * post_v[ep].sum() / (post_t[ep].sum() * 32150.7)
+    note("   TONNES NET CLEANLY; DOLLARS DO NOT. Metal went west at about")
+    note(f"   ${ep_price:,.0f} an ounce during the episode and came back east later "
+         f"at well")
+    note("   over four thousand, so a dollar figure netted across the whole window")
+    note("   depends more on the price path than on the trade:")
+    note(f"      fitting a separate line to the value series   ${netted_line:6.1f}bn")
+    note(f"      valuing the excess tonnes month by month      ${netted_px:6.1f}bn")
+    note("   Those differ by more than a third for the same 524 tonnes, which is a")
+    note("   sign the object is ill-defined rather than that one method is wrong.")
+    note("")
+    note(f"   So the dollar figure quoted is the episode: ${ex_v:.1f}bn of excess "
+         f"over the")
+    note(f"   five months to March 2025, at the ${ep_price:,.0f} an ounce those "
+         f"shipments")
+    note("   actually moved at. That is also the number that matters for the trade")
+    note("   statistics, which record gross flows rather than net ones - a tonne")
+    note("   leaving later adds to exports, it does not subtract from imports.")
 
     note("")
     note("   Starting the pre-period elsewhere moves it, but not much over the")
     note("   episode:")
-    for start, label in ((PRE_START, "2021"), ("2019-01-01", "2019"),
-                         ("2015-01-01", "2015")):
+    alts = []
+    for start, label in ((PRE_START, "2015"), ("2019-01-01", "2019"),
+                         ("2021-01-01", "2021")):
         alt, sl = extrapolate(tonnes, start)
         alt = alt[alt.index >= BREAK]
+        got = (post_t[ep] - alt[ep]).sum()
         note(f"      from {label}: slope {sl:+.3f} t a month, "
-             f"episode excess {(post_t[ep] - alt[ep]).sum():,.0f} t")
+             f"episode excess {got:,.0f} t")
+        if start != PRE_START:
+            alts.append((label, got))
 
     u = pd.read_csv("data/processed/us_hs4_universe_monthly.csv",
                     parse_dates=["date"])
@@ -156,17 +192,14 @@ def main() -> None:
                         aggfunc="sum") / 1e9
     # The US series stops before the gold series does, so the share is computed
     # on the months both cover rather than on mismatched windows.
-    overlap_end = min(post_t.index.max(), tot.index.max())
-    imports = tot["imports"].loc[BREAK:overlap_end].sum()
-    deficit = imports - tot["exports"].loc[BREAK:overlap_end].sum()
-    ex_overlap = (post_v - cf_v).loc[BREAK:overlap_end].sum()
+    # Measured over the episode, to match the dollar figure being quoted.
+    imports = tot["imports"].loc[BREAK:EPISODE_END].sum()
+    deficit = imports - tot["exports"].loc[BREAK:EPISODE_END].sum()
     note("")
-    note(f"   For scale, over the {len(tot.loc[BREAK:overlap_end])} months where US "
-         f"trade figures also exist")
-    note(f"   ({BREAK[:7]} to {overlap_end:%Y-%m}): ${ex_overlap:.0f}bn of excess "
-         f"against a goods")
-    note(f"   deficit of ${deficit:,.0f}bn, so {100*ex_overlap/deficit:.1f}% of it, "
-         f"and {100*ex_overlap/imports:.1f}% of imports.")
+    note(f"   For scale, over the same five months: ${ex_v:.0f}bn of excess against "
+         f"a goods")
+    note(f"   deficit of ${deficit:,.0f}bn, so {100*ex_v/deficit:.0f}% of it, and "
+         f"{100*ex_v/imports:.1f}% of imports.")
     note("")
     note("   None of it was consumed or bought in any economic sense, and a fifth")
     note("   went back out within five months - but it enters the trade balance at")
@@ -186,12 +219,18 @@ def main() -> None:
     monthly.index.name = "month"
     monthly.to_csv(OUT / "counterfactual_monthly.csv")
 
-    figure(monthly, ex_t, ex_v, deficit)
+    figure(monthly, deficit, facts={
+        "ex_t": ex_t, "ex_v": ex_v, "n_pre": len(pre), "n_below": n_below,
+        "episode_t": (post_t[ep] - cf_t[ep]).sum(),
+        "pre_from": pre.index.min(), "pre_to": pre.index.max(),
+        "alts": alts,
+    })
     (OUT / "build_counterfactual_output.txt").write_text("\n".join(LOG) + "\n",
                                                          encoding="utf-8")
 
 
-def figure(monthly, ex_t, ex_v, deficit) -> None:
+def figure(monthly, deficit, facts) -> None:
+    ex_t, ex_v = facts["ex_t"], facts["ex_v"]
     pre = monthly[~monthly.post_break]
     post = monthly[monthly.post_break]
     fig, ax = plt.subplots(figsize=(11.0, 6.4))
@@ -203,10 +242,11 @@ def figure(monthly, ex_t, ex_v, deficit) -> None:
              fontsize=17, color=INK, ha="left", va="top", fontweight="bold")
     fig.text(0.030, 0.882,
              f"Gold shipped to the United States from Switzerland and the United "
-             f"Kingdom, against a straight line fitted to\n"
-             f"January 2021 - October 2024 and carried forward. The shaded area "
-             f"is worth ${ex_v:.0f}bn - {100*ex_v/deficit:.0f}% of the US goods "
-             f"deficit over the months both series cover",
+             f"Kingdom, against a straight line fitted to the whole\n"
+             f"series before the election and carried forward. The shaded area is "
+             f"{ex_t:,.0f} tonnes; the five-month episode within\n"
+             f"it is worth ${ex_v:.0f}bn, {100*ex_v/deficit:.0f}% of the US goods "
+             f"deficit over those months",
              fontsize=12, color=INK, ha="left", va="top", linespacing=1.35)
 
     ax.set_facecolor(SURFACE)
@@ -238,14 +278,17 @@ def figure(monthly, ex_t, ex_v, deficit) -> None:
                 fontsize=11, color=INK, ha="left", va="center", linespacing=1.4,
                 arrowprops=dict(arrowstyle="-", color=SOFT, linewidth=0.8))
 
-    src = (f"The line is fitted to the 46 months before the election, drawn "
-           f"through them and then carried forward. The shaded area is "
-           f"everything\n"
-           f"after the election, netting the seven months below the line; the "
-           f"five to March 2025 account for 699 of the {ex_t:,.0f} tonnes. "
-           f"Starting\n"
-           f"the line in 2019 or 2015 instead moves that episode figure to 693 "
-           f"or 645\n"
+    n_pre = int((monthly.index < BREAK).sum())
+    alt_txt = " or ".join(f"{v:,.0f}" for _, v in facts["alts"])
+    alt_yrs = " or ".join(lbl for lbl, _ in facts["alts"])
+    src = (f"The line is fitted by least squares to all {facts['n_pre']} months "
+           f"from {facts['pre_from']:%B %Y} to {facts['pre_to']:%B %Y}, drawn "
+           f"through them and then\n"
+           f"carried forward. The shaded area is everything after the election, "
+           f"netting the {facts['n_below']} months that fall below the line; the "
+           f"five to March 2025\n"
+           f"are {facts['episode_t']:,.0f} tonnes on their own. Starting the line "
+           f"in {alt_yrs} instead moves that episode figure to {alt_txt}\n"
            " \n"
            "Source: Swiss Federal Office for Customs and Border Security; "
            "HM Revenue and Customs; US Census Bureau")

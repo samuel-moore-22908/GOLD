@@ -64,6 +64,9 @@ SURFACE = "#FFFFFF"
 TAB = "███"      # the red masthead tab
 
 mpl.rcParams["font.family"] = ["Arial Narrow", "Liberation Sans Narrow", "Arial"]
+# Two dollar signs in one string would otherwise be read as mathtext and
+# rendered in italics, which is how "$2,800 ... $4,000" came out wrong once.
+mpl.rcParams["text.parse_math"] = False
 
 
 def style(ax) -> None:
