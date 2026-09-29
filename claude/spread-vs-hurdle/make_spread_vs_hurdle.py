@@ -52,22 +52,36 @@ ROOT = Path(REPO_ROOT).expanduser().resolve() if REPO_ROOT \
     else Path(__file__).resolve().parents[2]
 OUT = ROOT / "claude/spread-vs-hurdle"
 
-BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
-INK, INK2, MUTED, SURFACE = "#0b0b0b", "#52514e", "#8a8984", "#fcfcfb"
+# The project's house style, taken from claude/gold-panel/gold_panel.do so the
+# two figures sit together: masthead red for the series in focus, a neutral
+# slate for everything else, near-black type, soft grey for decks and sources.
+RED = "#E3120B"        # the masthead red, and the series in focus
+GREY = "#758D99"       # the neutral series colour
+INK = "#121212"        # type
+RULE = "#E0E4E7"       # gridlines
+SOFT = "#707070"       # deck and source type
+SURFACE = "#FFFFFF"
+TAB = "███"      # the red masthead tab
+
+mpl.rcParams["font.family"] = ["Arial Narrow", "Liberation Sans Narrow", "Arial"]
 
 
 def style(ax) -> None:
     ax.set_facecolor(SURFACE)
-    for side in ("top", "right"):
+    for side in ax.spines:
         ax.spines[side].set_visible(False)
-    for side in ("left", "bottom"):
-        ax.spines[side].set_color(MUTED)
-        ax.spines[side].set_linewidth(0.8)
-    ax.grid(True, axis="y", color=MUTED, alpha=0.25, linewidth=0.6)
+    ax.grid(True, axis="both", color=RULE, linewidth=0.8, linestyle="solid")
     ax.set_axisbelow(True)
-    ax.tick_params(colors=INK2, labelsize=8.5, length=3, width=0.8)
+    ax.tick_params(colors=SOFT, labelsize=9, length=0)
     ax.xaxis.set_major_locator(mdates.YearLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+
+
+def panel_head(ax, title: str, deck: str) -> None:
+    """Title and deck at the top left of a panel, the masthead's order."""
+    ax.set_title(title, color=INK, fontsize=13, loc="left", pad=22)
+    ax.text(0.0, 1.035, deck, transform=ax.transAxes, fontsize=9.5,
+            color=SOFT, ha="left", va="bottom")
 
 
 def load_spread() -> pd.DataFrame:
@@ -146,61 +160,74 @@ def main() -> None:
     print("         metal that has been absorbed does not come back")
 
     fig, (ax1, ax2) = plt.subplots(
-        2, 1, figsize=(7.4, 7.0), sharex=True,
-        gridspec_kw={"height_ratios": [1.25, 1], "hspace": 0.20})
+        2, 1, figsize=(11.0, 8.2), sharex=True,
+        gridspec_kw={"height_ratios": [1.25, 1], "hspace": 0.34})
     fig.patch.set_facecolor(SURFACE)
+
+    # --- the masthead: red tab, bold headline, plain deck ------------------
+    fig.text(0.030, 0.972, TAB, fontsize=11, color=RED, ha="left", va="top")
+    fig.text(0.030, 0.944, "Gold moves only when the spread clears the cost",
+             fontsize=17, color=INK, ha="left", va="top", fontweight="bold")
+    fig.text(0.030, 0.906,
+             "The estimated COMEX–London spread against carry plus "
+             "shipping, and the net metal that crossed.\n"
+             "Above the band the westward trade pays; below it the eastward "
+             "one does",
+             fontsize=12, color=INK, ha="left", va="top", linespacing=1.35)
 
     # --- A: the spread against the composite carry -------------------------
     style(ax1)
-    ax1.plot(d.date, d.spread90, color=MUTED, linewidth=0.4, alpha=0.45,
+    ax1.plot(d.date, d.spread90, color=GREY, linewidth=0.4, alpha=0.35,
              zorder=2)
     ax1.fill_between(monthly.index, monthly.hurdle_east, monthly.hurdle_west,
-                     color=MUTED, alpha=0.30, zorder=3, linewidth=0,
+                     color=GREY, alpha=0.35, zorder=3, linewidth=0,
                      label="No-trade band: carry + shipping, both directions")
     ax1.fill_between(monthly.index, monthly.hurdle_west, monthly.spread90,
                      where=monthly.spread90 > monthly.hurdle_west,
-                     color=BLUE, alpha=0.30, zorder=4, interpolate=True)
+                     color=RED, alpha=0.22, zorder=4, interpolate=True)
     ax1.fill_between(monthly.index, monthly.hurdle_east, monthly.spread90,
                      where=monthly.spread90 < monthly.hurdle_east,
-                     color=ORANGE, alpha=0.30, zorder=4, interpolate=True)
-    ax1.plot(monthly.index, monthly.carry90, color=AQUA, linewidth=1.6,
+                     color=GREY, alpha=0.45, zorder=4, interpolate=True)
+    ax1.plot(monthly.index, monthly.carry90, color=GREY, linewidth=1.5,
              zorder=5, label="Composite carry: carry to delivery + shipping")
-    ax1.plot(monthly.index, monthly.spread90, color=BLUE, linewidth=2.0,
+    ax1.plot(monthly.index, monthly.spread90, color=RED, linewidth=1.8,
              zorder=6, label="Estimated spread at 90 days")
-    ax1.set_ylabel("Dollars per ounce", color=INK2, fontsize=9)
-    ax1.set_title("A.  The estimated spread against the cost it has to clear",
-                  color=INK, fontsize=11, loc="left", pad=8, fontweight="bold")
+    ax1.set_ylabel("Dollars per ounce", color=SOFT, fontsize=10)
+    panel_head(ax1, "The spread, and what it has to clear",
+               "Dollars an ounce at a fixed ninety-day horizon; daily in the "
+               "background, monthly means drawn")
     lim = float(np.ceil(monthly.spread90.abs().max() / 10) * 10) + 10
     ax1.set_ylim(min(-10, monthly.spread90.min() - 8), lim)
-    ax1.legend(frameon=False, fontsize=8, loc="upper left", labelcolor=INK2,
-               handlelength=1.8)
+    leg = ax1.legend(frameon=False, fontsize=10, loc="upper left",
+                     labelcolor=SOFT, handlelength=2.2, borderpad=0.2,
+                     labelspacing=0.35)
+    leg.set_zorder(8)
     n_out = int((d.spread90.abs() > lim).sum())
-    ax1.text(0.995, 0.03,
-             f"daily in grey, {n_out} days outside the frame  ·  blue where the "
-             f"westward trade pays, orange where the eastward one does",
-             transform=ax1.transAxes, fontsize=7.5, color=MUTED, ha="right")
+    ax1.text(0.998, 0.03,
+             f"{n_out} days fall outside the frame",
+             transform=ax1.transAxes, fontsize=9, color=SOFT, ha="right")
 
     # --- B: net metal ------------------------------------------------------
     style(ax2)
     f = monthly.dropna(subset=["net_to_us"])
-    ax2.axhline(0, color=MUTED, linewidth=0.8, zorder=1)
-    colours = np.where(f.net_to_us >= 0, BLUE, ORANGE)
+    ax2.axhline(0, color=SOFT, linewidth=0.8, zorder=3)
+    colours = np.where(f.net_to_us >= 0, RED, GREY)
     ax2.bar(f.index, f.net_to_us, width=22, color=colours, linewidth=0, zorder=2)
-    ax2.set_ylabel("Tonnes a month", color=INK2, fontsize=9)
-    ax2.set_title("B.  Net metal: Switzerland to the United States, "
-                  "both directions netted",
-                  color=INK, fontsize=11, loc="left", pad=8, fontweight="bold")
-    ax2.text(0.008, 0.94,
-             f"above zero: net west  ·  below: net east  ·  "
-             f"{int((f.net_to_us < 0).sum())} of {len(f)} months are net east",
-             transform=ax2.transAxes, fontsize=7.5, color=MUTED, ha="left",
-             va="top")
+    ax2.set_ylabel("Tonnes a month", color=SOFT, fontsize=10)
+    panel_head(ax2, "Net metal shipped",
+               f"Switzerland to the United States, both directions netted. "
+               f"Red is net west, grey net east; "
+               f"{int((f.net_to_us < 0).sum())} of {len(f)} months are net east")
 
-    src = ("Spread and carry from the fitted COMEX curve re-timed to the LBMA "
-           "auction; shipping estimated from the flows.\n"
-           "Tonnes: Swiss customs, HS 7108 and 7115, both directions netted.")
-    fig.text(0.008, 0.010, src, fontsize=7, color=MUTED, ha="left", va="bottom")
-    fig.subplots_adjust(left=0.085, right=0.985, top=0.955, bottom=0.115)
+    src = ("Both legs are Swiss customs, HS 7108 and 7115: US export figures "
+           "carry no mass, so a net series taking\n"
+           "one leg from each reporter would be Swiss exports minus nothing\n"
+           " \n"
+           "Source: Databento GLBX.MDP3 re-timed to the LBMA auction; LBMA; "
+           "Swiss Federal Office for Customs and Border Security")
+    fig.text(0.030, 0.012, src, fontsize=9, color=SOFT, ha="left", va="bottom",
+             linespacing=1.35)
+    fig.subplots_adjust(left=0.075, right=0.985, top=0.780, bottom=0.140)
     for ext in ("pdf", "png"):
         fig.savefig(OUT / f"spread_vs_hurdle.{ext}", dpi=200,
                     facecolor=fig.get_facecolor())
