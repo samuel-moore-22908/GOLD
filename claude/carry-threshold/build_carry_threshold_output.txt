@@ -11,12 +11,31 @@ STEP 1  Carry cost, over the interval the quoted spread spans
 
    horizon      : median 46 days (range 7-135)
    carry cost   : mean $  8.75/oz, max $ 65.48
+   90% band     : median $0.35 wide, 90th percentile $1.87, max $7.67
+   carry rate   : 2.78% a year, band +/-0.057 pp
    quoted spread: mean $  8.50/oz
    excess       : mean $ -0.25/oz
 
    Carry is most of the quoted spread. At 2026 prices and rates it runs
    to tens of dollars an ounce, which is why the raw number is useless
    as a signal and why subtracting it is the whole exercise.
+
+   The band is not decoration. It comes from the slope's own standard
+   error in the daily fit, widened by the t quantile because six
+   contracts leave four degrees of freedom, and it moves with three
+   things: how well the curve fitted that day, how far the active
+   contract is from delivery, and the gold price. By year:
+      2015: gold $1,160   carry $  0.71   90% [  0.64,   0.77]   width $0.14
+      2020: gold $1,784   carry $  4.65   90% [  3.98,   5.33]   width $1.35
+      2025: gold $3,434   carry $ 21.28   90% [ 20.45,  22.12]   width $1.68
+      2026: gold $4,571   carry $ 24.96   90% [ 24.30,  25.61]   width $1.32
+
+   That width is worth holding against the threshold metal has to
+   clear, $0.78 an ounce: at the median the carry band is
+   44% of it, and since 2020 it has been wider than
+   the threshold itself. The carry cost is precisely estimated as a
+   RATE and imprecisely as a DOLLAR AMOUNT, because the horizon and
+   the gold price both multiply it.
 
 ==============================================================================
 STEP 2  Check: the excess should be the premium

@@ -34,6 +34,11 @@ import matplotlib.pyplot as plt
 OUT = Path("claude/premium-carry-series")
 
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
+
+# Two-sided 90% t quantiles by degrees of freedom; the daily fit has n-2, and a
+# typical day has six contracts, so the normal 1.645 would be too narrow.
+T90 = {1: 6.314, 2: 2.920, 3: 2.353, 4: 2.132, 5: 2.015, 6: 1.943, 7: 1.895,
+       8: 1.860, 9: 1.833, 10: 1.812}
 INK, INK2, MUTED = "#0b0b0b", "#52514e", "#8a8984"
 SURFACE = "#fcfcfb"
 
@@ -126,8 +131,13 @@ def main() -> None:
 
     # --- Panel B: carry against rates it never saw ----------------------------
     style(ax2)
+    # The fitted carry is an estimate, so it is drawn with the band implied by
+    # the slope's standard error rather than as a bare line.
+    half = np.array([T90.get(int(n) - 2, 1.645) for n in d.n_contracts])         * d.carry_se_pct.to_numpy()
+    ax2.fill_between(d.date, d.carry_pct - half, d.carry_pct + half,
+                     color=BLUE, alpha=0.30, zorder=3, linewidth=0)
     for col, colour, label, lw in (
-            ("carry_pct", BLUE, "Fitted carry (curve slope)", 2.0),
+            ("carry_pct", BLUE, "Fitted carry (curve slope), 90% band", 2.0),
             ("short_rate_pct", ORANGE, "SOFR / fed funds", 1.4),
             ("tbill_3m_pct", AQUA, "3-month Treasury bill", 1.4)):
         x, y = with_gaps(d, col)

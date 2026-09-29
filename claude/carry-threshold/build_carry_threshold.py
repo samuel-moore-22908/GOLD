@@ -68,6 +68,16 @@ SPREAD = ROOT / "claude/spread-series/spread_daily.csv"
 FLOWS = ROOT / "data/processed/bilateral_panel_2015_2026.csv"
 
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
+
+# Two-sided 90% t quantiles by degrees of freedom. The daily fit has n-2 of
+# them and n is six contracts on a typical day, so the normal quantile of 1.645
+# would understate the band by about a third.
+T90 = {1: 6.314, 2: 2.920, 3: 2.353, 4: 2.132, 5: 2.015, 6: 1.943, 7: 1.895,
+       8: 1.860, 9: 1.833, 10: 1.812}
+
+
+def tq(n_contracts):
+    return np.array([T90.get(int(n) - 2, 1.645) for n in n_contracts])
 INK, INK2, MUTED, SURFACE = "#0b0b0b", "#52514e", "#8a8984", "#fcfcfb"
 
 LOG: list[str] = []
@@ -96,9 +106,23 @@ def step_carry() -> pd.DataFrame:
     note("")
     note("       K(tau) = S * (exp(carry_rate * tau/365) - 1)")
     note("")
-    d["carry_cost_usd"] = d.lbma_pm_usd * np.expm1(
-        d.carry_pct / 100.0 * d.days_to_first_notice / 365.0)
+    b = d.carry_pct / 100.0 / 365.0            # log points a day, from the fit
+    tau = d.days_to_first_notice
+    d["carry_cost_usd"] = d.lbma_pm_usd * np.expm1(b * tau)
+
+    # The slope is estimated, so the carry cost is an estimate too. Propagate
+    # the regression's own standard error through the same transform rather
+    # than through a delta approximation: exp is monotone, so the endpoints map
+    # straight over.
+    half = tq(d.n_contracts) * d.se_b
+    d["carry_cost_lo"] = d.lbma_pm_usd * np.expm1((b - half) * tau)
+    d["carry_cost_hi"] = d.lbma_pm_usd * np.expm1((b + half) * tau)
+    d["carry_rate_lo_pct"] = 100.0 * 365.0 * (b - half)
+    d["carry_rate_hi_pct"] = 100.0 * 365.0 * (b + half)
+
     d["excess_usd"] = d.basis_usd - d.carry_cost_usd
+    d["excess_lo"] = d.basis_usd - d.carry_cost_hi     # a dearer carry leaves less
+    d["excess_hi"] = d.basis_usd - d.carry_cost_lo
 
     # The premium as measured before re-timing, for the comparison in step 2.
     # It shares the quoted spread's 13:30 settlement, so it isolates what the
@@ -112,12 +136,39 @@ def step_carry() -> pd.DataFrame:
          f"{d.days_to_first_notice.max():.0f})")
     note(f"   carry cost   : mean ${d.carry_cost_usd.mean():6.2f}/oz, "
          f"max ${d.carry_cost_usd.max():6.2f}")
+    width = d.carry_cost_hi - d.carry_cost_lo
+    note(f"   90% band     : median ${width.median():.2f} wide, "
+         f"90th percentile ${width.quantile(0.90):.2f}, max ${width.max():.2f}")
+    note(f"   carry rate   : {d.carry_pct.mean():.2f}% a year, "
+         f"band +/-{(365*100*tq(d.n_contracts)*d.se_b).mean()/2:.3f} pp")
     note(f"   quoted spread: mean ${d.basis_usd.mean():6.2f}/oz")
     note(f"   excess       : mean ${d.excess_usd.mean():6.2f}/oz")
     note("")
     note("   Carry is most of the quoted spread. At 2026 prices and rates it runs")
     note("   to tens of dollars an ounce, which is why the raw number is useless")
     note("   as a signal and why subtracting it is the whole exercise.")
+    note("")
+    note("   The band is not decoration. It comes from the slope's own standard")
+    note("   error in the daily fit, widened by the t quantile because six")
+    note("   contracts leave four degrees of freedom, and it moves with three")
+    note("   things: how well the curve fitted that day, how far the active")
+    note("   contract is from delivery, and the gold price. By year:")
+    by_year = d.groupby(d.date.dt.year).agg(
+        gold=("lbma_pm_usd", "mean"), carry=("carry_cost_usd", "mean"),
+        lo=("carry_cost_lo", "mean"), hi=("carry_cost_hi", "mean"))
+    for year in (d.date.dt.year.min(), 2020, 2025, d.date.dt.year.max()):
+        if year not in by_year.index:
+            continue
+        r = by_year.loc[year]
+        note(f"      {year}: gold ${r.gold:,.0f}   carry ${r.carry:6.2f}   "
+             f"90% [{r.lo:6.2f}, {r.hi:6.2f}]   width ${r.hi - r.lo:.2f}")
+    note("")
+    note(f"   That width is worth holding against the threshold metal has to")
+    note(f"   clear, ${KAPPA_WEST:.2f} an ounce: at the median the carry band is")
+    note(f"   {100*width.median()/KAPPA_WEST:.0f}% of it, and since 2020 it has been wider than")
+    note("   the threshold itself. The carry cost is precisely estimated as a")
+    note("   RATE and imprecisely as a DOLLAR AMOUNT, because the horizon and")
+    note("   the gold price both multiply it.")
     return d
 
 
@@ -323,7 +374,9 @@ def figure(d: pd.DataFrame, monthly: pd.DataFrame) -> None:
     ax1.axhline(0, color=MUTED, linewidth=0.8, zorder=1)
     ax1.plot(d.date, d.basis_usd, color=ORANGE, linewidth=0.6, alpha=0.8,
              zorder=2, label="Quoted spread, F − S")
-    ax1.plot(d.date, d.carry_cost_usd, color=AQUA, linewidth=1.3, zorder=3,
+    ax1.fill_between(d.date, d.carry_cost_lo, d.carry_cost_hi, color=AQUA,
+                     alpha=0.45, zorder=3, linewidth=0)
+    ax1.plot(d.date, d.carry_cost_usd, color=AQUA, linewidth=1.3, zorder=4,
              label="Cost of carry over the same horizon")
     ax1.set_ylim(-lim1 * 0.6, lim1)
     ax1.set_ylabel("Dollars per ounce", color=INK2, fontsize=9)
@@ -332,7 +385,10 @@ def figure(d: pd.DataFrame, monthly: pd.DataFrame) -> None:
     ax1.legend(frameon=False, fontsize=8.5, loc="upper left", labelcolor=INK2,
                handlelength=1.8)
     n_out1 = int(((d.basis_usd > lim1) | (d.basis_usd < -lim1 * 0.6)).sum())
-    ax1.text(0.995, 0.04, f"{n_out1} days outside the frame",
+    width = (d.carry_cost_hi - d.carry_cost_lo).median()
+    ax1.text(0.995, 0.04,
+             f"{n_out1} days outside the frame  ·  the carry line carries a 90% "
+             f"band, median ${width:.2f} wide, thinner here than the line itself",
              transform=ax1.transAxes, fontsize=7.5, color=MUTED, ha="right")
 
     lim2 = float(np.ceil(d.spread_usd.abs().quantile(0.995) / 5) * 5)
