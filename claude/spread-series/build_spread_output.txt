@@ -115,6 +115,8 @@ STEP 5  What the spread looks like
 STEP 6  The figure
 ==============================================================================
    frame set to +/-1.0 pp, the 99.5th percentile rounded up
+   no-trade band: +$0.78 westward, $-0.95 eastward,
+   which at 1,172 dollar gold is 0.067 per cent of spot and at 4,483 is 0.017 per cent
    5 days fall outside it and are marked at the edge
    panel A framed at +/-$90, 9 days outside it
    wrote C:\Users\smoor\GitHub\GOLD\claude\spread-series\spread.pdf and .png

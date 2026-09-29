@@ -40,9 +40,14 @@ REPO_ROOT = ""        # blank = infer from this file's location
 # The cost of moving an ounce between London and New York: air freight,
 # insurance, recasting 400 oz bars into the kilo and 100 oz bars COMEX accepts,
 # and the exchange's handling charge. Only the last is public, at $0.35 an
-# ounce. The band below is the hinge estimated from flows in earlier work
-# (claude/mechanism-figures), and it is an ASSUMPTION, not a measurement.
-KAPPA_LOW, KAPPA_HIGH = 3.00, 3.77
+# ounce. The rest is ESTIMATED FROM THE FLOWS by estimate_threshold.py, which
+# finds the kink in the premium-tonnage relationship; run it to reproduce these.
+#
+# Westward, hinging daily and averaging to the month, which is the aggregation
+# the model calls for: $0.78 an ounce, 90% block-bootstrap CI [-0.46, +2.43].
+# Eastward, from Swiss imports: -$0.95, CI [-1.78, +0.80].
+KAPPA_WEST, KAPPA_EAST = 0.78, -0.95
+KAPPA_LOW, KAPPA_HIGH = -0.46, 2.43        # the westward interval, for shading
 
 import os
 import sys
@@ -155,19 +160,27 @@ def step_identity(d: pd.DataFrame) -> None:
     note("   cash-and-carry test on the quoted spread, the textbook way, and the")
     note(f"   noise is ${noise:.0f} an ounce against a shipping cost of about "
          f"${KAPPA_LOW:.0f}.")
-    note("   The thing being measured is a third the size of the error in")
+    note("   The thing being measured is a small fraction of the error in")
     note("   measuring it, so the test cannot be run that way at daily frequency")
     note("   at all. It needs the re-timed premium, or monthly averaging, or both.")
 
 
 def step_threshold(d: pd.DataFrame) -> pd.DataFrame:
     heading("STEP 3  The threshold: what it costs to move an ounce")
-    note(f"   kappa = ${KAPPA_LOW:.2f} to ${KAPPA_HIGH:.2f} an ounce.")
+    note(f"   kappa = ${KAPPA_WEST:.2f} an ounce westward, 90% CI "
+         f"[${KAPPA_LOW:+.2f}, ${KAPPA_HIGH:+.2f}]")
+    note(f"           ${KAPPA_EAST:.2f} an ounce eastward")
     note("")
-    note("   This is an assumption and the weakest number in the exercise. Freight,")
-    note("   insurance and recasting quotes are private; the band is the hinge")
-    note("   estimated from flows in earlier work. The one public component is the")
-    note("   COMEX delivery-out charge of $0.35 an ounce, about a tenth of it.")
+    note("   Estimated, not assumed: estimate_threshold.py finds the kink in the")
+    note("   premium-tonnage relationship by profile least squares. Freight and")
+    note("   recasting quotes are private, so the flows are the only evidence")
+    note("   available. The one public component is the COMEX delivery-out charge")
+    note("   of $0.35 an ounce, which is about half of the westward estimate.")
+    note("")
+    note("   This supersedes the $2.99-$3.77 used in earlier work, which was")
+    note("   fitted to the premium BEFORE re-timing. Noise in a regressor smears")
+    note("   a kink and pushes the estimated threshold outward, so the old figure")
+    note("   was too high. The interval still spans zero either way.")
     note("")
     note("   Note what is NOT added on top. Financing the metal from purchase to")
     note("   delivery is already inside the carry cost subtracted in step 1, so")
@@ -176,18 +189,20 @@ def step_threshold(d: pd.DataFrame) -> pd.DataFrame:
     note("   lease rate the project does not have.")
 
     d = d.copy()
-    for name, k in (("low", KAPPA_LOW), ("high", KAPPA_HIGH)):
+    for name, k in (("low", KAPPA_WEST), ("high", KAPPA_HIGH)):
         d[f"clears_{name}"] = d.spread_usd > k
         d[f"pressure_{name}"] = np.maximum(0.0, d.spread_usd - k)
     note("")
-    note(f"   days clearing ${KAPPA_LOW:.2f}: {int(d.clears_low.sum()):,} of "
+    note(f"   days clearing ${KAPPA_WEST:.2f}: {int(d.clears_low.sum()):,} of "
          f"{len(d):,} ({100*d.clears_low.mean():.1f}%)")
     note(f"   days clearing ${KAPPA_HIGH:.2f}: {int(d.clears_high.sum()):,} of "
          f"{len(d):,} ({100*d.clears_high.mean():.1f}%)")
     note("")
-    note("   The band is crossed rarely. That is the point: for most of eleven")
-    note("   years arbitrage holds the premium inside the cost of acting on it,")
-    note("   and nothing moves.")
+    note("   With the lower threshold the premium clears on nearly a third of days")
+    note("   rather than a tenth, which is the practical consequence of re-timing:")
+    note("   the band is narrower and it is crossed more often than earlier work")
+    note("   suggested. Whether the metal then moves is a separate question, and")
+    note("   step 4 is where the answer stops being automatic.")
     return d
 
 
@@ -324,6 +339,7 @@ def figure(d: pd.DataFrame, monthly: pd.DataFrame) -> None:
     style(ax2)
     ax2.axhline(0, color=MUTED, linewidth=0.8, zorder=1)
     ax2.axhspan(KAPPA_LOW, KAPPA_HIGH, color=AQUA, alpha=0.18, zorder=1)
+    ax2.axhline(KAPPA_WEST, color=AQUA, linewidth=1.0, zorder=1)
     # Not clipped: a value drawn at the frame edge reads as a real reading at
     # that level. Let the frame cut the line and count what it cut.
     ax2.plot(d.date, d.spread_usd, color=MUTED, linewidth=0.5,
@@ -331,10 +347,10 @@ def figure(d: pd.DataFrame, monthly: pd.DataFrame) -> None:
     mm = monthly.dropna(subset=["spread_usd"])
     ax2.plot(mm.month, mm.spread_usd, color=BLUE, linewidth=2.0, zorder=4,
              label="Monthly mean")
-    above = d[(d.spread_usd > KAPPA_HIGH) & (d.spread_usd.abs() <= lim2)]
+    above = d[(d.spread_usd > KAPPA_WEST) & (d.spread_usd.abs() <= lim2)]
     ax2.scatter(above.date, above.spread_usd, s=7,
                 color=ORANGE, zorder=5, linewidths=0,
-                label=f"Above ${KAPPA_HIGH:.2f}")
+                label=f"Above ${KAPPA_WEST:.2f}")
     ax2.set_ylim(-lim2, lim2)
     n_out2 = int((d.spread_usd.abs() > lim2).sum())
     ax2.set_ylabel("Dollars per ounce", color=INK2, fontsize=9)
@@ -343,8 +359,8 @@ def figure(d: pd.DataFrame, monthly: pd.DataFrame) -> None:
     ax2.legend(frameon=False, fontsize=8, loc="upper left", labelcolor=INK2,
                handlelength=1.8, ncol=2)
     ax2.text(0.995, 0.04,
-             f"shaded band: the assumed ${KAPPA_LOW:.2f}-${KAPPA_HIGH:.2f} cost of "
-             f"moving an ounce  ·  {n_out2} days outside the frame",
+             f"line: the ${KAPPA_WEST:.2f} estimated cost of moving an ounce; "
+             f"band: its 90% interval  ·  {n_out2} days outside the frame",
              transform=ax2.transAxes, fontsize=7.5, color=MUTED, ha="right")
 
     style(ax3)

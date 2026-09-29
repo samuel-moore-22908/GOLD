@@ -52,6 +52,9 @@ QUOTED = ROOT / "data/processed/efp_dislocation_v2.csv"
 
 # Palette slots 1-3 of the validated default in the dataviz skill, in order.
 BLUE, ORANGE, AQUA = "#2a78d6", "#eb6834", "#1baf7a"
+# Where metal starts moving, in dollars an ounce, estimated from the flows by
+# claude/carry-threshold/estimate_threshold.py. Positive is westward.
+KAPPA_WEST, KAPPA_EAST = 0.78, -0.95
 INK, INK2, MUTED, SURFACE = "#0b0b0b", "#52514e", "#8a8984", "#fcfcfb"
 MAX_GAP_DAYS = 7
 
@@ -263,6 +266,11 @@ def figure(d: pd.DataFrame, monthly: pd.DataFrame) -> None:
     lim = float(np.ceil(u.spread_pct.abs().quantile(0.995) * 2) / 2)
     outside = u[u.spread_pct.abs() > lim]
     note(f"   frame set to +/-{lim:.1f} pp, the 99.5th percentile rounded up")
+    note(f"   no-trade band: +${KAPPA_WEST:.2f} westward, ${KAPPA_EAST:.2f} eastward,")
+    note(f"   which at {u.lbma_pm_usd.iloc[0]:,.0f} dollar gold is "
+         f"{100*KAPPA_WEST/u.lbma_pm_usd.iloc[0]:.3f} per cent of spot and at "
+         f"{u.lbma_pm_usd.iloc[-1]:,.0f} is "
+         f"{100*KAPPA_WEST/u.lbma_pm_usd.iloc[-1]:.3f} per cent")
     note(f"   {len(outside)} days fall outside it and are marked at the edge")
 
     fig, (ax1, ax2) = plt.subplots(
@@ -299,15 +307,45 @@ def figure(d: pd.DataFrame, monthly: pd.DataFrame) -> None:
     ax2.axhline(0, color=MUTED, linewidth=0.8, zorder=1)
     x, y = with_gaps(u, "spread_pct")
     ax2.plot(x, y, color=MUTED, linewidth=0.5, alpha=0.5, zorder=2, label="Daily")
-    x, y = with_gaps(monthly.rename(columns={"month": "date"}), "spread_pct", 45)
+
+    # Direction, by sign, filled between the monthly line and zero. The
+    # thresholds are dollars an ounce while this panel is per cent of spot, so
+    # the no-trade band is not a constant here: it narrows as gold rises, which
+    # is worth seeing rather than hiding behind a horizontal line.
+    mo = monthly.rename(columns={"month": "date"}).copy()
+    west_pct = 100.0 * KAPPA_WEST / mo.lbma_pm_usd
+    east_pct = 100.0 * KAPPA_EAST / mo.lbma_pm_usd
+    ax2.fill_between(mo.date, 0, mo.spread_pct, where=mo.spread_pct >= 0,
+                     color=BLUE, alpha=0.16, zorder=2, interpolate=True)
+    ax2.fill_between(mo.date, 0, mo.spread_pct, where=mo.spread_pct < 0,
+                     color=ORANGE, alpha=0.16, zorder=2, interpolate=True)
+    ax2.fill_between(mo.date, east_pct, west_pct, color=MUTED, alpha=0.22,
+                     zorder=3, linewidth=0)
+    ax2.plot(mo.date, west_pct, color=INK2, linewidth=0.7, zorder=3)
+    ax2.plot(mo.date, east_pct, color=INK2, linewidth=0.7, zorder=3)
+
+    x, y = with_gaps(mo, "spread_pct", 45)
     ax2.plot(x, y, color=BLUE, linewidth=2.2, zorder=4, label="Monthly mean",
              solid_capstyle="round")
+    ax2.text(0.008, 0.95, f"above the band: metal moves west to New York   "
+                          f"(+${KAPPA_WEST:.2f}/oz)",
+             transform=ax2.transAxes, fontsize=8, color=BLUE, va="top")
+    ax2.text(0.008, 0.04, f"below the band: metal moves east to London   "
+                          f"(${KAPPA_EAST:.2f}/oz)",
+             transform=ax2.transAxes, fontsize=8, color=ORANGE, va="bottom")
+    ax2.text(0.008, 0.885,
+             "grey band: the estimated no-trade region",
+             transform=ax2.transAxes, fontsize=7.5, color=MUTED, va="top")
     ax2.set_ylim(-lim, lim)
     ax2.set_ylabel("Per cent of spot", color=INK2, fontsize=9)
     ax2.set_title("B.  The spread the paper uses:  the New York premium",
                   color=INK, fontsize=11, loc="left", pad=8, fontweight="bold")
-    ax2.legend(frameon=False, fontsize=8.5, loc="lower left", labelcolor=INK2,
-               handlelength=1.8)
+    # Direct labels rather than a legend box: two series, and the corners of
+    # this panel are all spoken for.
+    ax2.text(pd.Timestamp("2018-03-01"), lim * 0.46, "Daily",
+             fontsize=8.5, color=MUTED, ha="center")
+    ax2.text(pd.Timestamp("2021-10-01"), lim * 0.42, "Monthly mean",
+             fontsize=8.5, color=BLUE, ha="center", fontweight="bold")
     if len(outside):
         ax2.scatter(outside.date, np.clip(outside.spread_pct, -lim * 0.97, lim * 0.97),
                     marker="^", s=14, color=ORANGE, zorder=3, linewidths=0)
