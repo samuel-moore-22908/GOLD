@@ -195,7 +195,11 @@ def report(d: pd.DataFrame, window: int) -> str:
     # A check the sample cannot speak to is reported as such. Scoring it FAIL
     # would read as evidence against the correction when it is only evidence
     # that the relevant months have not been bought yet.
-    episode_present = "2025-01-01" in mm.index.strftime("%Y-%m-%d").tolist()
+    # Pick the month by exact timestamp. Partial-string indexing on a monthly
+    # index returns a slice rather than a value, which turns the comparison
+    # below into a Series and makes it unusable as a truth value.
+    jan_2025 = mm.loc[mm.index == pd.Timestamp("2025-01-01"), "premium_pct_retimed"]
+    episode_present = len(jan_2025) == 1
     had_extremes = (s.premium_pct.abs() > 2).sum() > 0
     checks = [
         (abs(s.premium_pct_retimed.corr(s.ret_next)) < 0.10, True,
@@ -206,8 +210,7 @@ def report(d: pd.DataFrame, window: int) -> str:
          True, "3 calm/volatile gap closes"),
         ((s.premium_pct_retimed.abs() > 2).sum() < 5, had_extremes,
          "4 extremes were the clock"),
-        (episode_present
-         and abs(mm.loc["2025-01", "premium_pct_retimed"] - 0.523) < 0.10,
+        (episode_present and abs(float(jan_2025.iloc[0]) - 0.523) < 0.10,
          episode_present, "5 monthly means survive"),
     ]
     for passed, testable, name in checks:
