@@ -59,6 +59,53 @@ What the decomposition has done over eleven years:
 | 2025 | $3,434 | $21.28 | $0.78 | $22.06 | 5.1% |
 | 2026 | $4,571 | $24.96 | $0.78 | $25.74 | **4.8%** |
 
+### The composite, and where its error bar comes from
+
+```
+hurdle = S·(exp(b·tau) - 1) + kappa
+se     = sqrt( se(carry)^2 + se(kappa)^2 )
+```
+
+The two pieces are estimated independently — carry from the day's curve fit,
+shipping from a bootstrap over months of customs data — so their variances add.
+`se(kappa)` is $0.88, backed out of the block-bootstrap interval; `se(carry)`
+has a median of $0.08.
+
+| year | hurdle | 90% band | carry, % of level | carry, % of variance |
+|---|---:|---|---:|---:|
+| 2015 | $1.49 | [0.04, 2.93] | 42.7% | **0.5%** |
+| 2020 | $5.43 | [3.83, 7.04] | 77.7% | 14.7% |
+| 2025 | $22.06 | [20.42, 23.71] | 94.9% | 17.7% |
+| 2026 | $25.74 | [24.17, 27.30] | 95.2% | **12.8%** |
+
+**That asymmetry is the useful part.** By 2026 the hurdle is 95% carry while
+its error bar is 87% shipping: the large component is the precisely measured
+one and the small component is the guess. Sharpening the hurdle therefore means
+getting a freight quote, not a better curve fit.
+
+### At a fixed horizon, so it is comparable with itself
+
+The hurdle at the active contract's `tau` is the right thing to set against
+that contract's quoted spread, but `tau` cycles with the delivery calendar, so
+that series cannot be compared with itself over time. At a constant ninety
+days:
+
+| year | $/oz | % of spot | $ per tonne |
+|---|---:|---:|---:|
+| 2015 | $2.08 | 0.180% | 67,002 |
+| 2020 | $8.59 | 0.481% | 276,158 |
+| 2025 | $40.25 | 1.183% | 1,293,946 |
+| 2026 | $50.28 | 1.102% | 1,616,588 |
+
+Relocating a tonne cost $67,000 in 2015 and $1.6 million in 2026, and as a
+share of the metal's value it rose from 0.18% to 1.10% — a sixfold increase.
+
+That cuts against the intuition that a rising gold price makes a fixed physical
+cost matter less. It does — but the physical cost is the small part. The hurdle
+is mostly carry, carry is a rate, and rates went from zero to five per cent.
+**The barrier to relocation grew because money got expensive, not because
+freight did.**
+
 Shipping was the majority of the barrier in 2015 and is a twentieth of it now:
 carry went from 43% of the hurdle to 95%. Rates and the gold price both rose
 while freight stayed flat in dollars, so **what stops metal moving is now
