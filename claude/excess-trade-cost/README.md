@@ -7,6 +7,7 @@ Two questions on the same episode, from the same excess-trade estimate in
 python claude/excess-trade-cost/build_excess_cost.py     # the cost
 python claude/excess-trade-cost/build_gdp_effect.py      # the GDP effect
 python claude/excess-trade-cost/make_gdpnow_chart.py     # the nowcast chart
+python claude/excess-trade-cost/make_gdpnow_wedge_panel.py   # the wedge alone
 ```
 
 ## Headline
@@ -227,6 +228,25 @@ model accumulated observed data and had less left to extrapolate.
 The Atlanta Fed made the gold-adjusted model the **standard** GDPNow on 30 April
 2025 and discontinued the old one for 2025Q1. This is not a side experiment.
 
+### The wedge on its own
+
+`make_gdpnow_wedge_panel.py` reduces this to one panel on the excess-trade
+figure's axis, so the two can be read together: gold arriving pushes the trade
+panel up, and pushes the nowcast down.
+
+![The gold wedge in GDPNow](gdpnow_wedge.png)
+
+Almost the whole axis is empty, and that is the point rather than a defect. The
+Atlanta Fed ran two models only for 2025Q1; on 30 April 2025 the gold-adjusted
+one became GDPNow and the old one was discontinued, so outside that window there
+is no second model to difference. The line is left as a gap rather than drawn at
+zero, because zero would assert the adjustment was nil when in fact nobody
+computed one. Eleven years of axis with nothing on it, and then two months at
+-2.1 points.
+
+The window is read out of `counterfactual_monthly.csv` rather than typed in, so
+the two panels stay aligned if the counterfactual is ever refitted.
+
 ### Correcting something stated earlier in this folder
 
 An earlier version of this README pointed out that GDPNow's final 2025Q1 miss
@@ -318,5 +338,7 @@ January 2025 on a BOP basis; the two headings together give \$13.5bn and
 | `gdp_effect_quarterly.csv` | net gold trade and contributions by quarter |
 | `gold_and_gdp.pdf` / `.png` | net gold trade and the GDP contribution |
 | `gdpnow_gold.pdf` / `.png` | the two nowcast paths and the wedge between them |
+| `make_gdpnow_wedge_panel.py` | the wedge alone, on the counterfactual figure's axis |
+| `gdpnow_wedge.pdf` / `.png` | that single panel |
 | `gdpnow_gold_daily.csv` | both nowcast paths by vintage date |
 | `build_*_output.txt` | the narrations, saved |
