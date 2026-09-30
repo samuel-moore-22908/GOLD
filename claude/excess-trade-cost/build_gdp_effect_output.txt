@@ -1,0 +1,183 @@
+
+==============================================================================
+WHAT THE GOLD DID TO MEASURED GDP
+==============================================================================
+
+==============================================================================
+STEP 1  US gold trade, from the customs universe
+==============================================================================
+   US imports and exports of HS 7108 and 7115, all partners, monthly.
+   Both headings are needed. Over the surge months the bars went in
+   under 7115, not 7108:
+
+        month   7108 imports   7115 imports   $bn
+   2024-11           2.16           2.18
+   2024-12           3.19          10.30
+   2025-01           3.79          30.44
+   2025-02           2.45          24.73
+   2025-03           0.68          17.12
+
+   Anyone pulling 7108 alone, as this project's own build order said
+   to, would find almost none of this episode. That is a correction to
+   the instruction in CLAUDE.md, not a detail.
+
+   External check on the construction. The Atlanta Fed, describing why
+   it rebuilt GDPNow, put nonmonetary gold imports at $13.2bn in
+   December 2024 and $32.6bn in January 2025 on a balance-of-payments
+   basis. The two headings together give $13.5bn and $34.2bn.
+   Close enough that this series is measuring the same thing they are;
+   the small gap is the Census-to-BOP adjustment.
+
+   26 months, 2023-10 to 2025-11.
+   Value is converted to tonnes at the month's LBMA PM benchmark,
+   because a quantity is what the real-GDP arithmetic needs and the
+   gold price rose 40% inside this window.
+
+==============================================================================
+STEP 2  Quarterly net gold imports
+==============================================================================
+   Imports minus exports. Positive means metal arriving, which is what
+   subtracts from GDP; negative means it leaving, which adds.
+
+     quarter    net $bn   net tonnes   gold $/oz
+   2023Q4       -0.4           -8       1,976
+   2024Q1       -6.1          -92       2,072
+   2024Q2       -1.4          -19       2,338
+   2024Q3        0.6            9       2,478
+   2024Q4       13.3          156       2,662
+   2025Q1       67.0          740       2,862
+   2025Q2      -32.7         -313       3,279
+   2025Q3       -3.0          -22       3,459
+
+   Complete quarters only; the customs pull ends November 2025, so later
+   quarters are dropped rather than annualised from part of a quarter.
+
+==============================================================================
+STEP 3  Turning that into a GDP growth contribution
+==============================================================================
+   The NIPA arithmetic. A component's contribution to annualised real
+   GDP growth is its change in quantity, valued at the previous
+   quarter's price, over the previous quarter's nominal GDP:
+
+       contribution (pp) = -1600 * (dQ_t * P_t-1) / GDP_t-1
+
+   The minus is because this is an import. The 1600 is 400 for
+   annualising a quarterly rate in percent, times 4 because the trade
+   figures are quarterly totals and GDP is an annual rate.
+
+   Before trusting it on gold, run the same formula on total imports
+   and check it against BEA's own published contribution:
+
+     quarter  this formula  BEA published     gap
+   2023Q4           nan          -0.73     nan
+   2024Q1         -0.45          -0.40   -0.05
+   2024Q2         -1.66          -1.47   -0.19
+   2024Q3         -1.73          -1.53   -0.20
+   2024Q4         -0.16          -0.13   -0.03
+   2025Q1         -4.89          -4.31   -0.58
+   2025Q2          5.32           4.71    0.61
+   2025Q3         -0.01           0.01   -0.02
+
+   Mean absolute gap 0.24pp. The residual is chain weighting:
+   BEA's Fisher index reweights every quarter and this does not. It is
+   small enough that the gold figure below is not an artefact of the
+   approximation.
+
+==============================================================================
+STEP 4  The answer, quarter by quarter
+==============================================================================
+   'no offset' is the assumption in the question: the gold is entirely
+   excess, and nothing in the accounts cancels it. On that assumption
+   published growth minus the gold term is what growth 'should' have
+   read.
+
+     quarter  published     gold  without gold   imports   invent   GDPNow
+                  % ann       pp         % ann        pp       pp    % ann
+   ------------------------------------------------------------------------
+   2024Q1       1.44     0.30          1.14     -0.40    -1.04      2.7
+   2024Q2       3.58    -0.27          3.85     -1.47     1.21      2.6
+   2024Q3       3.15    -0.11          3.27     -1.53    -0.06      2.8
+   2024Q4       2.40    -0.63          3.04     -0.13    -0.91      2.3
+   2025Q1       0.14    -2.67          2.81     -4.31     2.54     -2.7
+   2025Q2       4.02     5.14         -1.12      4.71    -3.17      2.9
+   2025Q3       3.88    -1.60          5.48      0.01    -0.14      3.5
+
+   THE TWO QUARTERS THAT MATTER
+
+   2025Q1  gold contributed -2.67pp. Published growth was +0.14%,
+           so without the gold it would have read +2.81%. Measured GDP
+           was too LOW, not too high. The metal arrived, and arriving
+           metal is an import.
+
+   2025Q2  the metal went home. Gold contributed +5.14pp - it swung by
+           +7.81pp between the two quarters. Published growth was
+           +4.02%; without the gold, -1.12%. THIS is the over-reporting
+           the question was after, and it is a full quarter later than
+           the surge everyone looked at.
+
+   Gold alone is 62% of the entire import drag on 2025Q1 and
+   109% of the entire import boost to 2025Q2.
+
+   Over the four quarters 2024Q4 to 2025Q3 the gold terms sum to +0.23pp.
+   A round trip nets out in the level. It does not net out in any
+   single quarter's growth rate, and quarterly growth rates are what
+   policy reacts to.
+
+==============================================================================
+STEP 5  Does any of this survive into published GDP?
+==============================================================================
+   Only if the offsetting entry is wrong. Imported gold that goes into
+   a vault is inventory investment, which enters GDP with a plus of the
+   same size. Set against each other, the effect is zero and only the
+   composition of GDP is distorted.
+
+   2025Q1   imports -4.31pp   inventories +2.54pp   net -1.77pp
+   2025Q2   imports +4.71pp   inventories -3.17pp   net +1.54pp
+
+   BEA did book a large offsetting inventory swing in both quarters, of
+   the same order as the gold term and with the right sign. That is
+   consistent with the offset working. It is not proof of it: the same
+   two quarters saw broad tariff front-running in everything else, so
+   the inventory line is not gold's alone and cannot be attributed.
+
+   The honest statement is therefore conditional, and both branches are
+   worth having:
+
+     if the inventory entry matched the gold, published GDP is right
+     and only its composition is wrong - the import drag and the
+     inventory boost on 2025Q1 are each about 2.7pp too big;
+
+     if it did not, 2025Q1 growth is understated by up to 2.7pp and 2025Q2
+     overstated by up to 5.1pp.
+
+==============================================================================
+STEP 6  The nowcast had no offset at all
+==============================================================================
+   A nowcast bridges from monthly source data. The advance trade report
+   arrives weeks before any inventory figure, so an import surge hits
+   the nowcast immediately and the cancelling entry arrives late or not
+   at all. That is a structural feature of nowcasting, not an error by
+   anyone, and it is exactly what this episode exploited.
+
+   Atlanta Fed GDPNow, final 2025Q1 reading   -2.73%
+   Actual 2025Q1 real GDP growth              +0.14%
+   Miss                                       -2.87pp
+   Gold term computed here                    -2.67pp
+
+   The miss and the gold term agree to 0.20pp. Treat that as
+   corroboration, not as a decomposition: GDPNow missed for several
+   reasons at once and this arithmetic cannot apportion them. What it
+   does establish is that the gold term is the right ORDER of magnitude
+   to have driven a nowcast that spent a quarter signalling a recession
+   that the published accounts never showed.
+
+   That is the claim in CLAUDE.md - phantom flows contaminated a
+   Federal Reserve GDP nowcast - reproduced from primary data. It is a
+   replication, not a discovery: the Atlanta Fed diagnosed it at the
+   time, recalibrated GDPNow for the gold distortion between 28
+   February and 6 March 2025, and then published two versions of the
+   nowcast, standard and gold-adjusted, from 6 March through April.
+   The value of redoing it here is that the same excess-trade estimate
+   now carries a cost figure and a GDP figure on one set of numbers.
+
+   wrote C:\Users\smoor\GitHub\GOLD\claude\excess-trade-cost\gold_and_gdp.pdf
