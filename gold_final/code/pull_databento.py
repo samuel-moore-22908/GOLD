@@ -26,10 +26,11 @@ Five outputs into gold_final/data/raw:
 
 COST CONTROL. Databento charges for data. This script never buys anything it
 already has: it reads the archives in ARCHIVE_DIR and the minute files in
-MINUTE_DIR, and only calls the API for months genuinely absent, and then only
-with --buy. Run without --buy and it tells you what is missing and stops. The
-archives currently in the repo cover 2015 to the present, so a normal rerun
-costs nothing.
+MINUTE_DIR, and only calls the API for months genuinely absent. When some are,
+it lists them and then ASKS, defaulting to no; --buy answers yes in advance for
+an unattended run. With no stdin attached it refuses rather than hanging or
+failing. The archives currently in the repo cover 2015 to the present, so a
+normal rerun costs nothing and asks nothing.
 
 Needs DATABENTO_API_KEY in the repo .env only if something must be bought.
 
@@ -311,11 +312,24 @@ def build_minute_windows(instants: pd.DataFrame, allow_buy: bool) -> pd.DataFram
     if missing:
         say(f"   {len(missing)} month(s) not on disk: {', '.join(missing[:8])}"
             + (" ..." if len(missing) > 8 else ""))
+        # Ask here rather than at launch. This is the only point that knows
+        # whether anything actually needs buying, and the list above has just
+        # been printed, so the question is answerable. A flag set before the run
+        # is a decision made before its cost is visible.
+        if not allow_buy:
+            try:
+                allow_buy = input(f"   Buy these {len(missing)} month(s) from "
+                                  f"Databento? This costs money. [y/N] "
+                                  ).strip().lower() in ("y", "yes")
+            except EOFError:
+                # No attached stdin - piped, scheduled, or under a harness.
+                # Refuse, rather than dying on a traceback: the safe direction
+                # for a branch that spends money is always "no".
+                allow_buy = False
         if not allow_buy:
             raise SystemExit(
-                "   These would have to be bought from Databento, which costs\n"
-                "   money. Rerun with --buy to allow it, or leave it: everything\n"
-                "   through the months already on disk still builds.")
+                "   Nothing bought. Everything through the months already on\n"
+                "   disk still builds.")
         buy_minutes(missing, instants)
     else:
         say(f"   every month already on disk under {MINUTE.relative_to(ROOT)} "
@@ -424,7 +438,9 @@ def build_rates() -> pd.DataFrame:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--buy", action="store_true",
-                    help="allow Databento purchases for months not on disk")
+                    help="allow Databento purchases without being asked; "
+                         "without it you are prompted once, if anything is "
+                         "missing")
     args = ap.parse_args()
     os.chdir(ROOT)
     OUT.mkdir(parents=True, exist_ok=True)
