@@ -45,3 +45,8 @@ output/
 claude/gold-panel/gold_panel_run.log
 claude/gold-panel/probe/
 claude/*/[a-z_]*_run.log
+
+# gold_final: logs and data regenerate from the two pull scripts. The figures
+# are committed because they are the deliverable.
+gold_final/**/*.log
+gold_final/data/
