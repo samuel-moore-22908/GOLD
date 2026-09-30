@@ -12,7 +12,7 @@ gold_final/
   letter/    the write-up that uses them
 ```
 
- is the write-up: a policy letter in the format of a
+`letter/gold_letter.tex` is the write-up: a policy letter in the format of a
 Chicago Fed Letter, roughly 4,100 words, using the four figures in order -
 observe the flow, explain it, quantify the excess, then the consequences. Build
 it with two passes of `pdflatex` (latexmk is avoided here: MiKTeX exits
