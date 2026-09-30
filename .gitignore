@@ -50,3 +50,10 @@ claude/*/[a-z_]*_run.log
 # are committed because they are the deliverable.
 gold_final/**/*.log
 gold_final/data/
+
+# LaTeX build artefacts - the .tex and the .pdf are the record
+*.aux
+*.out
+*.ent
+*.toc
+*.synctex.gz
