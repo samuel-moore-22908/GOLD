@@ -5,3 +5,9 @@ requests==2.34.2
 pypdf==6.16.1
 pymupdf==1.28.2
 databento==0.86.0
+# Imported directly by gold_final/code/pull_databento.py to decompress the .zst
+# files inside the Databento batch archives. It arrives anyway as a databento
+# dependency, but a direct import belongs in the direct requirements: if
+# databento ever drops it, a fresh venv would break on an ImportError that
+# points at the wrong package.
+zstandard==0.25.0
