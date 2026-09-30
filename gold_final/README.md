@@ -9,7 +9,14 @@ gold_final/
   code/      the six files
   data/      raw pulls and run logs - regenerate, not committed
   figures/   the four PDFs
+  letter/    the write-up that uses them
 ```
+
+`letter/gold_letter.tex` is the write-up: a policy letter in the format of a
+Chicago Fed Letter, roughly 4,100 words, using the four figures in order -
+observe the flow, explain it, quantify the excess, then the consequences. Build
+it with two passes of `pdflatex` (latexmk is avoided here: MiKTeX exits
+non-zero on an unsupported Windows build even when the PDF is fine).
 
 ## Run order
 
