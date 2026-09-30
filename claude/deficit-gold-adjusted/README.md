@@ -43,6 +43,9 @@ months later, the best trade month in six years. Neither was trade.
 
 ## It does not net out quickly
 
+*Not plotted - this is a separate claim on a different axis, so it stays in the
+narration rather than crowding the figure.*
+
 The reassuring version of this - *it nets out over a year, only the monthly
 print was distorted* - is the first thing anyone reaches for, and it is wrong.
 
