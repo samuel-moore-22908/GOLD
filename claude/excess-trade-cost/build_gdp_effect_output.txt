@@ -164,12 +164,22 @@ STEP 6  The nowcast had no offset at all
    Miss                                       -2.87pp
    Gold term computed here                    -2.67pp
 
-   The miss and the gold term agree to 0.20pp. Treat that as
-   corroboration, not as a decomposition: GDPNow missed for several
-   reasons at once and this arithmetic cannot apportion them. What it
-   does establish is that the gold term is the right ORDER of magnitude
-   to have driven a nowcast that spent a quarter signalling a recession
-   that the published accounts never showed.
+   The miss and the gold term agree to 0.20pp, which is TOO NEAT and
+   should not be read as a decomposition. The direct evidence is in
+   make_gdpnow_chart.py: the Atlanta Fed built a gold-adjusted GDPNow
+   and ran it beside the standard one, and the gap between them is
+   2.3pp at its widest and 1.2pp at the final vintage - real, large,
+   and smaller than the whole miss. GDPNow missed for several reasons
+   at once and this arithmetic cannot apportion them.
+
+   The two adjustments are also not the same object. The Atlanta Fed
+   subtracts gold from the trade aggregates its bridge equations
+   extrapolate from, so an unrepeatable spike is not carried into the
+   months of the quarter not yet observed; observed gold still enters
+   GDP. The term computed here removes gold's arithmetic contribution
+   outright. The second is the bigger cut by construction, which is
+   why -2.67pp exceeds their 1.2-2.3pp wedge rather than contradicting
+   it.
 
    That is the claim in CLAUDE.md - phantom flows contaminated a
    Federal Reserve GDP nowcast - reproduced from primary data. It is a

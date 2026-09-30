@@ -6,6 +6,7 @@ Two questions on the same episode, from the same excess-trade estimate in
 ```
 python claude/excess-trade-cost/build_excess_cost.py     # the cost
 python claude/excess-trade-cost/build_gdp_effect.py      # the GDP effect
+python claude/excess-trade-cost/make_gdpnow_chart.py     # the nowcast chart
 ```
 
 ## Headline
@@ -16,6 +17,7 @@ python claude/excess-trade-cost/build_gdp_effect.py      # the GDP effect
 | value transferred switching positions between London and New York | **\$165m** net, \$216m gross of sign |
 | effect on 2025Q1 annualised real GDP growth | **-2.7pp** |
 | effect on 2025Q2 annualised real GDP growth | **+5.1pp** |
+| the Atlanta Fed's own gold adjustment to GDPNow for 2025Q1 | **1.2 - 2.3pp** |
 
 The gold was cheap to move and expensive to measure. The resource bill is
 0.14% of the \$118bn of metal shuttled. The measurement effect is points of
@@ -201,23 +203,51 @@ weeks before any inventory figure, so an import surge hits the nowcast
 immediately and the cancelling entry arrives late or not at all. That is
 structural, not an error by anyone.
 
+`make_gdpnow_chart.py` plots this directly, from the Atlanta Fed's own
+published tracking workbook rather than from a reconstruction of it.
+
+![GDPNow standard against gold-adjusted](gdpnow_gold.png)
+
 | | |
 |---|---:|
-| Atlanta Fed GDPNow, final 2025Q1 reading | -2.73% |
-| actual 2025Q1 real GDP growth | +0.14% |
-| miss | **-2.87pp** |
-| gold term computed here | **-2.67pp** |
+| GDPNow, standard model, 26 February | +2.32% |
+| GDPNow, standard model, 3 March | **-2.82%** |
+| GDPNow, gold-adjusted model, 3 March | **-0.56%** |
+| standard model trough, 1 April | -3.67% |
+| final vintage, 29 April: standard / gold-adjusted | -2.73% / -1.50% |
+| BEA advance estimate | -0.28% |
+| actual, after revisions | +0.14% |
 
-They agree to 0.20pp. That is corroboration, not a decomposition: GDPNow missed
-for several reasons at once and this arithmetic cannot apportion them. What it
-establishes is that the gold term is the right order of magnitude to have driven
-a nowcast that spent a quarter signalling a recession the published accounts
-never showed.
+The standard model fell 5.1 points in three working days on two trade releases.
+The gold-adjusted model fell 3.0 points over the same span and then spent March
+between -0.6% and +0.4%. **The wedge between them is 2.3pp at its widest and
+2.1pp for most of two months**, narrowing to 1.2pp at the final vintage as the
+model accumulated observed data and had less left to extrapolate.
+
+The Atlanta Fed made the gold-adjusted model the **standard** GDPNow on 30 April
+2025 and discontinued the old one for 2025Q1. This is not a side experiment.
+
+### Correcting something stated earlier in this folder
+
+An earlier version of this README pointed out that GDPNow's final 2025Q1 miss
+(-2.87pp) and the accounting gold term computed here (-2.67pp) agree to 0.20pp,
+and called that corroboration. **That reading was too strong.** The Atlanta
+Fed's own gold adjustment moves their nowcast by 1.2-2.3pp, not 2.9pp, so gold
+does not account for the whole miss and the near-equality was a coincidence.
+
+The two numbers are also not the same object, which is why they need not match:
+
+| | what it does | 2025Q1 |
+|---|---|---:|
+| **Atlanta Fed** | subtracts gold from the BOP goods aggregates the bridge equations are fitted and forecast on, so an unrepeatable spike is not extrapolated into the months of the quarter not yet observed. Observed gold still enters GDP. A fix to the **forecast**. | 1.2-2.3pp |
+| **This project** | removes the arithmetic contribution of net gold trade from measured growth outright, assuming nothing offsets it. A statement about the **accounting**. | 2.67pp |
+
+The second is the larger cut by construction. It exceeds their wedge rather than
+contradicting it.
 
 This is a **replication, not a discovery**. The Atlanta Fed diagnosed it at the
-time, recalibrated GDPNow for the gold distortion between 28 February and
-6 March 2025, and published two versions of the nowcast - standard and
-gold-adjusted - from 6 March through April. What is new here is that one
+time, recalibrated GDPNow between 28 February and 6 March 2025, and ran two
+versions of the nowcast for two months. What is new here is that one
 excess-trade estimate now carries both a cost figure and a GDP figure.
 
 ---
@@ -239,10 +269,20 @@ The bars went in under **7115**, "other articles of precious metal". Both
 headings are needed, and the bilateral panel already uses both - it is the
 written instruction that is wrong.
 
-External check: the Atlanta Fed, explaining why it rebuilt GDPNow, put
-nonmonetary gold imports at \$13.2bn in December 2024 and \$32.6bn in January
-2025 on a balance-of-payments basis. The two headings together give \$13.5bn and
-\$34.2bn. The small gap is the Census-to-BOP adjustment.
+This is confirmed in the Atlanta Fed's own model documentation, which names the
+ten-digit line and the reason:
+
+> harmonized system code 7115900530: "Articles of precious metal, in rectangular
+> shapes, 99.5% or more by weight of precious metal, not otherwise marked or
+> decorated, of gold" is classified under "finished metal shapes and advanced
+> manufacturer" items on a Census basis but **reclassified as nonmonetary gold
+> on a BOP basis**.
+
+So Census and BEA disagree about what this metal is, and a Census-based pull has
+to add 7115 back by hand to see what BEA sees. Quantity check: the Atlanta Fed
+put nonmonetary gold imports at \$13.2bn in December 2024 and \$32.6bn in
+January 2025 on a BOP basis; the two headings together give \$13.5bn and
+\$34.2bn. The small gap is the rest of the Census-to-BOP adjustment.
 
 ## What this is not
 
@@ -259,15 +299,24 @@ nonmonetary gold imports at \$13.2bn in December 2024 and \$32.6bn in January
   not meant to reconcile to the tonne.
 - **The trade pull ends November 2025**, so quarters after 2025Q3 are dropped
   rather than annualised from part of a quarter.
+- **The nowcast chart depends on a file the Atlanta Fed moves.** The workbook
+  lived under `/cqer/researchcq/gdpnow/` and now lives under
+  `/research-and-data/data/gdpnow/`; the script fails loudly with the page to
+  check rather than silently plotting an error page. The sheet's own title row
+  reads "2025q2" while the sheet name, the vintage dates and the advance-estimate
+  date all say 2025q1 - the title is stale, and the data is Q1.
 
 ## Files
 
 | File | What it is |
 |---|---|
 | `build_excess_cost.py` | the cost ledger, narrating its own argument |
-| `build_gdp_effect.py` | the GDP arithmetic and the figure |
+| `build_gdp_effect.py` | the GDP arithmetic and its figure |
+| `make_gdpnow_chart.py` | GDPNow standard against gold-adjusted, from the Atlanta Fed workbook |
 | `cost_ledger.csv` | resources and transfers, low / central / high |
 | `excess_cost_monthly.csv` | tonne-legs, unit costs and premium by month |
 | `gdp_effect_quarterly.csv` | net gold trade and contributions by quarter |
-| `gold_and_gdp.pdf` / `.png` | the figure |
+| `gold_and_gdp.pdf` / `.png` | net gold trade and the GDP contribution |
+| `gdpnow_gold.pdf` / `.png` | the two nowcast paths and the wedge between them |
+| `gdpnow_gold_daily.csv` | both nowcast paths by vintage date |
 | `build_*_output.txt` | the narrations, saved |
