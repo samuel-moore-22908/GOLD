@@ -236,97 +236,82 @@ def narrate(d: pd.DataFrame, deficit_all: pd.Series) -> None:
 
 
 def figure(d: pd.DataFrame) -> None:
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(11.0, 8.6), sharex=True,
-                                   gridspec_kw={"height_ratios": [1.45, 1.0]})
+    """One panel: the monthly deficit, as published and with the gold removed.
+
+    The rolling twelve-month comparison lives in step 3 of the narration rather
+    than here. It is a separate claim on a different axis, and putting it in a
+    second panel made the figure argue two things at once.
+    """
+    fig, ax = plt.subplots(figsize=(11.0, 6.2))
     fig.patch.set_facecolor(SURFACE)
 
     jan = d.loc[pd.Timestamp("2025-01-01")]
     oct25 = d.loc[pd.Timestamp("2025-10-01")]
-    fig.text(0.030, 0.972, TAB, fontsize=11, color=RED, ha="left", va="top")
-    fig.text(0.030, 0.938,
+    fig.text(0.030, 0.968, TAB, fontsize=11, color=RED, ha="left", va="top")
+    fig.text(0.030, 0.928,
              "The record deficits, and the collapse that followed, were both "
              "largely bullion",
              fontsize=17, color=INK, ha="left", va="top", fontweight="bold")
-    fig.text(0.030, 0.896,
+    fig.text(0.030, 0.880,
              f"US goods and services deficit as published each month, and with "
              f"nonmonetary gold taken out of both sides. Gold is "
-             f"{jan.gold_share_pct:.0f}% of\n"
-             f"the January 2025 record and {abs(oct25.gold_share_pct):.0f}% of "
-             f"October 2025, the smallest deficit in six years. It nets out only "
-             f"slowly, so the\n"
-             f"twelve-month deficit was wrong too - by "
-             f"${d.net_gold.rolling(ROLL).sum().max():,.0f}bn at its worst",
+             f"{jan.gold_share_pct:.0f}% of the\n"
+             f"January 2025 record and {abs(oct25.gold_share_pct):.0f}% of "
+             f"October 2025, the smallest deficit in six years",
              fontsize=12, color=INK, ha="left", va="top", linespacing=1.35)
 
-    for ax in (ax1, ax2):
-        ax.set_facecolor(SURFACE)
-        for side in ax.spines:
-            ax.spines[side].set_visible(False)
-        ax.grid(True, axis="y", color=RULE, linewidth=0.8)
-        ax.set_axisbelow(True)
-        ax.tick_params(colors=SOFT, labelsize=10, length=0)
-        ax.xaxis.set_major_locator(mdates.MonthLocator(bymonth=(1, 7)))
-        ax.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
+    ax.set_facecolor(SURFACE)
+    for side in ax.spines:
+        ax.spines[side].set_visible(False)
+    ax.grid(True, axis="y", color=RULE, linewidth=0.8)
+    ax.set_axisbelow(True)
+    ax.tick_params(colors=SOFT, labelsize=10, length=0)
+    ax.xaxis.set_major_locator(mdates.MonthLocator(bymonth=(1, 4, 7, 10)))
+    ax.xaxis.set_major_formatter(mdates.DateFormatter("%b\n%Y"))
 
-    ax1.fill_between(d.index, d.deficit_adj, d.deficit,
-                     where=d.deficit >= d.deficit_adj, color=RED, alpha=0.20,
-                     interpolate=True, zorder=1)
-    ax1.fill_between(d.index, d.deficit_adj, d.deficit,
-                     where=d.deficit < d.deficit_adj, color=GREY, alpha=0.30,
-                     interpolate=True, zorder=1)
-    ax1.plot(d.index, d.deficit, color=RED, linewidth=2.2, zorder=4,
-             label="As published")
-    ax1.plot(d.index, d.deficit_adj, color=INK, linewidth=1.8, zorder=5,
-             linestyle=(0, (5, 2)), label="With nonmonetary gold removed")
-    ax1.set_ylabel("Monthly deficit, $bn", color=SOFT, fontsize=11)
-    ax1.set_ylim(0, d.deficit.max() * 1.22)
-    leg = ax1.legend(frameon=False, fontsize=11, loc="upper left",
-                     handlelength=1.8, borderaxespad=0.5)
+    ax.fill_between(d.index, d.deficit_adj, d.deficit,
+                    where=d.deficit >= d.deficit_adj, color=RED, alpha=0.20,
+                    interpolate=True, zorder=1)
+    ax.fill_between(d.index, d.deficit_adj, d.deficit,
+                    where=d.deficit < d.deficit_adj, color=GREY, alpha=0.32,
+                    interpolate=True, zorder=1)
+    ax.plot(d.index, d.deficit, color=RED, linewidth=2.4, zorder=4,
+            label="As published")
+    ax.plot(d.index, d.deficit_adj, color=INK, linewidth=1.9, zorder=5,
+            linestyle=(0, (5, 2)), label="With nonmonetary gold removed")
+    ax.set_ylabel("Monthly deficit, $bn", color=SOFT, fontsize=11)
+    ax.set_ylim(0, d.deficit.max() * 1.20)
+    leg = ax.legend(frameon=False, fontsize=11, loc="upper left",
+                    handlelength=1.8, borderaxespad=0.6)
     for t in leg.get_texts():
         t.set_color(INK)
 
-    ax1.annotate(f"${jan.deficit:.0f}bn reported\n${jan.deficit_adj:.0f}bn without the gold",
-                 xy=(pd.Timestamp("2025-01-01"), jan.deficit),
-                 xytext=(pd.Timestamp("2023-11-15"), jan.deficit * 1.02),
-                 fontsize=10.5, color=INK, ha="left", va="center", linespacing=1.4,
-                 arrowprops=dict(arrowstyle="-", color=SOFT, linewidth=0.9))
-    ax1.annotate(f"${oct25.deficit:.0f}bn reported\n${oct25.deficit_adj:.0f}bn without the gold",
-                 xy=(pd.Timestamp("2025-10-01"), oct25.deficit),
-                 xytext=(pd.Timestamp("2025-02-20"), 18),
-                 fontsize=10.5, color=INK, ha="left", va="center", linespacing=1.4,
-                 arrowprops=dict(arrowstyle="-", color=SOFT, linewidth=0.9))
+    ax.annotate(f"${jan.deficit:.0f}bn reported\n${jan.deficit_adj:.0f}bn without the gold",
+                xy=(pd.Timestamp("2025-01-01"), jan.deficit),
+                xytext=(pd.Timestamp("2023-11-20"), jan.deficit * 0.88),
+                fontsize=10.5, color=INK, ha="left", va="center", linespacing=1.4,
+                arrowprops=dict(arrowstyle="-", color=SOFT, linewidth=0.9))
+    ax.annotate(f"${oct25.deficit:.0f}bn reported\n${oct25.deficit_adj:.0f}bn without the gold",
+                xy=(pd.Timestamp("2025-10-01"), oct25.deficit),
+                xytext=(pd.Timestamp("2025-01-20"), 16),
+                fontsize=10.5, color=INK, ha="left", va="center", linespacing=1.4,
+                arrowprops=dict(arrowstyle="-", color=SOFT, linewidth=0.9))
 
-    r12 = (-d.reported.rolling(ROLL).sum()).dropna()
-    a12 = (-d.adjusted.rolling(ROLL).sum()).dropna()
-    ax2.fill_between(r12.index, a12, r12, color=RED, alpha=0.20, zorder=1)
-    ax2.plot(r12.index, r12, color=RED, linewidth=2.2, zorder=3)
-    ax2.plot(a12.index, a12, color=INK, linewidth=1.8, linestyle=(0, (5, 2)),
-             zorder=4)
-    ax2.set_ylabel(f"Rolling {ROLL}-month deficit, $bn", color=SOFT, fontsize=11)
-    gap = (r12 - a12)
-    pk = gap.idxmax()
-    ax2.annotate(f"the twelve-month deficit was overstated by\n"
-                 f"${gap[pk]:,.0f}bn here, closing to ${gap.iloc[-1]:,.0f}bn only once\n"
-                 f"the metal had come home",
-                 xy=(pk, (r12[pk] + a12[pk]) / 2),
-                 xytext=(pd.Timestamp("2025-04-10"), a12.min() + 18),
-                 fontsize=10.5, color=INK, ha="left", va="center", linespacing=1.4,
-                 arrowprops=dict(arrowstyle="-", color=SOFT, linewidth=0.9))
-
-    src = ("The published balance is BEA and Census, FT-900, goods and services, "
-           "balance-of-payments basis. Gold is US imports minus exports of HS 7108 "
-           "and 7115, all partners, and is\n"
-           "subtracted from both sides of that same balance, so the two lines "
-           "differ by the gold and by nothing else. The deficit is plotted as a "
-           "positive number, so up is wider. The\n"
-           "gold series starts in October 2023, which is where the customs pull "
-           "starts, and the lower panel therefore starts twelve months after "
-           "that\n"
-           " \n"
-           "Source: US Census Bureau; Bureau of Economic Analysis")
-    fig.text(0.030, 0.012, src, fontsize=9, color=SOFT, ha="left", va="bottom",
-             linespacing=1.35)
-    fig.subplots_adjust(left=0.085, right=0.985, top=0.812, bottom=0.180, hspace=0.16)
+    gap = d.net_gold.rolling(ROLL).sum()
+    src_note = (f"The published balance is BEA and Census, FT-900, goods and "
+                f"services, balance-of-payments basis. Gold is US imports minus "
+                f"exports of HS 7108 and 7115, all\n"
+                f"partners, and is subtracted from both sides of that same "
+                f"balance, so the two lines differ by the gold and by nothing "
+                f"else. It nets out only slowly: the rolling\n"
+                f"twelve-month deficit was overstated by ${gap.max():,.0f}bn at its worst "
+                f"in {gap.idxmax():%B %Y}. The gold series starts in October "
+                f"2023, where the customs pull starts\n"
+                " \n"
+                "Source: US Census Bureau; Bureau of Economic Analysis")
+    fig.text(0.030, 0.012, src_note, fontsize=9, color=SOFT, ha="left",
+             va="bottom", linespacing=1.35)
+    fig.subplots_adjust(left=0.085, right=0.985, top=0.755, bottom=0.240)
     for ext in ("pdf", "png"):
         fig.savefig(OUT / f"deficit_gold.{ext}", dpi=200,
                     facecolor=fig.get_facecolor())
