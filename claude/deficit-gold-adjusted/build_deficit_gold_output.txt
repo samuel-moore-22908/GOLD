@@ -1,0 +1,101 @@
+
+==============================================================================
+THE TRADE DEFICIT, REPORTED AND WITH THE GOLD TAKEN OUT
+==============================================================================
+   BOPGSTB, the FT-900 goods-and-services balance, 415 months,
+   Jan 1992 to Jul 2026. Negative is a deficit.
+   Gold covers 26 months, Oct 2023 to Nov 2025, all partners.
+
+==============================================================================
+STEP 1  The months everyone reacted to
+==============================================================================
+   The three largest monthly deficits ever recorded, and the smallest
+   in six years, all fall inside this episode. Here they are with the
+   gold taken out:
+
+        month   reported     gold   adjusted   gold %
+   --------------------------------------------------
+   2025-01      124.7     32.5       92.2     26.1
+   2025-02      117.1     22.3       94.8     19.0
+   2025-03      133.0     12.2      120.8      9.2
+   2025-10       37.4    -15.2       52.6    -40.6
+
+   On the reported series the record book reads Mar 2025, Jan 2025
+   and Feb 2025 - the top three deficits since the series
+   begins in 1992, consecutive, all in the episode.
+
+   Adjusted, only 1 of those three still clears the pre-episode
+   record of $95.5bn in Mar 2022: Mar 2025.
+   Two of the three record months were records because of metal that
+   was in a vault in London in the morning and a vault in New York by
+   the evening.
+
+   That comparison uses unadjusted figures before October 2023, which
+   is where the gold series starts. Monthly net gold ran between -$3bn
+   and +$2bn in the year before the episode, so it is indicative rather
+   than exact, and the direction is not in doubt.
+
+==============================================================================
+STEP 2  The month the deficit 'collapsed'
+==============================================================================
+   October 2025 printed a deficit of $37.4bn, the smallest since
+   November 2019 and widely read as a structural improvement.
+   With the gold put back it is $52.6bn. 41% of the
+   'improvement' was bullion leaving the country.
+
+   This is the symmetry that matters. The same mechanism that produced
+   three record deficits produced, seven months later, the best trade
+   month in six years. Neither was trade.
+
+==============================================================================
+STEP 3  It does not net out quickly
+==============================================================================
+   A round trip nets to nothing eventually. The question is how long
+   'eventually' takes, and the answer is longer than a year - so the
+   annual deficit was wrong too, not just the monthly one.
+
+   Rolling 12-month deficit, overstatement from gold:
+
+      peak        $79bn in March 2025, 7.4% of the trailing-year deficit
+      latest      $16bn in November 2025, 1.6%
+
+   At the March 2025 peak every tonne had gone in and none had come
+   back, so a full year of data carried the whole surge and none of the
+   reversal. 11 months after the metal started moving the twelve-month
+   deficit was STILL overstated by $16bn, and the series ends there
+   rather than at zero.
+
+   So the reassuring version of this - 'it nets out over a year, only
+   the monthly print was distorted' - is wrong, and it is worth saying
+   plainly because it is the first thing anyone reaches for. For most
+   of 2025 the twelve-month deficit was overstated by tens of billions.
+
+   The monthly series is distorted in a second way that survives any
+   netting - how volatile the trade balance appeared to be. Standard
+   deviation of the monthly deficit over these 26 months:
+      reported   $21.6bn
+      adjusted   $13.6bn
+   Taking the gold out cuts it by 37%. Range high to low: reported $96bn,
+   adjusted $68bn.
+
+==============================================================================
+WHAT THIS MEANS FOR HOW THE DEFICIT WAS READ
+==============================================================================
+   Nothing here is a claim that BEA published a wrong number. The gold
+   crossed the border and the balance of payments is supposed to record
+   goods crossing borders. The point is narrower and harder to dismiss:
+
+   a reader of the monthly release in early 2025 saw a deficit
+   exploding to successive records, and in late 2025 saw it collapsing
+   to a six-year low. Neither movement was a change in what America
+   buys or sells. It was one pile of metal moving to a different vault
+   and then moving back, and the reader had no way to see that from the
+   headline figure.
+
+   BEA already takes this view for GDP: nonmonetary gold is removed
+   from the national accounts because a bar bought as a store of value
+   is not consumption or investment. The trade release applies no such
+   filter, so the same metal is excluded from one official statistic
+   and headlined in another.
+
+   wrote C:\Users\smoor\GitHub\GOLD\claude\deficit-gold-adjusted\deficit_gold.pdf
