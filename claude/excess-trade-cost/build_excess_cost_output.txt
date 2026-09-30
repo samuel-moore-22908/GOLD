@@ -1,0 +1,153 @@
+
+==============================================================================
+WHAT THE EXCESS GOLD TRADE COST
+==============================================================================
+   Two ledgers, kept apart: resources consumed, and value transferred.
+
+==============================================================================
+STEP 1  How much metal moved that otherwise would not have
+==============================================================================
+   Two legs, both from the exporters' and importers' own customs
+   returns rather than from US figures, which carry no mass:
+
+     westbound   Swiss and UK exports to the United States
+     eastbound   Swiss and UK imports from the United States
+
+   Each gets the same counterfactual the tonnage estimate used: a
+   straight line fitted to every month from January 2015 to October
+   2024, carried forward unchanged. The excess is what came in above
+   that line, and shipping cannot be negative, so a month below the
+   line is charged nothing rather than credited back.
+
+                            westbound   eastbound   both legs
+   episode, t                     645          39         684
+   whole window, t                695         434       1,129
+
+   The window runs November 2024 to June 2026.
+
+   The eastbound excess is not a second shipment of different metal.
+   It is the same metal going home once the exemption of 11 April
+   2025 made the tariff risk go away, and it is charged again because
+   a return flight costs what an outbound one costs. A tonne relocated
+   and then relocated back is two tonne-legs of freight and two
+   recastings: 400 oz bars into kilobars on the way out, kilobars back
+   into 400 oz bars on the way home.
+
+==============================================================================
+STEP 2  What a leg costs, per ounce
+==============================================================================
+   None of these is a quoted price. No public series for bullion
+   logistics or refining fees exists, and the flow-based threshold in
+   claude/carry-threshold could not identify one either: it put the
+   westward cost at $0.78 an ounce with a 90% interval of [-0.46,
+   +2.43], which contains zero. So the stack below is an assumed
+   range with the sensitivity carried through, and the one number in
+   it that is public - CME's $0.35 depository handling charge -
+   sits inside the handling row as the only available check.
+
+   charged per ounce, flat                            low  central    high
+   -----------------------------------------------------------------------
+   recasting 400 oz bars to kilobars and 100 oz      0.50     1.25    2.00
+   secure air freight, transatlantic                 0.30     0.65    1.00
+   handling, assay, vault in and out                 0.20     0.35    0.80
+   subtotal, flat                                    1.00     2.25    3.80
+
+   charged on value, so it moved with the gold price     low  central    high
+   -----------------------------------------------------------------------
+   insurance in transit (0.5 / 1.0 / 2.0 bp)         0.19     0.37    0.75
+   forgone lease income in transit                   0.51     2.30    6.14
+
+   ALL IN, mean over the window                      1.70     4.93   10.69
+
+   The two ad valorem lines rose from $1.90 an ounce in November 2024 to $3.04
+   by June 2026, purely because gold went from $2,651 to $4,242. Holding the
+   unit cost flat in dollars would have understated the later legs.
+
+==============================================================================
+STEP 3  The resource bill
+==============================================================================
+                                                   low    central       high   $ millions
+   --------------------------------------------------------------------------
+   westbound, the five-month episode              31.6       88.3      186.0
+   westbound, whole window                        34.2       95.8      202.1
+   eastbound, the metal coming back               24.0       70.1      152.5
+   --------------------------------------------------------------------------
+   BOTH LEGS                                      58.3      165.9      354.7
+
+   That is $146,917 a tonne at the central assumption, on 1,129 tonne-legs
+   worth $118bn as they crossed - so 0.141% of the value moved,
+   a range of 0.050% to 0.302%.
+
+   The order of magnitude is the point, not the third decimal. Moving
+   gold is cheap relative to what it is worth, which is exactly why a
+   tariff threat of ten or thirty percent was able to move hundreds of
+   tonnes: the arbitrage only had to clear a few dollars an ounce.
+
+==============================================================================
+STEP 4  The cost of switching positions
+==============================================================================
+   Relocating metal is also a trade: a London unallocated claim is
+   sold and a COMEX warrant is bought. The price of that switch is the
+   location premium - the New York price over London, net of carry -
+   which is the series estimated in claude/spread-series.
+
+   For the arbitrageur this premium is revenue, not cost: it is what
+   paid for the freight in step 3. It is a cost to whoever was on the
+   other side, typically a dealer short COMEX and long London who had
+   to close at a dislocated level. So it is a transfer, and the right
+   way to report it is separately from the resource bill, never added
+   to it.
+
+        month  tonne-legs   premium $/oz   $ millions
+   --------------------------------------------------
+   2024-11             5           3.13            0
+   2024-12            75           4.47           11
+   2025-01           266          13.64          117
+   2025-02           189           3.59           22
+   2025-03           149           4.59           22
+   2025-04            76          -3.89          -10
+   2025-05            51          -2.51           -4
+   2025-06             8          -1.71           -0
+   2025-07            46           3.31            5
+   2025-08             4          10.25            1
+   2025-09            31           6.89            7
+   2025-10            72          -1.20           -3
+   2025-11            48           2.38            4
+   2025-12             5           6.94            1
+   2026-01            19          -0.31           -0
+   2026-02            39          -6.50           -8
+   2026-03            29           1.13            1
+   2026-04             8           0.51            0
+   2026-06            10          -1.73           -1
+   --------------------------------------------------
+      episode         684                         172
+       window       1,129                         165
+
+   The signs are informative. Westbound in the surge the premium was
+   positive, so New York paid up for metal. On the return legs from
+   April 2025 the premium is often negative, which is the same trade
+   run backwards: London paid up to get the metal home. A negative
+   entry is not a refund, it is a transfer in the other direction.
+
+   What this line does NOT contain: the mark-to-market on hedged short
+   books that were never closed, and the premium paid on metal that
+   did not move at all - which in August 2025, with the duty attached
+   to the delivery bar and the escape route shut, is where the whole
+   shock went. Both need CFTC position data, which is not in this
+   repo, so they are named and not invented.
+
+==============================================================================
+THE ANSWER
+==============================================================================
+   Resources consumed moving the excess metal out and back:
+       $166 million central, range $58m to $355m
+       on 1,129 tonne-legs worth $118bn as they crossed
+
+   Value transferred switching positions between London and New York:
+       $165 million net over the window, $216 million gross of sign
+
+   These do not add. The first is destroyed, the second changes hands.
+   Against the $118bn of metal shuttled, the resource bill is
+   0.14% - which is the finding, not a rounding
+   error. The episode was expensive in what it did to the statistics
+   and cheap in what it consumed, and those are different questions.
