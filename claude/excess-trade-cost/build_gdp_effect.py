@@ -7,17 +7,20 @@ episode was relocation rather than trade, by how much is measured GDP wrong?
 
 The sign is the first thing to get right, and it is the opposite of the
 intuition. Gold arriving in the United States is an IMPORT, and imports enter
-GDP with a minus. So a phantom import surge makes measured GDP too LOW, not too
-high, in the quarter the metal arrives - and too HIGH in the quarter it leaves
-again, which is what happened from April 2025. Over-reporting and
-under-reporting are both in this sample, in that order.
+GDP with a minus, so a phantom import surge drags a trade-driven estimate DOWN,
+not up. The upward distortion comes a quarter later, when the same metal leaves
+again. Both are in this sample, in that order.
 
-Whether any of it survives into published GDP depends on the offsetting entry.
-Gold that is imported and then sits in a vault is inventory investment, and
-inventory investment is a plus. If the two entries are equal the effect on GDP
-is exactly zero and only the composition is wrong. A nowcast that bridges from
-monthly trade data without the inventory leg gets no such cancellation, which
-is the mechanism this script tests.
+None of it reaches published GDP. BEA removes nonmonetary gold from the
+national accounts outright and replaces it with an adjustment computed as
+domestic production minus industrial use, because gold bought as a store of
+value is a valuable rather than consumption or investment. That is a
+long-standing convention, not a response to 2025.
+
+So the contribution computed here is not what happened to GDP. It is what
+happens to a GDP figure built from trade data that still contains the gold -
+which is what a nowcast does, and why GDPNow had to be rebuilt in March 2025
+while the published accounts needed no fixing at all.
 
 Reads   data/processed/us_hs4_universe_monthly.csv      (Census HS 7108 + 7115)
         claude/carry-threshold/carry_threshold_daily.csv (LBMA, to get tonnes)
@@ -149,7 +152,13 @@ def step_trade() -> pd.DataFrame:
     note("   the small gap is the Census-to-BOP adjustment.")
 
     price = gold_price_monthly()
-    d = pd.DataFrame({"imports_usd": g["imports"], "exports_usd": g["exports"]})
+    # Total goods imports from the same pull, so gold can be expressed as a
+    # share of the import surge on a consistent basis. BEA's published import
+    # contribution is no use for that comparison: it already excludes gold.
+    total_imp = u[u.flow == "imports"].groupby("date").value_usd.sum()
+
+    d = pd.DataFrame({"imports_usd": g["imports"], "exports_usd": g["exports"],
+                      "total_imports_usd": total_imp})
     d["net_usd"] = d.imports_usd - d.exports_usd
     d["price_usd_oz"] = price.reindex(d.index)
     # Customs value of bullion is its market value, so dividing by the month's
@@ -168,6 +177,8 @@ def step_quarters(d: pd.DataFrame) -> pd.DataFrame:
     heading("STEP 2  Quarterly net gold imports")
     q = d.resample("QS").agg(net_usd=("net_usd", "sum"),
                              net_t=("net_t", "sum"),
+                             gold_imports_usd=("imports_usd", "sum"),
+                             total_imports_usd=("total_imports_usd", "sum"),
                              price_usd_oz=("price_usd_oz", "mean"),
                              n=("net_usd", "size"))
     q = q[q.n == 3].drop(columns="n")     # complete quarters only
@@ -234,26 +245,30 @@ def step_contributions(q: pd.DataFrame) -> pd.DataFrame:
     # quantity. Reported so the price-adjustment is visible rather than buried.
     q["gold_contrib_nominal_pp"] = \
         -1600 * (q.net_usd - q.net_usd.shift(1)) / 1e9 / q.gdp_n.shift(1)
-    q["gdp_ex_gold"] = q.gdp_growth - q.gold_contrib_pp
+    # Published growth is already gold-free, so passing the gold through is
+    # an addition, not a removal. This is the naive figure a trade-driven
+    # estimate produces, and step 6 checks it against the one GDPNow made.
+    q["gdp_passthrough"] = q.gdp_growth + q.gold_contrib_pp
     return q
 
 
 def step_answer(q: pd.DataFrame) -> pd.DataFrame:
     heading("STEP 4  The answer, quarter by quarter")
-    note("   'no offset' is the assumption in the question: the gold is entirely")
-    note("   excess, and nothing in the accounts cancels it. On that assumption")
-    note("   published growth minus the gold term is what growth 'should' have")
-    note("   read.")
+    note("   The gold term is what net gold trade contributes to a GDP growth")
+    note("   figure built straight off the trade data. Published GDP does not")
+    note("   contain it - step 5 shows why - so 'passed through' is published")
+    note("   growth PLUS the gold term, which is the number a naive trade-driven")
+    note("   estimate prints.")
     note("")
-    note(f"   {'quarter':>9}{'published':>11}{'gold':>9}{'without gold':>14}"
+    note(f"   {'quarter':>9}{'published':>11}{'gold':>9}{'passed through':>16}"
          f"{'imports':>10}{'invent':>9}{'GDPNow':>9}")
-    note(f"   {'':9}{'% ann':>11}{'pp':>9}{'% ann':>14}{'pp':>10}{'pp':>9}{'% ann':>9}")
-    note("   " + "-" * 72)
+    note(f"   {'':9}{'% ann':>11}{'pp':>9}{'% ann':>16}{'pp':>10}{'pp':>9}{'% ann':>9}")
+    note("   " + "-" * 74)
     sub = q.dropna(subset=["gold_contrib_pp"])
     for m, r in sub.iterrows():
         nc = f"{r.nowcast:>9.1f}" if pd.notna(r.nowcast) else f"{'--':>9}"
         note(f"   {m:%Y}Q{(m.month - 1) // 3 + 1}{r.gdp_growth:>11.2f}"
-             f"{r.gold_contrib_pp:>9.2f}{r.gdp_ex_gold:>14.2f}"
+             f"{r.gold_contrib_pp:>9.2f}{r.gdp_passthrough:>16.2f}"
              f"{r.pub_imp:>10.2f}{r.pub_inv:>9.2f}{nc}")
     note("")
 
@@ -263,24 +278,28 @@ def step_answer(q: pd.DataFrame) -> pd.DataFrame:
     q1, q2 = get("2025-01-01"), get("2025-04-01")
     note("   THE TWO QUARTERS THAT MATTER")
     note("")
-    note(f"   2025Q1  gold contributed {q1.gold_contrib_pp:+.2f}pp. Published growth was "
-         f"{q1.gdp_growth:+.2f}%,")
-    note(f"           so without the gold it would have read "
-         f"{q1.gdp_ex_gold:+.2f}%. Measured GDP")
-    note("           was too LOW, not too high. The metal arrived, and arriving")
-    note("           metal is an import.")
+    note(f"   2025Q1  gold is worth {q1.gold_contrib_pp:+.2f}pp. Published growth was "
+         f"{q1.gdp_growth:+.2f}%; passed")
+    note(f"           through it would have printed {q1.gdp_passthrough:+.2f}%. The direction is")
+    note("           DOWNWARD: arriving metal is an import, and imports subtract.")
+    note("           A phantom import surge makes a trade-driven estimate too")
+    note("           weak, not too strong.")
     note("")
-    note(f"   2025Q2  the metal went home. Gold contributed "
-         f"{q2.gold_contrib_pp:+.2f}pp - it swung by")
+    note(f"   2025Q2  the metal went home. Gold is worth "
+         f"{q2.gold_contrib_pp:+.2f}pp, a swing of")
     note(f"           {q2.gold_contrib_pp - q1.gold_contrib_pp:+.2f}pp between the two quarters. "
          f"Published growth was")
-    note(f"           {q2.gdp_growth:+.2f}%; without the gold, {q2.gdp_ex_gold:+.2f}%. THIS is the "
-         "over-reporting")
+    note(f"           {q2.gdp_growth:+.2f}%; passed through, {q2.gdp_passthrough:+.2f}%. THIS is the "
+         "over-statement")
     note("           the question was after, and it is a full quarter later than")
     note("           the surge everyone looked at.")
     note("")
-    note(f"   Gold alone is {abs(100 * q1.gold_contrib_pp / q1.pub_imp):.0f}% of the entire import drag on 2025Q1 and")
-    note(f"   {abs(100 * q2.gold_contrib_pp / q2.pub_imp):.0f}% of the entire import boost to 2025Q2.")
+    prev = sub.shift(1)
+    share = 100 * (sub.gold_imports_usd - prev.gold_imports_usd)         / (sub.total_imports_usd - prev.total_imports_usd)
+    note(f"   Gold is {share.loc[pd.Timestamp('2025-01-01')]:.0f}% of the entire rise in US goods imports in")
+    note("   2025Q1, on the same Census pull for numerator and denominator. That")
+    note("   comparison is deliberately NOT made against BEA's published import")
+    note("   contribution, which already has the gold taken out of it.")
     note("")
     note("   Over the four quarters 2024Q4 to 2025Q3 the gold terms sum to "
          f"{sub.loc['2024-10-01':'2025-07-01'].gold_contrib_pp.sum():+.2f}pp.")
@@ -291,42 +310,48 @@ def step_answer(q: pd.DataFrame) -> pd.DataFrame:
 
 
 def step_offset(sub: pd.DataFrame) -> None:
-    heading("STEP 5  Does any of this survive into published GDP?")
-    note("   Only if the offsetting entry is wrong. Imported gold that goes into")
-    note("   a vault is inventory investment, which enters GDP with a plus of the")
-    note("   same size. Set against each other, the effect is zero and only the")
-    note("   composition of GDP is distorted.")
+    heading("STEP 5  None of this reaches published GDP")
+    note("   BEA does not let nonmonetary gold into the national accounts at all.")
+    note("   From its own FAQ: ITA exports and imports of nonmonetary gold are")
+    note("   REMOVED and replaced with an adjustment for gold computed as the")
+    note("   difference between domestic production and industrial use. Gold")
+    note("   bought as a store of value is a valuable, and valuables are outside")
+    note("   consumption, investment and government spending by construction.")
+    note("   This is long standing - NIPA Handbook chapter 8, reconciliation")
+    note("   table 4.3C - not a response to 2025.")
+    note("")
+    note("   The check that it is live rather than nominal is SILVER. BEA's")
+    note("   Survey of Current Business for 2025Q1 records that it 'identified")
+    note("   and removed an increase in imports of silver bars in the first")
+    note("   quarter'. Silver bars arrive under industrial supplies and materials,")
+    note("   where the standing gold adjustment does not reach, so they had to be")
+    note("   taken out by hand. Gold needed no mention because gold comes out as")
+    note("   a matter of course.")
+    note("")
+    note("   WHAT THIS CORRECTS. An earlier version of this script said the gold")
+    note("   entered GDP as an import offset by a matching inventory build, and")
+    note("   pointed at the 2025Q1 inventory contribution as evidence the offset")
+    note("   worked. That mechanism was wrong. BEA strips the gold out before it")
+    note("   reaches GDP rather than offsetting it afterwards, and the inventory")
+    note("   swing in those quarters is broad tariff front-running with nothing")
+    note("   to do with gold:")
     note("")
     q1 = sub.loc[pd.Timestamp("2025-01-01")]
     q2 = sub.loc[pd.Timestamp("2025-04-01")]
-    note(f"   2025Q1   imports {q1.pub_imp:+.2f}pp   inventories {q1.pub_inv:+.2f}pp   "
-         f"net {q1.pub_imp + q1.pub_inv:+.2f}pp")
-    note(f"   2025Q2   imports {q2.pub_imp:+.2f}pp   inventories {q2.pub_inv:+.2f}pp   "
-         f"net {q2.pub_imp + q2.pub_inv:+.2f}pp")
+    note(f"   2025Q1   imports {q1.pub_imp:+.2f}pp   inventories {q1.pub_inv:+.2f}pp")
+    note(f"   2025Q2   imports {q2.pub_imp:+.2f}pp   inventories {q2.pub_inv:+.2f}pp")
     note("")
-    note("   BEA did book a large offsetting inventory swing in both quarters, of")
-    note("   the same order as the gold term and with the right sign. That is")
-    note("   consistent with the offset working. It is not proof of it: the same")
-    note("   two quarters saw broad tariff front-running in everything else, so")
-    note("   the inventory line is not gold's alone and cannot be attributed.")
-    note("")
-    note("   The honest statement is therefore conditional, and both branches are")
-    note("   worth having:")
-    note("")
-    note(f"     if the inventory entry matched the gold, published GDP is right")
-    note(f"     and only its composition is wrong - the import drag and the")
-    note(f"     inventory boost on 2025Q1 are each about {abs(q1.gold_contrib_pp):.1f}pp too big;")
-    note("")
-    note(f"     if it did not, 2025Q1 growth is understated by up to "
-         f"{abs(q1.gold_contrib_pp):.1f}pp and 2025Q2")
-    note(f"     overstated by up to {q2.gold_contrib_pp:.1f}pp.")
+    note("   So the numbers in step 4 are not a claim about published GDP. They")
+    note("   are what a GDP figure built off raw trade data would show, and the")
+    note("   place that actually happened is the nowcast.")
 
-    heading("STEP 6  The nowcast had no offset at all")
-    note("   A nowcast bridges from monthly source data. The advance trade report")
-    note("   arrives weeks before any inventory figure, so an import surge hits")
-    note("   the nowcast immediately and the cancelling entry arrives late or not")
-    note("   at all. That is a structural feature of nowcasting, not an error by")
-    note("   anyone, and it is exactly what this episode exploited.")
+    heading("STEP 6  The nowcast bridged from a series BEA does not use")
+    note("   Here is the bug, stated exactly. GDPNow targets the BEA advance")
+    note("   estimate, which EXCLUDES nonmonetary gold. It bridged to it from BOP")
+    note("   goods imports, which INCLUDE nonmonetary gold. The model was mapping")
+    note("   a trade series into a GDP concept that does not contain what the")
+    note("   trade series contains, and for a decade that did not matter because")
+    note("   monthly gold imports ran a billion or two.")
     note("")
     nc = sub.loc[pd.Timestamp("2025-01-01")]
     note(f"   Atlanta Fed GDPNow, final 2025Q1 reading   {nc.nowcast:+.2f}%")
@@ -335,14 +360,42 @@ def step_offset(sub: pd.DataFrame) -> None:
          f"{nc.nowcast - nc.gdp_growth:+.2f}pp")
     note(f"   Gold term computed here                    {nc.gold_contrib_pp:+.2f}pp")
     note("")
-    note(f"   The miss and the gold term agree to "
-         f"{abs((nc.nowcast - nc.gdp_growth) - nc.gold_contrib_pp):.2f}pp, which is TOO NEAT and")
-    note("   should not be read as a decomposition. The direct evidence is in")
-    note("   make_gdpnow_chart.py: the Atlanta Fed built a gold-adjusted GDPNow")
-    note("   and ran it beside the standard one, and the gap between them is")
-    note("   2.3pp at its widest and 1.2pp at the final vintage - real, large,")
-    note("   and smaller than the whole miss. GDPNow missed for several reasons")
-    note("   at once and this arithmetic cannot apportion them.")
+    note("   The direct test of the correction in step 5: if published growth is")
+    note("   already gold-free, then adding the gold term back should reconstruct")
+    note("   what the unadjusted nowcast actually printed.")
+    note("")
+    note(f"      published {nc.gdp_growth:+.2f}%  +  gold {nc.gold_contrib_pp:+.2f}pp  "
+         f"=  {nc.gdp_passthrough:+.2f}%")
+    note(f"      GDPNow, standard model, final vintage   =  {nc.nowcast:+.2f}%")
+    note(f"      gap {abs(nc.gdp_passthrough - nc.nowcast):.2f}pp")
+    note("")
+    note("   That is a reconstruction of a number built by a different model on")
+    note("   different data, from customs figures and an accounting identity, and")
+    note("   it lands a fifth of a point away. It would not work if published GDP")
+    note("   still contained the gold, which is the check on step 5.")
+    note("")
+    note("   BUT DO NOT READ IT AS 'GOLD EXPLAINS THE WHOLE MISS'. Note first")
+    note("   that this gap and the miss-minus-gold-term gap are the SAME number:")
+    note("   nowcast - (published + gold) is identically (nowcast - published) -")
+    note("   gold. One comparison, not two pieces of evidence.")
+    note("")
+    note("   And it cannot be the whole story, because the Atlanta Fed's own")
+    note("   gold-adjusted model - which does strip gold out of the trade inputs")
+    note(f"   - still read {nc.nowcast + 1.23:+.2f}% at the final vintage against an advance")
+    note("   estimate of -0.28%. Had gold been the entire miss, their adjusted")
+    note("   model would have landed on it. It did not.")
+    note("")
+    note("   The defensible reading has three parts:")
+    note("")
+    note("     the gold effect on the nowcast is AT LEAST their wedge, 1.2-2.3pp;")
+    note(f"     {abs(nc.gold_contrib_pp):.2f}pp is an upper bound - what gold is worth to an")
+    note("     estimate that passes the trade data straight through;")
+    note("     the remainder is ordinary forecast error, and at ~1.2pp it is")
+    note("     unremarkable against GDPNow's 1.20pp RMSE over 49 quarters.")
+    note("")
+    note("   For scale on the whole episode: 2025Q1's final-vintage error of")
+    note("   +2.46pp is the fourth largest in GDPNow's history and the largest")
+    note("   outside the three pandemic quarters of 2020.")
     note("")
     note("   The two adjustments are also not the same object. The Atlanta Fed")
     note("   subtracts gold from the trade aggregates its bridge equations")
@@ -375,14 +428,15 @@ def figure(sub: pd.DataFrame) -> None:
     q1 = d.loc[pd.Timestamp("2025-01-01")]
     q2 = d.loc[pd.Timestamp("2025-04-01")]
     fig.text(0.030, 0.940,
-             f"Gold made GDP look {abs(q1.gold_contrib_pp):.1f} points too weak, then "
-             f"{q2.gold_contrib_pp:.1f} points too strong",
+             f"Pass the gold through and the quarter reads "
+             f"{abs(q1.gold_contrib_pp):.1f} points weaker, then "
+             f"{q2.gold_contrib_pp:.1f} stronger",
              fontsize=17, color=INK, ha="left", va="top", fontweight="bold")
     fig.text(0.030, 0.900,
-             "Net US imports of gold, and what they contributed to annualised "
-             "real GDP growth if nothing in the accounts offsets\n"
-             "them. Arriving metal is an import, so it subtracts; the same metal "
-             "leaving a quarter later adds it all back",
+             "Net US imports of gold, and what a GDP figure built straight off "
+             "the trade data would print. Published GDP is not this: BEA\n"
+             "removes nonmonetary gold from the national accounts. These are the "
+             "bars a trade-driven estimate gets, and a nowcast is one",
              fontsize=12, color=INK, ha="left", va="top", linespacing=1.35)
 
     for ax in (ax1, ax2):
@@ -405,8 +459,8 @@ def figure(sub: pd.DataFrame) -> None:
 
     w = 0.38
     ax2.bar(x - w / 2, d.gdp_growth, width=w, color=GREY, label="Published")
-    ax2.bar(x + w / 2, d.gdp_ex_gold, width=w, color=RED,
-            label="With the gold term taken out")
+    ax2.bar(x + w / 2, d.gdp_passthrough, width=w, color=RED,
+            label="If the gold were passed through")
     ax2.set_ylabel("Annualised real GDP growth, %", color=SOFT, fontsize=11)
     ax2.set_xticks(x)
     ax2.set_xticklabels(labels)
@@ -421,18 +475,21 @@ def figure(sub: pd.DataFrame) -> None:
         if m in (pd.Timestamp("2025-01-01"), pd.Timestamp("2025-04-01")):
             r = d.loc[m]
             ax2.annotate(f"gold {r.gold_contrib_pp:+.1f}pp",
-                         xy=(xi, max(r.gdp_growth, r.gdp_ex_gold) + 0.18),
+                         xy=(xi, max(r.gdp_growth, r.gdp_passthrough) + 0.22),
                          fontsize=10.5, color=INK, ha="center", va="bottom",
                          fontweight="bold")
-    ax2.set_ylim(min(d.gdp_ex_gold.min(), 0) - 0.4, d.gdp_ex_gold.max() + 1.0)
+    ax2.set_ylim(min(d.gdp_passthrough.min(), 0) - 0.5,
+                 max(d.gdp_passthrough.max(), d.gdp_growth.max()) + 1.2)
 
     src = ("Gold is US imports minus exports of HS 7108 and 7115, all partners, "
            "converted to tonnes at the LBMA PM benchmark and valued at the "
-           "previous quarter's price. The\n"
-           "contribution assumes no offsetting entry anywhere else in the "
-           "accounts; if the metal was booked as inventory investment, as some "
-           "of it was, published GDP is unaffected\n"
-           "and only its composition is wrong. Complete quarters only\n"
+           "previous quarter's price. That\n"
+           "contribution is what the trade figure implies for GDP growth. It is "
+           "NOT what published GDP did: BEA removes nonmonetary gold from the "
+           "national accounts and replaces it\n"
+           "with domestic production less industrial use. The red bars are the "
+           "error available to anyone reading GDP off trade data. Complete "
+           "quarters only\n"
            " \n"
            "Source: US Census Bureau; Bureau of Economic Analysis; LBMA")
     fig.text(0.030, 0.012, src, fontsize=9, color=SOFT, ha="left", va="bottom",
