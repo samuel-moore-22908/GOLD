@@ -129,6 +129,21 @@ di as txt "largest month           : " %7.1f `PEAK' " t in `PEAK_M'"
 di as txt "{hline 62}"
 
 *=========================================================== 4. the figure
+* BARS SIT AT THE MIDDLE OF THEIR MONTH, not on its first instant.
+*
+* A %tm value is a point at the START of the month, so a bar centred on m and
+* 0.85 wide runs from mid-December to mid-January and the January bar is half
+* in December. Plotting at m + 0.5 makes it cover the month it reports. The
+* January bar then sits half a tick to the right of the "2025" label, which
+* looks unfamiliar in Stata and is the correct position.
+*
+* It also reconciles this figure with the lower panel of fig2, which is on a
+* daily axis and places each month at its median trading day - that is half a
+* month after the 1st, so the two were drawing the same bar half a month apart
+* until this line was added.
+gen double mplot = m + 0.5
+format mplot %tm
+
 gen double pos = net_t if net_t >= 0
 gen double neg = net_t if net_t <  0
 
@@ -149,8 +164,8 @@ local YHI = ceil(r(max) / 100) * 100
 local YLO = floor(r(min) / 100) * 100
 
 twoway                                                                      ///
-    (bar pos m, barwidth(0.85) color("`RED'") lwidth(none))                 ///
-    (bar neg m, barwidth(0.85) color("`GREY'") lwidth(none))                ///
+    (bar pos mplot, barwidth(0.85) color("`RED'") lwidth(none))                 ///
+    (bar neg mplot, barwidth(0.85) color("`GREY'") lwidth(none))                ///
     ,                                                                       ///
     yline(0, lcolor("`SOFT'") lwidth(0.20))                                 ///
     title("███", size(vsmall) color("`RED'")                                ///
