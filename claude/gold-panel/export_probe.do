@@ -34,7 +34,16 @@
 version 18
 clear all
 set more off
-cd "C:/Users/smoor/GitHub/GOLD"
+* Not hardcoded to one machine: try the author's path, otherwise assume the
+* session is already in the repo, and fail loudly rather than running against
+* whatever directory happens to be current.
+cap cd "C:/Users/smoor/GitHub/GOLD"
+cap confirm file "claude/gold-panel/gold_panel.do"
+if _rc {
+    di as err "Not in the GOLD repo. cd there first, then run this again."
+    di as err "  current directory: `c(pwd)'"
+    exit 170
+}
 
 global STAGE 1        // 1 = trivial graph, 2 = the real 13x7.4in panel
 
