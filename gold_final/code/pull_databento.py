@@ -49,9 +49,12 @@ ARCHIVE_DIR = "data/databento"          # the purchased Databento zips
 MINUTE_DIR = "data/databento/minute"    # the purchased minute bars
 OUT_DIR = "gold_final/data/raw"         # where this script writes
 # prices.lbma.org.uk sits behind Cloudflare and now refuses non-browser
-# clients, so a cached copy is the working source. Replace it by saving
-# gold_pm.json from the site in a browser.
-LBMA_CACHE = "claude/premium-carry-series/raw_cache/lbma_gold_pm.json"
+# clients, so this copy is the working source rather than a fallback. It is
+# therefore COMMITTED, unlike everything else the pulls read: a file that can no
+# longer be fetched by a script is an input, not a cache, and losing it would
+# make the spread unreproducible on a new machine. Refresh it by opening the URL
+# in a browser - Cloudflare passes those - and saving the JSON over this one.
+LBMA_CACHE = "gold_final/reference/lbma_gold_pm.json"
 # ============================================================================
 
 DATASET = "GLBX.MDP3"
