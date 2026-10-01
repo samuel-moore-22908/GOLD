@@ -436,8 +436,27 @@ def build_lbma() -> pd.DataFrame:
                 f"   and no cached copy at {cache}.\n"
                 f"   Download gold_pm.json by hand from prices.lbma.org.uk in a\n"
                 f"   browser and save it there, or point LBMA_CACHE elsewhere.")
-        raw = json.loads(cache.read_text(encoding="utf-8"))
-        say(f"   LBMA: using the cached copy at {cache.relative_to(ROOT)}")
+        # Windows reports opening a directory as PermissionError (Errno 13),
+        # not IsADirectoryError, so LBMA_CACHE set to the folder rather than the
+        # file inside it fails with a message that reads like a rights problem
+        # and is nothing of the sort. Say which it actually is.
+        if cache.is_dir():
+            raise SystemExit(
+                f"   LBMA_CACHE points at a DIRECTORY, not a file:\n"
+                f"     {cache}\n"
+                f"   It needs the .json itself, e.g.\n"
+                f"     LBMA_CACHE = r\"{cache / 'lbma_gold_pm.json'}\"")
+        try:
+            raw = json.loads(cache.read_text(encoding="utf-8"))
+        except PermissionError as e:
+            raise SystemExit(
+                f"   cannot read {cache}\n"
+                f"   ({e.strerror}). On Windows this is usually one of:\n"
+                f"     - the file is open in another program;\n"
+                f"     - it sits in a synced or company-managed folder;\n"
+                f"     - it is marked read-only or owned by another account.\n"
+                f"   Copy it somewhere you own and point LBMA_CACHE there.") from e
+        say(f"   LBMA: using the cached copy at {cache}")
     d = pd.DataFrame({"date": [r["d"] for r in raw],
                       "lbma_pm_usd": [r["v"][0] if r.get("v") else None
                                       for r in raw]})
