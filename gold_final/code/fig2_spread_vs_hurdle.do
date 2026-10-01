@@ -36,11 +36,10 @@
 *!          spread = S * (exp(p + 90b) - 1)
 *!          hurdle = S * (exp(90b) - 1) + kappa
 *!
-*!      kappa is the one-off cost of flying and recasting an ounce, estimated
-*!      from the kink in the premium-tonnage relationship in earlier work at
-*!      $0.78 westward and -$0.95 eastward. Its interval contains zero; it is an
-*!      assumption with a range, not a measurement, and the band drawn in panel
-*!      A is exactly that assumption made visible.
+*!      kappa is the one-off cost of flying and recasting an ounce: $0.75,
+*!      the same in both directions, built from published and reported rates
+*!      rather than estimated from the flows. The build is in the spec block
+*!      below. The band drawn in panel A is exactly that figure made visible.
 *!
 *! PANEL B IS US CUSTOMS, NOT SWISS. Census reports value and not mass for these
 *! headings, so the tonnage is DERIVED - the month's customs value over the LBMA
@@ -96,8 +95,41 @@ local MIN_N    = 3
 local WPOW = 0.5
 
 local HORIZON = 90
-local KAPPA_W =  0.78
-local KAPPA_E = -0.95
+
+* KAPPA: the one-off cost of physically relocating an ounce, in dollars. ONE
+* number, applied symmetrically, built from published and reported rates rather
+* than estimated from the flows.
+*
+*   air freight, secure carrier, London <-> New York      0.20
+*   recasting 400 oz Good Delivery <-> kilobar / 100 oz   0.20
+*   COMEX depository delivery out, $35.00 per 100 oz      0.35
+*                                                        -----
+*                                                         0.75
+*
+* Only the third line is a published tariff: CME's approved-depository fee
+* schedule sets a maximum of $35.00 per contract for delivery out and $0.00 for
+* delivery in, and a gold contract is 100 troy ounces. The first two are the
+* figures the trade press reported for institutional London-New York movement
+* during the 2025 episode. They are not quotes we obtained, and a single real
+* quote from a secure carrier would still be the cheapest improvement available
+* to this project.
+*
+* NOT INCLUDED, deliberately: the ~$0.10 an ounce of transit financing those
+* same reports cite. Financing is already in the carry term the hurdle is built
+* on, and adding it here would count it twice.
+*
+* NOT USED: retail parcel rates of $300-500 a kilogram, which circulate widely
+* and work out at $9-16 an ounce. They price a one-kilo consignment to a private
+* buyer, not a tonne moving between bullion banks on a scheduled commercial
+* flight, and are two orders of magnitude from the right answer.
+*
+* SYMMETRIC, where the previous version used +0.78 westward and -0.95 eastward.
+* The physical operation is the same in both directions - fly it, recast it, book
+* it in or out - and the asymmetry came from a flow-based estimate whose 90%
+* intervals, [-0.46, +2.43] and [-1.78, +0.80], both contained zero and whose
+* point estimate changed sign across specifications. A symmetric constant from
+* published rates claims less and is easier to check.
+local KAPPA = 0.75
 local OZ_PER_TONNE = 32150.7
 
 tempfile px eps monthly flows
@@ -193,8 +225,8 @@ gen double p = spread_pct / 100
 gen double bd = carry_pct / 100 / 365
 gen double spread90 = spot * (exp(p + bd * `HORIZON') - 1)
 gen double carry90  = spot * (exp(bd * `HORIZON') - 1)
-gen double hurdle_w = carry90 + `KAPPA_W'
-gen double hurdle_e = carry90 + `KAPPA_E'
+gen double hurdle_w = carry90 + `KAPPA'
+gen double hurdle_e = carry90 - `KAPPA'
 gen byte clears_w = spread90 > hurdle_w
 gen byte clears_e = spread90 < hurdle_e
 
@@ -353,9 +385,10 @@ graph combine gTop gBot, cols(1) imargin(small) iscale(*0.95)               ///
              "Above the band the westward trade pays; below it the eastward one does", ///
              size(medsmall) color("`INK'") position(11) justification(left)) ///
     note("The spread is a daily open-interest-weighted projection of the COMEX curve onto log price against days to first notice, re-timed" ///
-         "to the London auction so the three-and-a-half-hour gap between the two fixings is removed from the intercept. kappa, the shipping" ///
-         "term in the hurdle, is an assumption with an interval containing zero, not a measurement. Panel B is US customs, both headings," ///
-         "with tonnage derived from customs value" ///
+         "to the London auction so the three-and-a-half-hour gap between the two fixings is removed from the intercept. The shipping term in" ///
+         "the hurdle is {c $|}0.75 an ounce in both directions: {c $|}0.35 of COMEX depository delivery-out charge, which is a published tariff, plus" ///
+         "{c $|}0.20 of air freight and {c $|}0.20 of recasting, which are reported institutional rates rather than quotes we obtained. Panel B is US" ///
+         "customs, both headings, with tonnage derived from customs value" ///
          " "                                                                ///
          "Source: Databento GLBX.MDP3 re-timed to the LBMA auction; LBMA; US Census Bureau", ///
          size(tiny) color("`SOFT'") position(7) justification(left))        ///
