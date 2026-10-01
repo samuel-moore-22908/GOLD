@@ -393,9 +393,23 @@ di as txt "frame                : " %5.0f `LIMLO' " to " %5.0f `LIM'
 * regions end up different widths - the y labels differ in length - and the
 * years stop lining up between the panels, which is the one thing a stacked
 * pair has to get right.
+* NOEXTEND is the operative word here. range() sets a MINIMUM extent and Stata
+* then adds its own padding on top, so without noextend the drawn axis is wider
+* than the range asked for - and anything positioned at XMAX, such as the
+* outlier note below, floats short of the right edge instead of sitting on it.
+* With noextend the axis is exactly XMIN to XMAX and the anchor means what it
+* says.
+*
+* The pad is a fraction of the span rather than a fixed number of days, so it
+* stays proportionate if the sample is ever extended or shortened. A fixed 20
+* days is right for eleven years and wrong for one.
 qui summarize t, meanonly
-local XMIN = r(min) - 20
-local XMAX = r(max) + 20
+local SPAN = r(max) - r(min)
+local XMIN = r(min) - round(`SPAN' * 0.01)
+local XMAX = r(max) + round(`SPAN' * 0.01)
+di as txt "x range              : " %tdCCYY-NN-DD `XMIN' " to " ///
+    %tdCCYY-NN-DD `XMAX' "  (span " `SPAN' " days, pad " ///
+    round(`SPAN' * 0.01) " either side)"
 
 twoway                                                                      ///
     (line sp_d_in t, lcolor("`GREY'%45") lwidth(0.09) cmissing(n))          ///
@@ -415,7 +429,7 @@ twoway                                                                      ///
     xtitle("")                                                              ///
     xlabel(`XLAB', format(%tdCCYY) labsize(vsmall) tlcolor(none)            ///
            labcolor("`SOFT'") grid glcolor("`RULE'") glwidth(0.28))         ///
-    xscale(range(`XMIN' `XMAX'))                                            ///
+    xscale(range(`XMIN' `XMAX') noextend)                                            ///
     text(`LIMLO' `XMAX' "`N_OUT' of `N_DAILY' daily prints fall outside the frame", ///
          size(vsmall) color("`SOFT'") placement(nw) justification(right))   ///
     legend(order(2 "No-trade band: carry + shipping, both ways"             ///
@@ -448,7 +462,7 @@ twoway                                                                      ///
     xtitle("")                                                              ///
     xlabel(`XLAB', format(%tdCCYY) labsize(vsmall) tlcolor(none)            ///
            labcolor("`SOFT'") grid glcolor(none))                           ///
-    xscale(range(`XMIN' `XMAX'))                                            ///
+    xscale(range(`XMIN' `XMAX') noextend)                                            ///
     legend(off)                                                             ///
     graphregion(color(white) lcolor(white)) plotregion(lstyle(none))        ///
     name(gBot, replace) nodraw
