@@ -258,6 +258,9 @@ di as txt "premium sd, re-timed : " %5.3f `SD_RAW' "%"
 preserve
     keep d spread90
     rename spread90 sp_d
+    * the month key the monthly frame is merged on
+    gen double m = mofd(d)
+    format m %tm
     save `daily'
 restore
 
@@ -320,23 +323,47 @@ di as txt "after   Apr25-Aug25  : " %7.1f `EP_BACK' " t net"
 * monthly observation is placed at the MIDDLE of its month rather than the 1st,
 * which centres the monthly line over the daily cloud it summarises instead of
 * hanging it off the left edge of each month.
-gen double t = dofm(m) + 14
-format t %td
 rename (spread90 carry90 hurdle_w hurdle_e) (sp_m carry_m hw_m he_m)
-keep t sp_m carry_m hw_m he_m net_to_us
+keep m sp_m carry_m hw_m he_m net_to_us
 
-append using `daily'
-replace t = d if missing(t)
+* ONE ROW PER TRADING DAY, with the monthly series INTERPOLATED onto that grid,
+* rather than monthly rows appended among the daily ones.
+*
+* The appended version drew no shaded excursions at all. Each monthly point sat
+* alone between about twenty daily rows on which the monthly variables were
+* missing, so rarea with cmissing(n) broke the area at every single point and
+* filled nothing - the 2020 and 2025 excursions, the whole reason the shading
+* exists, were simply absent. Dropping cmissing(n) is not the fix either: the
+* area would then be joined across the months where the spread is INSIDE the
+* band, shading regions that should be empty.
+*
+* Interpolating onto the daily grid resolves both. The monthly variables are
+* then present on every row, so cmissing(n) breaks the area only where the
+* condition genuinely fails, and it does so at the crossing itself rather than
+* at the next month-end. That second part matters: without it an excursion
+* begins and ends with a vertical edge at an arbitrary monthly observation,
+* which is what makes rarea areas look wrong even when they are drawn. Here the
+* crossing is located to within a day.
+merge 1:m m using `daily', keep(match using) nogen
+sort d
+by d: keep if _n == 1
+
+* Hold each monthly value at the middle of its month and interpolate between,
+* so the monthly line is piecewise linear on a daily axis rather than a step.
+gen int mm = mofd(d)
+bysort mm (d): gen byte mid = (_n == ceil(_N / 2))
+foreach v in sp_m carry_m hw_m he_m {
+    qui replace `v' = . if !mid
+    qui ipolate `v' d, gen(`v'_i)
+    drop `v'
+    rename `v'_i `v'
+}
+* Bars stay at the monthly points: a bar is already an interval, and spreading
+* one across the month would double-count it.
+qui replace net_to_us = . if !mid
+
+gen double t = d
 format t %td
-drop d
-sort t
-
-* Monthly variables are missing on the ~2,860 daily rows and the daily variable
-* is missing on the 139 monthly ones. That is exactly what is wanted here, and
-* it is the one place in this project where twoway's default cmissing(y) - join
-* straight across missing values - is the behaviour to keep rather than to
-* override: it is what connects each monthly point to the next across the daily
-* rows sitting between them.
 
 * Shaded excursions above the westward hurdle and below the eastward one.
 * Blanked rather than restricted with `if', and cmissing(n), so the areas break
@@ -345,6 +372,11 @@ gen double up_hi = sp_m if sp_m > hw_m
 gen double up_lo = hw_m if sp_m > hw_m
 gen double dn_hi = he_m if sp_m < he_m
 gen double dn_lo = sp_m if sp_m < he_m
+qui count if !missing(up_hi)
+local N_UP = r(N)
+qui count if !missing(dn_hi)
+local N_DN = r(N)
+di as txt "shaded days          : " `N_UP' " above the band, " `N_DN' " below
 
 * X LABELS, AND WHY THEY ARE BUILT WITH A LOOP.
 * On a monthly axis a year is exactly 12 units, so xlabel(a(12)b) is a clean
