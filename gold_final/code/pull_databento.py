@@ -54,6 +54,10 @@ OUT_DIR = "gold_final/data/raw"         # where this script writes
 # longer be fetched by a script is an input, not a cache, and losing it would
 # make the spread unreproducible on a new machine. Refresh it by opening the URL
 # in a browser - Cloudflare passes those - and saving the JSON over this one.
+#
+# Like every path in this block, an absolute location works too, so point it at
+# a local copy if the repo itself is somewhere awkward:
+#     LBMA_CACHE = r"C:/gold_data/lbma_gold_pm.json"
 LBMA_CACHE = "gold_final/reference/lbma_gold_pm.json"
 # ============================================================================
 
@@ -93,9 +97,30 @@ import zstandard
 
 ROOT = Path(REPO_ROOT).expanduser().resolve() if REPO_ROOT \
     else Path(__file__).resolve().parents[2]
-ARCH = ROOT / ARCHIVE_DIR
-MINUTE = ROOT / MINUTE_DIR
-OUT = ROOT / OUT_DIR
+
+
+def _at(value: str) -> Path:
+    """Resolve one of the configured paths above.
+
+    An absolute path wins outright and a leading ~ expands; anything else is
+    taken relative to the repo root. That means every entry in the block at the
+    top can point OUTSIDE the repo - at a local copy, another drive, a folder
+    you actually have rights to - without touching anything else. Useful when
+    the repo sits somewhere read-only, on a network share, or inside a synced
+    folder that refuses writes.
+
+    The ~ case is the one worth having: pathlib already replaces on an absolute
+    join, so "C:/data/x.json" worked before this, but "~/data/x.json" quietly
+    produced <repo>/~/data/x.json and then a file-not-found pointing at a path
+    that looks almost right.
+    """
+    p = Path(value).expanduser()
+    return p if p.is_absolute() else ROOT / p
+
+
+ARCH = _at(ARCHIVE_DIR)
+MINUTE = _at(MINUTE_DIR)
+OUT = _at(OUT_DIR)
 LONDON, NEW_YORK, UTC = ZoneInfo("Europe/London"), ZoneInfo("America/New_York"), ZoneInfo("UTC")
 OUTRIGHT = re.compile(r"^GC([FGHJKMNQUVXZ])(\d{1,2})$")
 
@@ -405,7 +430,7 @@ def build_lbma() -> pd.DataFrame:
     except Exception as e:
         say(f"   LBMA: live fetch failed ({type(e).__name__})")
     if raw is None:
-        cache = ROOT / LBMA_CACHE
+        cache = _at(LBMA_CACHE)
         if not cache.exists():
             raise SystemExit(
                 f"   and no cached copy at {cache}.\n"
