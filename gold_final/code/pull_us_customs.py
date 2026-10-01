@@ -45,8 +45,8 @@ from __future__ import annotations
 # EDIT THIS BLOCK IF YOU MOVE THE PROJECT
 # ============================================================================
 REPO_ROOT = ""                      # blank = infer from this file's location
-ENV_FILE = ".env"                   # relative to the repo root
-OUT_DIR = "gold_final/data/raw"     # relative to the repo root
+ENV_FILE = ".env"                   # relative to the root, or an absolute path
+OUT_DIR = "gold_final/data/raw"     # relative to the root, or an absolute path
 # ============================================================================
 
 # HS 7108 is gold unwrought, 7115 is where the bars were booked in the episode.
@@ -75,7 +75,21 @@ from pathlib import Path
 
 ROOT = Path(REPO_ROOT).expanduser().resolve() if REPO_ROOT \
     else Path(__file__).resolve().parents[2]
-OUT = ROOT / OUT_DIR
+
+
+def _at(value: str) -> Path:
+    """Resolve one of the configured paths above.
+
+    An absolute path wins outright and a leading ~ expands; anything else is
+    taken relative to the repo root. So OUT_DIR and ENV_FILE can both point
+    outside the repo - at a drive you have rights to, a folder outside a synced
+    directory - without touching anything else. Matches pull_databento.py.
+    """
+    p = Path(value).expanduser()
+    return p if p.is_absolute() else ROOT / p
+
+
+OUT = _at(OUT_DIR)
 BASE = "https://api.census.gov/data/timeseries/intltrade"
 UA = {"User-Agent": "academic research (gold trade deconvolution)"}
 
@@ -95,7 +109,7 @@ def api_key() -> str:
     failing on an HTTP redirect to a 'Missing Key' page, which is what the API
     does and which is not obvious from the traceback.
     """
-    env = ROOT / ENV_FILE
+    env = _at(ENV_FILE)
     if env.exists():
         for line in env.read_text(encoding="utf-8").splitlines():
             line = line.strip()
