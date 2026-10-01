@@ -10,7 +10,15 @@ gold_final/
   data/      raw pulls and run logs - regenerate, not committed
   figures/   the four PDFs
   letter/    the write-up that uses them
+  reference/ static inputs that can no longer be fetched - committed
 ```
+
+`reference/lbma_gold_pm.json` is the London PM benchmark back to 1968. It is the
+one data file in this project that is committed rather than pulled, because
+prices.lbma.org.uk now sits behind Cloudflare and returns 403 to scripted
+clients. A file a script can no longer fetch is an input, not a cache. Refresh
+it by opening the URL in a browser, which Cloudflare passes, and saving the JSON
+over it.
 
 `letter/gold_letter.tex` is the write-up: a policy letter in the format of a
 Chicago Fed Letter, roughly 4,100 words, using the four figures in order -
