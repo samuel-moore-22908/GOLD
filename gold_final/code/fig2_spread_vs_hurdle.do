@@ -132,7 +132,7 @@ local HORIZON = 90
 local KAPPA = 0.75
 local OZ_PER_TONNE = 32150.7
 
-tempfile px eps monthly flows
+tempfile px eps monthly flows daily
 
 *================================================================= 1. the spot
 import delimited using "$RAW/lbma_pm.csv", varnames(1) clear
@@ -251,6 +251,16 @@ di as txt "clearing eastward    : " `N_E' " (" %4.1f `PCT_E' "%)"
 di as txt "premium sd, raw      : " %5.3f `SD_PRE' "%"
 di as txt "premium sd, re-timed : " %5.3f `SD_RAW' "%"
 
+* The daily series is kept as well as the monthly means. Panel A draws it
+* faintly behind them: the monthly line is what the eye should follow, but a
+* reader is entitled to see how much is being averaged away, and in this series
+* that is a great deal - single days reach several times the monthly mean.
+preserve
+    keep d spread90
+    rename spread90 sp_d
+    save `daily'
+restore
+
 preserve
     gen double m = mofd(d)
     format m %tm
@@ -302,51 +312,116 @@ di as txt "episode Dec24-Mar25  : " %7.1f `EP_WEST' " t net west"
 di as txt "after   Apr25-Aug25  : " %7.1f `EP_BACK' " t net"
 
 *=========================================================== 6. the figure
+* ONE AXIS, IN DAYS. The daily series and the monthly means have to share an x
+* variable, and they cannot share a %tm one: a Stata monthly date is months
+* since 1960 and a daily date is days since 1960, so plotting both against
+* whichever variable happened to be in memory would crush eleven years of daily
+* data into the first fortnight of 1960. So everything moves onto %td, and each
+* monthly observation is placed at the MIDDLE of its month rather than the 1st,
+* which centres the monthly line over the daily cloud it summarises instead of
+* hanging it off the left edge of each month.
+gen double t = dofm(m) + 14
+format t %td
+rename (spread90 carry90 hurdle_w hurdle_e) (sp_m carry_m hw_m he_m)
+keep t sp_m carry_m hw_m he_m net_to_us
+
+append using `daily'
+replace t = d if missing(t)
+format t %td
+drop d
+sort t
+
+* Monthly variables are missing on the ~2,860 daily rows and the daily variable
+* is missing on the 139 monthly ones. That is exactly what is wanted here, and
+* it is the one place in this project where twoway's default cmissing(y) - join
+* straight across missing values - is the behaviour to keep rather than to
+* override: it is what connects each monthly point to the next across the daily
+* rows sitting between them.
+
 * Shaded excursions above the westward hurdle and below the eastward one.
 * Blanked rather than restricted with `if', and cmissing(n), so the areas break
 * where the condition fails instead of being drawn straight across it.
-gen double up_hi = spread90 if spread90 > hurdle_w
-gen double up_lo = hurdle_w if spread90 > hurdle_w
-gen double dn_hi = hurdle_e if spread90 < hurdle_e
-gen double dn_lo = spread90 if spread90 < hurdle_e
+gen double up_hi = sp_m if sp_m > hw_m
+gen double up_lo = hw_m if sp_m > hw_m
+gen double dn_hi = he_m if sp_m < he_m
+gen double dn_lo = sp_m if sp_m < he_m
 
-qui summarize m, meanonly
-local Y0 = year(dofm(r(min)))
-local Y1 = year(dofm(r(max)))
-local XLAB `=tm(`Y0'm1)'(24)`=tm(`Y1'm1)'
+* X LABELS, AND WHY THEY ARE BUILT WITH A LOOP.
+* On a monthly axis a year is exactly 12 units, so xlabel(a(12)b) is a clean
+* arithmetic sequence. On a DAILY axis a year is 365 units or 366, so no fixed
+* step lands on 1 January twice running - a step of 365 drifts a day earlier
+* every leap year and is four days out by the end of this sample. The year
+* starts therefore have to be enumerated rather than stepped.
+qui summarize t, meanonly
+local Y0 = year(dofd(r(min)))
+local Y1 = year(dofd(r(max)))
+local XLAB ""
+forvalues yr = `Y0'/`Y1' {
+    local XLAB `XLAB' `=mdy(1, 1, `yr')'
+}
+di as txt "x-axis: %td, year starts " `Y0' " to " `Y1'
+di as txt "xlabel(`XLAB')"
 
-qui summarize spread90
-local LIM = ceil(max(abs(r(max)), abs(r(min))) / 10) * 10 + 10
+
+* The frame is set from the MONTHLY series, not the daily one. The daily series
+* has a fat tail - its 99th percentile is around $77 and its minimum is -$219,
+* against a monthly series that never exceeds about $52 - so letting it set the
+* scale would squash eleven years of monthly means into the middle fifth of the
+* panel.
+qui summarize sp_m
+local LIM   = ceil(max(abs(r(max)), abs(r(min))) / 10) * 10 + 10
+local LIMLO = min(-10, r(min) - 8)
+qui summarize carry_m
+local LIM = max(`LIM', ceil(r(max) / 10) * 10 + 10)
+
+* yscale(range()) only ever WIDENS an axis in Stata; it cannot truncate one. So
+* the daily series has to be blanked outside the frame rather than merely
+* bounded, and drawn with cmissing(n) so the line BREAKS at each excursion
+* instead of being joined straight across it - a chord over a spike would draw
+* a line through prices that never happened. The count is reported in the
+* corner so the clipping is declared rather than hidden.
+gen double sp_d_in = sp_d if inrange(sp_d, `LIMLO', `LIM')
+qui count if !missing(sp_d) & !inrange(sp_d, `LIMLO', `LIM')
+local N_OUT = r(N)
+qui count if !missing(sp_d)
+local N_DAILY = r(N)
+di as txt "daily prints drawn   : " `N_DAILY' - `N_OUT' " of " `N_DAILY' ///
+    "  (" `N_OUT' " outside the frame)"
+di as txt "frame                : " %5.0f `LIMLO' " to " %5.0f `LIM'
 
 * Both panels get the SAME x range explicitly. Left to themselves the two plot
 * regions end up different widths - the y labels differ in length - and the
 * years stop lining up between the panels, which is the one thing a stacked
 * pair has to get right.
-qui summarize m, meanonly
-local XMIN = r(min) - 2
-local XMAX = r(max) + 2
+qui summarize t, meanonly
+local XMIN = r(min) - 20
+local XMAX = r(max) + 20
 
 twoway                                                                      ///
-    (rarea hurdle_e hurdle_w m, color("`GREY'%35") lwidth(none))            ///
-    (rarea up_hi up_lo m, color("`RED'%22") lwidth(none) cmissing(n))       ///
-    (rarea dn_hi dn_lo m, color("`GREY'%45") lwidth(none) cmissing(n))      ///
-    (line carry90 m, lcolor("`GREY'") lwidth(0.40))                         ///
-    (line spread90 m, lcolor("`RED'") lwidth(0.60))                         ///
+    (line sp_d_in t, lcolor("`GREY'%45") lwidth(0.09) cmissing(n))          ///
+    (rarea he_m hw_m t, color("`GREY'%35") lwidth(none))                    ///
+    (rarea up_hi up_lo t, color("`RED'%22") lwidth(none) cmissing(n))       ///
+    (rarea dn_hi dn_lo t, color("`GREY'%45") lwidth(none) cmissing(n))      ///
+    (line carry_m t, lcolor("`GREY'") lwidth(0.40))                         ///
+    (line sp_m t, lcolor("`RED'") lwidth(0.60))                             ///
     ,                                                                       ///
     title("The spread, and what it has to clear", size(medsmall)            ///
           color("`INK'") position(11) justification(left))                  ///
-    subtitle("Dollars an ounce at a fixed ninety-day horizon, monthly means", ///
+    subtitle("Dollars an ounce at a fixed ninety-day horizon; daily in the background, monthly means drawn", ///
              size(vsmall) color("`SOFT'") position(11) justification(left)) ///
     ytitle("Dollars per ounce", size(vsmall) color("`SOFT'"))               ///
     ylabel(, angle(0) labsize(vsmall) tlcolor(none) labcolor("`SOFT'")      ///
            grid glcolor("`RULE'") glwidth(0.28))                            ///
     xtitle("")                                                              ///
-    xlabel(`XLAB', format(%tmCCYY) labsize(vsmall) tlcolor(none)            ///
+    xlabel(`XLAB', format(%tdCCYY) labsize(vsmall) tlcolor(none)            ///
            labcolor("`SOFT'") grid glcolor("`RULE'") glwidth(0.28))         ///
     xscale(range(`XMIN' `XMAX'))                                            ///
-    legend(order(1 "No-trade band: carry + shipping, both ways"             ///
-                 4 "Composite carry to delivery"                            ///
-                 5 "Estimated spread at 90 days")                           ///
+    text(`LIMLO' `XMAX' "`N_OUT' of `N_DAILY' daily prints fall outside the frame", ///
+         size(vsmall) color("`SOFT'") placement(nw) justification(right))   ///
+    legend(order(2 "No-trade band: carry + shipping, both ways"             ///
+                 5 "Composite carry to delivery"                            ///
+                 6 "Estimated spread at 90 days"                            ///
+                 1 "Daily")                                                 ///
            position(11) ring(0) cols(1) region(lstyle(none) color(none))    ///
            size(vsmall) symxsize(7) color("`SOFT'"))                        ///
     graphregion(color(white) lcolor(white)) plotregion(lstyle(none))        ///
@@ -355,9 +430,11 @@ twoway                                                                      ///
 gen double pos = net_to_us if net_to_us >= 0
 gen double neg = net_to_us if net_to_us <  0
 
+* barwidth is in axis units, and the axis is now DAYS rather than months, so a
+* month-wide bar is about 26 rather than 0.85.
 twoway                                                                      ///
-    (bar pos m, barwidth(0.85) color("`RED'") lwidth(none))                 ///
-    (bar neg m, barwidth(0.85) color("`GREY'") lwidth(none))                ///
+    (bar pos t, barwidth(26) color("`RED'") lwidth(none))                   ///
+    (bar neg t, barwidth(26) color("`GREY'") lwidth(none))                  ///
     ,                                                                       ///
     yline(0, lcolor("`SOFT'") lwidth(0.20))                                 ///
     title("Net metal shipped", size(medsmall) color("`INK'")                ///
@@ -369,7 +446,7 @@ twoway                                                                      ///
     ylabel(, angle(0) labsize(vsmall) tlcolor(none) labcolor("`SOFT'")      ///
            grid glcolor("`RULE'") glwidth(0.28))                            ///
     xtitle("")                                                              ///
-    xlabel(`XLAB', format(%tmCCYY) labsize(vsmall) tlcolor(none)            ///
+    xlabel(`XLAB', format(%tdCCYY) labsize(vsmall) tlcolor(none)            ///
            labcolor("`SOFT'") grid glcolor(none))                           ///
     xscale(range(`XMIN' `XMAX'))                                            ///
     legend(off)                                                             ///
