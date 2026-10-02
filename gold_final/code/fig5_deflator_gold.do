@@ -2,22 +2,48 @@
 *!
 *! Can the import price index see the gold?
 *!
-*! THE QUESTION. Real monthly trade is nominal trade divided by a price index.
-*! The index BLS publishes, and that anyone deflating trade data reaches for, is
-*! a modified LASPEYRES: fixed base-period quantities. BLS does sample
-*! nonmonetary gold, so gold is in the basket - the naive version of this
-*! worry, that gold is missing from the index, is wrong. The problem is the
-*! WEIGHT, not the coverage. A fixed-weight index carries gold at roughly its
-*! base-period share of trade, and gold's actual share went from about half a
-*! percent before 2020 to ten and a half percent in January 2025.
+*! CORRECTED. This file previously assumed that gold sat in the index at a
+*! FIXED base-period weight of about 0.5%, and said openly that the number was
+*! an assumption because "BLS does not publish the gold weight". Both halves of
+*! that were wrong, and the correction came from reading the BLS Handbook of
+*! Methods rather than from new data.
+*!
+*!   - The weight is not fixed. The indexes use a LOWE (modified fixed-quantity
+*!     Laspeyres) formula, chained monthly, and BLS reweights every January
+*!     from Census annual trade values on a TWO-YEAR LAG. Their own example:
+*!     "the weights for the indexes in 2025 are based on the import and export
+*!     trade weights from the 2023 calendar year."
+*!   - So the weight is computable, not unknown. It is the previous-but-one
+*!     year's annual share, taken here from the same Census pull that gives
+*!     the monthly share. The old two-value sensitivity bracket is gone
+*!     because there is nothing left to assume.
+*!   - Gold inflation no longer needs the LBMA price as a proxy either. BLS
+*!     publishes a nonmonetary gold index for each side of the account
+*!     (EIUIR14270, EIUIQ12260), and this file now uses the import one.
+*!
+*! The headline number moves as a result. The wedge between the published
+*! index and the reweighted one at the latest reading was 2.4 points under the
+*! old assumption and is 2.1 points on the computed weight. Expressed as a
+*! cumulated log bias from January 2020 - which is what fig7_real_drift.do
+*! plots, and the directly comparable figure - it is 1.74 points. The
+*! direction and the argument are unchanged; the magnitude was overstated by
+*! roughly an eighth.
+*!
+*! THE QUESTION. Real monthly trade is nominal trade divided by a price index,
+*! and the index has to carry each component at the share the thing being
+*! deflated actually has. BLS does sample nonmonetary gold, so gold is in the
+*! basket - the naive version of this worry, that gold is missing from the
+*! index, is wrong. The problem is the WEIGHT, not the coverage. The index
+*! carries gold at its share two years ago, and gold's actual share went from
+*! about half a percent before 2020 to ten and a half percent in January 2025.
 *!
 *! THE ARITHMETIC is the standard index-number decomposition. If a component
 *! sits at current share s_t but is weighted at w_base, the published inflation
 *! rate misses
 *!
-*!     pi_adjusted - pi_published = (s_t - w_base) * (pi_gold - pi_nongold)
+*!     pi_adjusted - pi_published = (s_t - w_t) * (pi_gold - pi_nongold)
 *!
-*! with pi_nongold backed out of the published index given w_base. The term is
+*! with pi_nongold backed out of the published index given w_t. The term is
 *! the share gap times the inflation differential, and it is zero whenever
 *! either is zero - which is why it did not matter before 2020.
 *!
@@ -31,15 +57,12 @@
 *! Census-basis measure of nonmonetary gold or finished metal shapes from the
 *! sub aggregate", and forecasts the gap with a separate BVAR instead.
 *!
-*! w_base IS AN ASSUMPTION. BLS does not publish the gold weight inside the
-*! all-commodities index, and it depends on their weight reference period. Two
-*! values are run, 0.5% and 1.0%, which bracket gold's pre-2020 trade share.
-*! The conclusion does not turn on the choice: the cumulative correction is
-*! 2.0% at the first and 1.6% at the second.
+*! SEE ALSO. fig6_deflator_weights.do draws the weight against the share for
+*! both sides of the account; fig7_real_drift.do cumulates the consequence.
 *!
 *! Reads   gold_final/data/raw/us_deflator_inputs_monthly.csv
 *!         gold_final/data/raw/us_gold_monthly.csv
-*!         gold_final/data/raw/lbma_pm.csv
+*!         gold_final/data/raw/us_mxpi_monthly.csv
 *! Writes  gold_final/figures/deflator_gold.pdf
 *!
 *! Run:  .venv\Scripts\python.exe claude\stata-console\code\run_do.py ///
@@ -66,17 +89,22 @@ local GREY "117 141 153"
 local RULE "224 228 231"
 local SOFT "112 112 112"
 
-local WBASE  = 0.005        // assumed weight on gold in the published index
-local WBASE2 = 0.010        // the alternative, for the sensitivity line
+local LAG    = 2            // BLS weight lag in years. Their rule, not ours.
 local BASE_M = tm(2020m1)   // indices rebased here, the start of the COVID era
 
 tempfile px gold
 
-*================================================================= 1. the price
-import delimited using "$RAW/lbma_pm.csv", varnames(1) clear
-destring lbma_pm_usd, replace force
+*============================================= 1. the price BLS actually used
+* EIUIR14270 is the BLS import price index for BEA end use 14270, nonmonetary
+* gold. Using it rather than the LBMA fix means gold inflation here is the
+* same measurement that enters the published aggregate, so the decomposition
+* is internally consistent instead of mixing two price sources.
+import delimited using "$RAW/us_mxpi_monthly.csv", varnames(1) clear
+destring eiuir14270, replace force
 gen double m = mofd(date(date, "YMD"))
-collapse (mean) px = lbma_pm_usd, by(m)
+rename eiuir14270 px
+keep m px
+drop if missing(px)
 format m %tm
 save `px'
 
@@ -102,32 +130,40 @@ sort m
 
 * BOPGIMP is $ millions; the Census gold pull is dollars.
 gen double share = gold_usd / (bopgimp * 1e6)
+gen int yr = year(dofm(m))
+
+*=================================================== 3b. the weight BLS carries
+* Gold's share of goods imports in each CALENDAR year - the Census annual
+* figure BLS reweights from - lagged by two years and attached to every month
+* of the receiving year.
+preserve
+    collapse (sum) gold_usd bopgimp, by(yr)
+    gen double wbase = gold_usd / (bopgimp * 1e6)
+    replace yr = yr + `LAG'
+    keep yr wbase
+    tempfile wt
+    save `wt'
+restore
+merge m:1 yr using `wt', keep(master match) nogen
+sort m
 
 *=========================================================== 4. the correction
 gen double pi_pub  = ln(ir) - ln(ir[_n-1])
 gen double pi_gold = ln(px) - ln(px[_n-1])
 
-* Non-gold inflation implied by the published index, then the correction. Done
-* twice so the sensitivity to the assumed base weight is visible rather than
-* asserted.
-foreach w in `WBASE' `WBASE2' {
-    local tag = string(`w' * 1000)
-    gen double pi_ng`tag'   = (pi_pub - `w' * pi_gold) / (1 - `w')
-    gen double corr`tag'    = (share - `w') * (pi_gold - pi_ng`tag')
-    gen double pi_adj`tag'  = pi_pub + corr`tag'
-}
+* Non-gold inflation implied by the published index at the weight the index
+* actually carries, then the correction. One line now, not a bracket: there is
+* no longer a free parameter to be sensitive to.
+gen double pi_ng5  = (pi_pub - wbase * pi_gold) / (1 - wbase)
+gen double corr5   = (share - wbase) * (pi_gold - pi_ng5)
+gen double pi_adj5 = pi_pub + corr5
 
 * Cumulate both into indexes rebased to the common base month.
 sort m
-foreach v in pub adj5 adj10 {
-    local src = cond("`v'" == "pub", "pi_pub", "pi_`v'")
-}
 gen double c_pub = sum(cond(m > `BASE_M', pi_pub, 0))
 gen double c_adj = sum(cond(m > `BASE_M', pi_adj5, 0))
-gen double c_ad2 = sum(cond(m > `BASE_M', pi_adj10, 0))
 gen double i_pub = 100 * exp(c_pub)
 gen double i_adj = 100 * exp(c_adj)
-gen double i_ad2 = 100 * exp(c_ad2)
 
 * THE THIRD INDEX: NIPA's own price index for goods imports. It is quarterly,
 * so it has a value only in the first month of each quarter; it is rebased on
@@ -195,7 +231,10 @@ di as txt "   2015-2019 mean : " %6.2f `S_PRE' "%"
 di as txt "   2020 onward    : " %6.2f `S_POST' "%"
 di as txt "   peak           : " %6.2f `S_MAX' "% in `S_MAX_M'"
 di as txt ""
-di as txt "monthly correction to the published index, w_base = " %4.1f 100*`WBASE' "%"
+qui summarize wbase if yr == 2025, meanonly
+local W25 = 100 * r(mean)
+di as txt "weight the index carried in 2025 (= 2023 share): " %5.2f `W25' "%"
+di as txt "monthly correction to the published index"
 di as txt "   to 2019        : " %6.3f `C_PRE' "% a month"
 di as txt "   2024 onward    : " %6.3f `C_POST' "% a month"
 di as txt ""
@@ -267,8 +306,6 @@ twoway                                                                      ///
     (line i_nipa mplot if m >= `BASE_M', lcolor("`INK'") lwidth(0.40)       ///
         lpattern(dash))                                                     ///
     (line i_pub mplot if m >= `BASE_M', lcolor("`GREY'") lwidth(0.55))      ///
-    (line i_ad2 mplot if m >= `BASE_M', lcolor("`INK'") lwidth(0.25)        ///
-        lpattern(dot))                                                      ///
     (line i_adj mplot if m >= `BASE_M', lcolor("`RED'") lwidth(0.55))       ///
     ,                                                                       ///
     title("The import price index, as published and reweighted for gold",   ///
@@ -282,9 +319,8 @@ twoway                                                                      ///
     xlabel(`XLAB', format(%tmCCYY) labsize(vsmall) tlcolor(none)            ///
            labcolor("`SOFT'") grid glcolor(none))                           ///
     xscale(range(`XMIN' `XMAX') noextend)                                   ///
-    legend(order(3 "BLS, as published: gold at its base-period weight"      ///
-                 5 "Reweighted: gold at its actual monthly share"           ///
-                 4 "Same, w = 1.0%"                                         ///
+    legend(order(3 "BLS, as published: gold at its previous-but-one year weight" ///
+                 4 "Reweighted: gold at its actual monthly share"           ///
                  2 "NIPA goods imports: gold removed entirely")             ///
            position(11) ring(0) cols(1) region(lstyle(none) color(none))    ///
            size(vsmall) symxsize(7) color("`SOFT'"))                        ///
@@ -295,22 +331,25 @@ graph combine gShare gIdx, cols(1) imargin(small) iscale(*0.95)             ///
     graphregion(color(white) lcolor(white))                                 ///
     title("███", size(vsmall) color("`RED'")                                ///
           position(11) justification(left))                                 ///
-    subtitle("{bf:A fixed-weight index cannot see a component whose share moved twentyfold}" ///
-             "Gold is in the import price index, but at roughly its base-period weight." ///
+    subtitle("{bf:A weight set two years late cannot see a component whose share moved twentyfold}" ///
+             "Gold is in the import price index, at its share from the previous-but-one year." ///
              "Its actual share of US goods imports reached `=string(`S_MAX', "%4.1f")'% in `S_MAX_M'. Reweighting it at" ///
              "the share it actually had adds `=string(`WEDGE', "%3.1f")' points to import price inflation since 2020", ///
              size(medsmall) color("`INK'") position(11) justification(left)) ///
-    note("The correction is the standard index-number term (s_t - w_base) x (gold inflation - non-gold inflation), with non-gold inflation backed out of the published" ///
-         "index given w_base. BLS does not publish the gold weight, so two values bracketing its pre-2020 trade share are shown. This does NOT affect published GDP:" ///
-         "BEA removes nonmonetary gold from the national accounts, so they are not deflated through this index. It affects real trade series built from the trade" ///
-         "release, and nowcasts bridging from them." ///
+    note("The correction is the standard index-number term (s_t - w_t) x (gold inflation - non-gold inflation), with non-gold inflation backed out of the published" ///
+         "index given w_t. The weight is NOT assumed: BLS reweights every January from Census annual trade values on a two-year lag, so w_t is the previous-but-one" ///
+         "year's share, computed here from the same Census pull. Gold inflation is BLS's own nonmonetary gold index (EIUIR14270), not a price proxy. An earlier" ///
+         "version of this figure assumed a fixed 0.5% weight and an LBMA proxy and put this wedge at 2.4 points; on the computed weight it is 2.1, or 1.7 points" ///
+         "expressed as a cumulated log bias from January 2020." ///
+         "This does NOT affect published GDP: BEA removes nonmonetary gold from the national accounts, so they are not deflated through this index. It affects real" ///
+         "trade series built from the trade release, and nowcasts bridging from them." ///
          " " ///
          "DO NOT READ THE NIPA LINE AS THE GOLD EFFECT. It is quarterly, it excludes gold by construction, and it sits below the published index - but it is also a" ///
          "chain-Fisher index over a different basket, and tested against gold directly the gap does not track it: the correlation between the quarterly NIPA-BLS gap" ///
          "and the predicted gold term is -0.15, and in 2025Q1 the observed gap was seven times the size gold can account for. It is shown because it is what BEA does" ///
          "when it decides gold does not belong in a trade aggregate, not as a measurement of this bias" ///
          " "                                                                ///
-         "Source: Bureau of Labor Statistics; US Census Bureau; Bureau of Economic Analysis; LBMA", ///
+         "Source: Bureau of Labor Statistics; US Census Bureau; Bureau of Economic Analysis", ///
          size(tiny) color("`SOFT'") position(7) justification(left))        ///
     name(gPanel, replace) xsize(11) ysize(8.2)
 
