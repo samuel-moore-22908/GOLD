@@ -314,6 +314,78 @@ def pull_deflator_inputs(key: str, lo: str, hi: str) -> list[dict]:
     return rows
 
 
+# ---------------------------------------------------------------- BLS MXPI
+# The published price indexes themselves, from the BLS flat files rather than
+# FRED, because FRED does not carry the component series.
+#
+# BLS calculates the import and export price indexes with a Lowe (modified
+# fixed-quantity Laspeyres) formula, chained monthly, and REWEIGHTS EVERY
+# JANUARY from Census annual trade values on a TWO-YEAR LAG - their own
+# worked example is that the 2025 indexes carry 2023 weights. That rule is
+# what makes the weight computable here instead of assumed.
+#
+#   EIUIR        import price index, BEA end use, all commodities
+#   EIUIQ        export price index, BEA end use, all commodities
+#   EIUIR14270   import price index, BEA end use 14270, NONMONETARY GOLD
+#   EIUIQ12260   export price index, BEA end use 12260, NONMONETARY GOLD
+#
+# The two gold series settle the coverage question: gold is sampled on both
+# sides of the account, so whatever goes wrong is about weight, not blindness.
+BLS_BASE = "https://download.bls.gov/pub/time.series/ei"
+BLS_FILES = {
+    "ei.data.01.BEAImport": ("EIUIR", "EIUIR14270"),
+    "ei.data.02.BEAExport": ("EIUIQ", "EIUIQ12260"),
+}
+# BLS blocks requests that do not identify a caller.
+BLS_UA = "GOLD-research/1.0 (samuel.moore.econresearch@gmail.com)"
+
+
+def _bls_file(name: str) -> str:
+    url = f"{BLS_BASE}/{name}"
+    time.sleep(REQUEST_SPACING_S)
+    req = urllib.request.Request(url, headers={"User-Agent": BLS_UA})
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:
+            return r.read().decode("utf-8", "replace")
+    except Exception:
+        import subprocess
+        return subprocess.run(["curl", "-sS", "-m", "180", "-A", BLS_UA, url],
+                              check=True, capture_output=True).stdout.decode(
+                                  "utf-8", "replace")
+
+
+def pull_mxpi(key: str, lo: str, hi: str) -> list[dict]:
+    """BLS import/export price indexes: the all-commodities aggregate and the
+    nonmonetary gold component for each side. `key`, `lo`, `hi` are unused;
+    the signature matches the Census jobs so the driver loop stays one shape."""
+    cols: dict[str, dict[str, str]] = {}
+    for name, wanted in BLS_FILES.items():
+        print(f"   mxpi  {name} from BLS ({', '.join(wanted)})", flush=True)
+        body = _bls_file(name)
+        for sid in wanted:
+            cols[sid] = {}
+        for line in body.splitlines()[1:]:
+            f = line.split("	")
+            if len(f) < 4:
+                continue
+            sid, year, period, value = (x.strip() for x in f[:4])
+            if sid not in wanted or not period.startswith("M") or period == "M13":
+                continue
+            if not value or value == "-":
+                continue
+            cols[sid][f"{year}-{period[1:]}-01"] = value
+
+    dates = sorted(set().union(*(set(v) for v in cols.values())))
+    order = [s for w in BLS_FILES.values() for s in w]
+    rows = []
+    for dt in dates:
+        row = {"date": dt}
+        for sid in order:
+            row[sid.lower()] = cols[sid].get(dt, "")
+        rows.append(row)
+    return rows
+
+
 def write(rows: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as f:
@@ -349,6 +421,7 @@ def main() -> None:
         ("us_gold_partner_monthly.csv", pull_partners, WINDOW_FROM, window_to),
         ("us_trade_balance_monthly.csv", pull_balance, GOLD_FROM, gold_to),
         ("us_deflator_inputs_monthly.csv", pull_deflator_inputs, GOLD_FROM, gold_to),
+        ("us_mxpi_monthly.csv", pull_mxpi, GOLD_FROM, gold_to),
     ]
     for name, fn, lo, hi in jobs:
         path = OUT / name
