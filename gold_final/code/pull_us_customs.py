@@ -273,7 +273,18 @@ def pull_balance(key: str, lo: str, hi: str) -> list[dict]:
 #   B021RG3Q086SBEA  NIPA chain-type price index for imports of GOODS,
 #                    quarterly. Gold-free by construction, because BEA removes
 #                    nonmonetary gold from the national accounts.
-DEFLATOR_SERIES = ("IR", "IQ", "BOPGIMP", "BOPGEXP", "B021RG3Q086SBEA")
+#
+# The NIPA goods aggregates themselves, quarterly and seasonally adjusted at
+# annual rates. These are the reference the ITA series is reconciled against:
+# NIPA excludes nonmonetary gold, the ITA includes it, and the two are
+# otherwise the same trade measured by the same agency.
+#   A255RC1Q027SBEA  imports of goods, nominal, $bn SAAR
+#   A253RC1Q027SBEA  exports of goods, nominal, $bn SAAR
+#   A255RX1Q020SBEA  imports of goods, chained 2017 dollars, $bn SAAR
+#   A253RX1Q020SBEA  exports of goods, chained 2017 dollars, $bn SAAR
+DEFLATOR_SERIES = ("IR", "IQ", "BOPGIMP", "BOPGEXP", "B021RG3Q086SBEA",
+                   "A255RC1Q027SBEA", "A253RC1Q027SBEA",
+                   "A255RX1Q020SBEA", "A253RX1Q020SBEA")
 
 
 def _fred(series_id: str) -> dict[str, str]:
