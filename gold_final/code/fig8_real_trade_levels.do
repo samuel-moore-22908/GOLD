@@ -4,10 +4,15 @@
 *! both sides of the account. Four panels, 2x2.
 *!
 *!   a (top left)      import price index, as published and reweighted for gold
-*!   b (top right)     goods imports: nominal, real, and real on the
-*!                     reweighted deflator
+*!   b (top right)     real goods imports, on the published deflator and on
+*!                     the reweighted one
 *!   c (bottom left)   the same for the export price index
-*!   d (bottom right)  the same for goods exports
+*!   d (bottom right)  the same for real goods exports
+*!
+*! Nominal trade is deliberately NOT plotted on the right. It sits far above
+*! the real series - 2015-dollar imports peak near 305bn against 342bn nominal
+*! - so including it forces a vertical scale on which the thing the panel
+*! exists to show, a wedge of about 2% of the level, is a couple of pixels.
 *!
 *! THE SIGN, WHICH IS EASY TO GET BACKWARDS. The index understates inflation
 *! whenever gold's actual share exceeds the weight the index carries AND gold
@@ -351,28 +356,26 @@ foreach side in m x {
     local GAP = trim("`GAP'")
 
     if "`side'" == "m" {
-        local TTL1 "{bf:b.} US goods imports: nominal, real, and real on the reweighted deflator"
+        local TTL1 "{bf:b.} Real US goods imports, on the published and reweighted deflators"
         local TTL2 "{it:Shaded: reweighting cuts measured real imports by {c $|}`GAP'bn a month}"
-        local YLAB 100(50)350
-        local YRNG 90 360
-        local LEG legend(order(2 "Nominal" 3 "Real, published deflator"      ///
-                               4 "Real, reweighted deflator")               ///
+        local YLAB 175(25)300
+        local YRNG 170 310
+        local LEG legend(order(2 "Real, published deflator"                  ///
+                               3 "Real, reweighted deflator")               ///
                   rows(1) size(vsmall) region(lcolor(none)) symxsize(6)      ///
                   symysize(2) position(11) ring(0) bmargin(zero)             ///
                   color("`SOFT'"))
     }
     else {
-        local TTL1 "{bf:d.} US goods exports: nominal, real, and real on the reweighted deflator"
+        local TTL1 "{bf:d.} Real US goods exports, on the published and reweighted deflators"
         local TTL2 "{it:Shaded: reweighting cuts measured real exports by {c $|}`GAP'bn a month}"
-        local YLAB 100(25)225
-        local YRNG 95 230
+        local YLAB 100(20)160
+        local YRNG 92 172
         local LEG legend(off)
     }
     twoway                                                                  ///
         (rarea real_`side' radj_`side' mplot if m >= `BASE_M',              ///
             color("`RED'%55") lwidth(none) cmissing(n))                     ///
-        (line nom_`side' mplot if m >= `BASE_M', lcolor("`INK'")            ///
-            lwidth(0.35) lpattern(shortdash) cmissing(n))                   ///
         (line real_`side' mplot if m >= `BASE_M', lcolor("`GREY'")          ///
             lwidth(0.50) cmissing(n))                                       ///
         (line radj_`side' mplot if m >= `BASE_M', lcolor("`RED'")           ///
@@ -405,8 +408,9 @@ graph combine idx_m lvl_m idx_x lvl_x, cols(2) imargin(small)               ///
              size(small) color("`INK'") position(11)                        ///
              justification(left) span)                                      ///
     note(" " ///
-         "Left: the published all-commodities index against the same index with gold reweighted to its actual monthly share, January 2015 = 100. Right: nominal goods" ///
-         "trade, that trade deflated by the published index, and deflated by the reweighted one, all in January 2015 dollars. Shaded area is the over-reporting." ///
+         "Left: the published all-commodities index against the same index with gold reweighted to its actual monthly share, January 2015 = 100. Right: goods trade" ///
+         "deflated by each of those two indexes, in January 2015 dollars. Shaded area is the over-reporting. Note the vertical scales: the wedge is about 2% of the" ///
+         "level, so the right-hand panels are drawn tight to the real series rather than to nominal trade, which would compress it out of sight." ///
          "The index understates inflation when gold's share exceeds its carried weight and gold is outrunning the rest, and an understated deflator gives too large a" ///
          "volume - so the red line sits BELOW the grey one and real trade is over-reported, not under. The drift is cumulative, not monthly: the correction is" ///
          "positive in only 45 of 78 months since 2020 on imports and 31 of 78 on exports, but the positive months are much the larger ones." ///
