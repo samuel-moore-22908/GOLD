@@ -23,6 +23,7 @@
 \usepackage{charter}
 \usepackage[scaled=0.92]{helvet}
 \usepackage{graphicx}
+\usepackage{amsmath}
 \usepackage{booktabs}
 \usepackage{enumitem}
 \usepackage{endnotes}
@@ -324,6 +325,12 @@ The consequences that are \emph{not} trivial are informational.
 
 \section{What it did to the published trade figures}
 
+Gold reaches the trade release twice, by two independent routes. The first is
+the nominal headline. The second, less visible and harder for a reader to undo,
+is the price index used to deflate it.
+
+\subsection*{First, the nominal headline}
+
 Figure 4 puts the monthly U.S. goods-and-services deficit next to the same
 balance with nonmonetary gold removed from both sides. The adjustment is one
 line of arithmetic: the published balance is exports minus imports, so taking
@@ -360,6 +367,69 @@ subtracted from both sides of the published balance. Shading is red where gold
 widened the deficit and grey where it narrowed it; the deficit is plotted as a
 positive number, so up is wider.}{U.S. Census Bureau; Bureau of Economic
 Analysis.}
+\end{figure}
+
+\subsection*{Second, through the deflator}
+
+Everything above is nominal. The release also publishes a real series ---
+Exhibit 10, real goods trade by end-use category in chained 2017 dollars ---
+and gold reaches that one differently.
+
+Real trade is nominal trade divided by a price index, and the index is a
+modified Laspeyres: fixed base-period quantities. BLS does sample nonmonetary
+gold, so the problem is not coverage. It is weight. A fixed-weight index carries
+gold at roughly its base-period share of trade, and that share has not held
+still: it averaged 0.55\% of U.S. goods imports over 2015--19, 1.5\% from 2020,
+and reached \textbf{10.5\% in January 2025}.
+
+A component weighted near half a percent and actually accounting for ten cannot
+be tracked. The arithmetic is the standard index-number term --- the published
+inflation rate misses $(s_t - w_{\text{base}})$ times the gap between gold and
+non-gold inflation --- and it is zero whenever either factor is zero, which is
+why none of this mattered before 2020:
+
+\begin{quote}
+\begin{tabular}{lr}
+mean monthly correction, to 2019 & 0.001\% \\
+mean monthly correction, 2024 onward & 0.036\% \\
+cumulative since January 2020 & \textbf{+2.4 points} \\
+\end{tabular}
+\end{quote}
+
+That is about an eighth of all measured import price inflation since 2020.
+February 2025 is the clearest single month: gold was 8.4\% of goods imports and
+rose 6.6\%, so at its actual share it should have added 0.55 points on its own.
+The whole index moved 0.21\%.
+
+An understated deflator means an overstated volume, and the overstatement is not
+confined to gold. The error enters through one end-use category --- industrial
+supplies and materials, where Census books the bars --- and is carried into the
+real goods total. The evidence that the category became unusable is that a
+practitioner stopped using it: the Atlanta Fed discards the advance report's
+industrial supplies figure outright, because it ``does not disentangle either
+the Census-basis measure of nonmonetary gold or finished metal shapes from the
+sub aggregate,'' and forecasts around it instead.\endnote{Two caveats belong
+with the 2.4 points. BLS does not publish the gold weight inside the
+all-commodities index, so $w_{\text{base}}$ is assumed; figure 5 draws two
+values bracketing gold's pre-2020 trade share and the answer moves little
+between them. And the estimate is made on the aggregate BLS index rather than on
+Exhibit 10 itself, which is Fisher-chained over end-use categories, so it
+indicates the size of the effect rather than measuring that series directly.}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{../figures/deflator_gold.pdf}
+\caption{\textbf{5. Gold's share of U.S. goods imports, and three answers to
+what weight it should carry, 2015--2026}}
+\fignote{The correction is $(s_t - w_{\text{base}})$ times the gap between gold
+and non-gold inflation, with non-gold inflation backed out of the published
+index. The NIPA line excludes gold by construction, but the gap between it and
+the published index should \emph{not} be read as the gold effect: it is a
+chain-Fisher index over a different basket, and tested directly the gap does not
+track gold, correlating $-0.15$ with the predicted gold term. It is shown
+because it is what BEA does when it decides gold does not belong in a trade
+aggregate.}{Bureau of Labor Statistics; U.S. Census Bureau; Bureau of Economic
+Analysis; LBMA.}
 \end{figure}
 
 \section{The national accounts already make this adjustment}
@@ -414,8 +484,9 @@ even, in the relevant sense, traded.
 The episode was cheap in resources and expensive in information. Roughly
 \$243 million of freight, insurance, recasting and financing --- 0.14\% of the
 value shuttled --- bought a distortion that accounted for a quarter of a record
-monthly deficit, two-fifths of an unusually narrow one, and \$79 billion of a
-trailing-year figure.
+monthly deficit, two-fifths of an unusually narrow one, \$79 billion of a
+trailing-year figure, and something on the order of an eighth of measured import
+price inflation since 2020.
 
 The remedy does not require a new concept, only the consistent application of an
 existing one. BEA already computes the nonmonetary gold adjustment for the
@@ -423,6 +494,12 @@ national accounts, and the underlying series are already collected. Publishing
 the goods balance on both bases --- as reported, and excluding nonmonetary
 gold --- would let users see the wedge at the moment they read the headline
 rather than reconstructing it afterwards from a classification detail.
+
+The real series needs it more, not less. A determined reader can undo the
+nominal distortion, because the gold line is published and subtracting it is
+arithmetic. Nobody outside the agencies can undo the deflator: the weights are
+not published, so the correction in figure 5 has to be estimated rather than
+computed. What a reader cannot repair, the publisher has to.
 
 Two features of the data make this more than a presentational nicety. Most of
 the surge entered the United States under HS 7115, ``articles of precious
