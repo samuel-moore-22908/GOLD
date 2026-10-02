@@ -5,7 +5,8 @@
 *!
 *!   a (top left)      import price index, as published and reweighted for gold
 *!   b (top right)     real goods imports, on the published deflator and on
-*!                     the reweighted one
+*!                     the reweighted one, above a strip giving the gap
+*!                     between those two lines on its own scale
 *!   c (bottom left)   the same for the export price index
 *!   d (bottom right)  the same for real goods exports
 *!
@@ -13,6 +14,22 @@
 *! the real series - 2015-dollar imports peak near 305bn against 342bn nominal
 *! - so including it forces a vertical scale on which the thing the panel
 *! exists to show, a wedge of about 2% of the level, is a couple of pixels.
+*!
+*! WHY THE GAP GETS ITS OWN STRIP. Dropping nominal and tightening the axis
+*! helps, but it cannot solve the problem, because the problem is arithmetic
+*! rather than presentational: the wedge is about 2% of a series that moves
+*! more than 70% across the window, so it is around 3% of the panel height no
+*! matter how the axis is chosen. The only way to make a 2% difference legible
+*! is to plot the difference on an axis sized for a difference. Each right-hand
+*! cell is therefore the two real series above, and the gap between them below
+*! on a scale of its own - the same quantity, drawn twice, because one drawing
+*! shows the context and the other shows the magnitude.
+*!
+*! The export strip earns its place twice over, because it crosses zero. Real
+*! exports were UNDER-reported from 2016 to 2024 - the index carried more gold
+*! than exports actually contained - and only turned positive with the 2025
+*! bullion outflow. That sign change is invisible in the level panel and
+*! obvious in the strip.
 *!
 *! THE SIGN, WHICH IS EASY TO GET BACKWARDS. The index understates inflation
 *! whenever gold's actual share exceeds the weight the index carries AND gold
@@ -356,9 +373,9 @@ foreach side in m x {
     local GAP = trim("`GAP'")
 
     if "`side'" == "m" {
-        local TTL1 "{bf:b.} Real US goods imports, on the published and reweighted deflators"
+        local TTL1 "{bf:b.} Real US goods imports, {c $|}bn a month in Jan 2015 dollars"
         local TTL2 "{it:Shaded: reweighting cuts measured real imports by {c $|}`GAP'bn a month}"
-        local YLAB 175(25)300
+        local YLAB 200(50)300
         local YRNG 170 310
         local LEG legend(order(2 "Real, published deflator"                  ///
                                3 "Real, reweighted deflator")               ///
@@ -367,9 +384,9 @@ foreach side in m x {
                   color("`SOFT'"))
     }
     else {
-        local TTL1 "{bf:d.} Real US goods exports, on the published and reweighted deflators"
+        local TTL1 "{bf:d.} Real US goods exports, {c $|}bn a month in Jan 2015 dollars"
         local TTL2 "{it:Shaded: reweighting cuts measured real exports by {c $|}`GAP'bn a month}"
-        local YLAB 100(20)160
+        local YLAB 100(25)150
         local YRNG 92 172
         local LEG legend(off)
     }
@@ -383,23 +400,65 @@ foreach side in m x {
         ,                                                                   ///
         title("`TTL1'" "`TTL2'", size(small) color("`INK'") position(11)    ///
               justification(left) span)                                     ///
-        ytitle("{c $|}bn a month, Jan 2015 dollars", size(vsmall)           ///
-               color("`SOFT'"))                                             ///
+        ytitle("")                                                          ///
         ylabel(`YLAB', angle(0) labsize(vsmall) tlcolor(none)               ///
                labcolor("`SOFT'") grid glcolor("`RULE'") glwidth(0.22))     ///
         yscale(range(`YRNG') noextend lcolor(none))                         ///
         xtitle("")                                                          ///
-        xlabel(`XLAB', labsize(vsmall) tlcolor(none) labcolor("`SOFT'")     ///
-               nogrid)                                                      ///
+        xlabel(`XLAB', labsize(zero) tlcolor(none) labcolor(white) nogrid)  ///
         xscale(range(`XMIN' `XMAX') noextend lcolor("`RULE'"))              ///
         `LEG'                                                               ///
-        graphregion(color(white) margin(l=2 r=3 t=1 b=1))                   ///
+        graphregion(color(white) margin(l=2 r=3 t=1 b=0))                   ///
         plotregion(color(white) margin(zero) lcolor(none))                  ///
         name(lvl_`side', replace) nodraw
 }
 
-graph combine idx_m lvl_m idx_x lvl_x, cols(2) imargin(small)               ///
-    xsize(11.4) ysize(7.6)                                                  ///
+* ---- the gap strips ---------------------------------------------------------
+* The same wedge as the shaded band above, on an axis sized for it. This is
+* where the figure is actually read.
+foreach side in m x {
+    if "`side'" == "m" {
+        local GLAB 0(2)4
+        local GRNG -0.6 6.0
+        local GTTL "{it:The gap above, on its own scale: real imports over-reported, {c $|}bn a month}"
+    }
+    else {
+        local GLAB 0(2)4
+        local GRNG -1.6 4.6
+        local GTTL "{it:The gap above, on its own scale: real exports over-reported, {c $|}bn a month. Negative to 2024 - the index carried MORE gold than exports did}"
+    }
+    twoway                                                                  ///
+        (area over_`side' mplot if m >= `BASE_M', base(0)                   ///
+            color("`RED'%55") lwidth(none) cmissing(n))                     ///
+        (line over_`side' mplot if m >= `BASE_M', lcolor("`RED'")           ///
+            lwidth(0.40) cmissing(n))                                       ///
+        ,                                                                   ///
+        yline(0, lcolor("`SOFT'") lwidth(0.22))                             ///
+        title("`GTTL'", size(vsmall) color("`SOFT'") position(11)           ///
+              justification(left) span)                                     ///
+        ytitle("")                                                          ///
+        ylabel(`GLAB', angle(0) labsize(vsmall) tlcolor(none)               ///
+               labcolor("`SOFT'") grid glcolor("`RULE'") glwidth(0.22))     ///
+        yscale(range(`GRNG') noextend lcolor(none))                         ///
+        xtitle("")                                                          ///
+        xlabel(`XLAB', labsize(vsmall) tlcolor(none) labcolor("`SOFT'")     ///
+               nogrid)                                                      ///
+        xscale(range(`XMIN' `XMAX') noextend lcolor("`RULE'"))              ///
+        legend(off)                                                         ///
+        graphregion(color(white) margin(l=2 r=3 t=0 b=1))                   ///
+        plotregion(color(white) margin(zero) lcolor(none))                  ///
+        name(gap_`side', replace) nodraw
+}
+
+* Stack each level panel over its own strip, then place the two stacks beside
+* the index panels. Nesting is what lets the strip keep a scale of its own.
+graph combine lvl_m gap_m, cols(1) imargin(zero) graphregion(color(white))  ///
+    name(rt_m, replace) nodraw
+graph combine lvl_x gap_x, cols(1) imargin(zero) graphregion(color(white))  ///
+    name(rt_x, replace) nodraw
+
+graph combine idx_m rt_m idx_x rt_x, cols(2) imargin(small)                 ///
+    xsize(13.2) ysize(8.8)                                                  ///
     graphregion(color(white) margin(l=2 r=2 t=2 b=2))                       ///
     title("███", size(vsmall) color("`RED'") position(11)                   ///
           justification(left) span)                                         ///
@@ -409,8 +468,9 @@ graph combine idx_m lvl_m idx_x lvl_x, cols(2) imargin(small)               ///
              justification(left) span)                                      ///
     note(" " ///
          "Left: the published all-commodities index against the same index with gold reweighted to its actual monthly share, January 2015 = 100. Right: goods trade" ///
-         "deflated by each of those two indexes, in January 2015 dollars. Shaded area is the over-reporting. Note the vertical scales: the wedge is about 2% of the" ///
-         "level, so the right-hand panels are drawn tight to the real series rather than to nominal trade, which would compress it out of sight." ///
+         "deflated by each of those two indexes, in January 2015 dollars, above a strip giving the gap between them on a scale of its own. The gap is about 2% of a" ///
+         "level that moves more than 70% across the window, so on the levels panel it is roughly 3% of the panel height whatever axis is chosen - which is why it is" ///
+         "drawn twice. The export strip crosses zero: real exports were UNDER-reported from 2016 to 2024, because the index carried more gold than exports contained." ///
          "The index understates inflation when gold's share exceeds its carried weight and gold is outrunning the rest, and an understated deflator gives too large a" ///
          "volume - so the red line sits BELOW the grey one and real trade is over-reported, not under. The drift is cumulative, not monthly: the correction is" ///
          "positive in only 45 of 78 months since 2020 on imports and 31 of 78 on exports, but the positive months are much the larger ones." ///
