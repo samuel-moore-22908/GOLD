@@ -339,12 +339,18 @@ def pull_deflator_inputs(key: str, lo: str, hi: str) -> list[dict]:
 #   EIUIQ        export price index, BEA end use, all commodities
 #   EIUIR14270   import price index, BEA end use 14270, NONMONETARY GOLD
 #   EIUIQ12260   export price index, BEA end use 12260, NONMONETARY GOLD
+#   EIUIR10      import price index, BEA end use 10, FUELS AND LUBRICANTS.
+#                Carried because the gap between the BLS aggregate and the
+#                NIPA goods index turns out to be mostly petroleum, not gold:
+#                this series correlates 0.95 with WTI in log changes and a
+#                regression of the gap on cumulative fuel inflation has an
+#                R-squared of 0.82.
 #
 # The two gold series settle the coverage question: gold is sampled on both
 # sides of the account, so whatever goes wrong is about weight, not blindness.
 BLS_BASE = "https://download.bls.gov/pub/time.series/ei"
 BLS_FILES = {
-    "ei.data.01.BEAImport": ("EIUIR", "EIUIR14270"),
+    "ei.data.01.BEAImport": ("EIUIR", "EIUIR14270", "EIUIR10"),
     "ei.data.02.BEAExport": ("EIUIQ", "EIUIQ12260"),
 }
 # BLS blocks requests that do not identify a caller.
