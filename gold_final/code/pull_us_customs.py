@@ -264,6 +264,53 @@ def pull_balance(key: str, lo: str, hi: str) -> list[dict]:
     return out
 
 
+# FRED series the deflator figure needs. Stata cannot fetch them - it hangs on
+# HTTPS rather than failing - so they are pulled here with everything else.
+#   IR       BLS import price index, all commodities
+#   IQ       BLS export price index, all commodities
+#   BOPGIMP  goods imports, BOP basis, $mn   (the denominator for gold's share)
+#   BOPGEXP  goods exports, BOP basis, $mn
+DEFLATOR_SERIES = ("IR", "IQ", "BOPGIMP", "BOPGEXP")
+
+
+def _fred(series_id: str) -> dict[str, str]:
+    url = f"https://fred.stlouisfed.org/graph/fredgraph.csv?id={series_id}"
+    time.sleep(REQUEST_SPACING_S)
+    req = urllib.request.Request(url, headers={"User-Agent": "GOLD-research/1.0"})
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT_S) as r:
+            body = r.read().decode()
+    except Exception:
+        import subprocess
+        body = subprocess.run(["curl", "-sS", "-m", "120", "-A",
+                               "GOLD-research/1.0", url],
+                              check=True, capture_output=True).stdout.decode()
+    out = {}
+    for line in body.splitlines()[1:]:
+        parts = line.split(",")
+        if len(parts) >= 2 and parts[1].strip() and parts[1].strip() != ".":
+            out[parts[0].strip()] = parts[1].strip()
+    return out
+
+
+def pull_deflator_inputs(key: str, lo: str, hi: str) -> list[dict]:
+    """The price indexes and goods totals the deflator figure runs on. `key`,
+    `lo` and `hi` are unused; the signature matches the Census jobs so the
+    driver loop stays one shape."""
+    cols = {}
+    for sid in DEFLATOR_SERIES:
+        print(f"   defl  {sid} from FRED", flush=True)
+        cols[sid] = _fred(sid)
+    dates = sorted(set().union(*(set(v) for v in cols.values())))
+    rows = []
+    for dt in dates:
+        row = {"date": dt}
+        for sid in DEFLATOR_SERIES:
+            row[sid.lower()] = cols[sid].get(dt, "")
+        rows.append(row)
+    return rows
+
+
 def write(rows: list[dict], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", newline="", encoding="utf-8") as f:
@@ -298,6 +345,7 @@ def main() -> None:
         ("us_hs4_universe_monthly.csv", pull_universe, WINDOW_FROM, window_to),
         ("us_gold_partner_monthly.csv", pull_partners, WINDOW_FROM, window_to),
         ("us_trade_balance_monthly.csv", pull_balance, GOLD_FROM, gold_to),
+        ("us_deflator_inputs_monthly.csv", pull_deflator_inputs, GOLD_FROM, gold_to),
     ]
     for name, fn, lo, hi in jobs:
         path = OUT / name
