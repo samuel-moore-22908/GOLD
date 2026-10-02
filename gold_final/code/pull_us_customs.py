@@ -270,7 +270,10 @@ def pull_balance(key: str, lo: str, hi: str) -> list[dict]:
 #   IQ       BLS export price index, all commodities
 #   BOPGIMP  goods imports, BOP basis, $mn   (the denominator for gold's share)
 #   BOPGEXP  goods exports, BOP basis, $mn
-DEFLATOR_SERIES = ("IR", "IQ", "BOPGIMP", "BOPGEXP")
+#   B021RG3Q086SBEA  NIPA chain-type price index for imports of GOODS,
+#                    quarterly. Gold-free by construction, because BEA removes
+#                    nonmonetary gold from the national accounts.
+DEFLATOR_SERIES = ("IR", "IQ", "BOPGIMP", "BOPGEXP", "B021RG3Q086SBEA")
 
 
 def _fred(series_id: str) -> dict[str, str]:

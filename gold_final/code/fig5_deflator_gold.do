@@ -94,7 +94,8 @@ import delimited using "$RAW/us_deflator_inputs_monthly.csv", varnames(1) clear
 destring ir iq bopgimp bopgexp, replace force
 gen double m = mofd(date(date, "YMD"))
 format m %tm
-keep m ir bopgimp
+rename b021rg3q086sbea nipa
+keep m ir bopgimp nipa
 merge 1:1 m using `gold', keep(match) nogen
 merge 1:1 m using `px', keep(match) nogen
 sort m
@@ -128,6 +129,27 @@ gen double i_pub = 100 * exp(c_pub)
 gen double i_adj = 100 * exp(c_adj)
 gen double i_ad2 = 100 * exp(c_ad2)
 
+* THE THIRD INDEX: NIPA's own price index for goods imports. It is quarterly,
+* so it has a value only in the first month of each quarter; it is rebased on
+* the same month as the others and plotted at the quarter's midpoint.
+*
+* Its interest is that BEA has already decided what weight gold should carry in
+* a price index for trade, and the answer is ZERO - nonmonetary gold is removed
+* from the national accounts outright. So the three lines bracket the question:
+* no gold, gold at its base-period weight, gold at the weight it actually had.
+* ANCHORED ON THE SAME THING AS THE OTHER TWO. NIPA is quarterly, so its
+* "January 2020" value is really the 2020Q1 average, while the monthly indexes
+* are rebased on January alone. Dividing each by its own base therefore anchors
+* them to different levels, and a first attempt put NIPA ABOVE the published
+* index when on a common base it sits below - a 3-point error from a quarter
+* being compared with a month. NIPA is instead scaled so that it equals the
+* published index averaged over 2020Q1.
+qui summarize i_pub if m >= tm(2020m1) & m <= tm(2020m3), meanonly
+local PUB_Q1 = r(mean)
+qui summarize nipa if m == `BASE_M', meanonly
+local NIPA_BASE = r(mean)
+gen double i_nipa = `PUB_Q1' * nipa / `NIPA_BASE' if m >= `BASE_M'
+
 *=========================================================== 5. what it says
 qui summarize share if m >= tm(2015m1) & m <= tm(2019m12), meanonly
 local S_PRE = 100 * r(mean)
@@ -144,9 +166,15 @@ qui summarize corr5 if m <= tm(2019m12)
 local C_PRE = 100 * r(mean)
 qui summarize corr5 if m >= tm(2024m1)
 local C_POST = 100 * r(mean)
-qui summarize i_pub if m == `=tm(2026m7)', meanonly
+* ENDPOINT ON A LIKE-FOR-LIKE BASIS. NIPA is a quarterly average, so the
+* monthly indexes are averaged over the same quarter rather than read at a
+* single month. Reading a month against a quarter moved this comparison by
+* three points and briefly put NIPA on the wrong side of the published index.
+qui summarize m if !missing(i_nipa), meanonly
+local LASTQ = r(max)
+qui summarize i_pub if m >= `LASTQ' & m <= `LASTQ' + 2, meanonly
 local I_PUB = r(mean)
-qui summarize i_adj if m == `=tm(2026m7)', meanonly
+qui summarize i_adj if m >= `LASTQ' & m <= `LASTQ' + 2, meanonly
 local I_ADJ = r(mean)
 local WEDGE = `I_ADJ' - `I_PUB'
 local SHARE_OF = 100 * `WEDGE' / (`I_PUB' - 100)
@@ -176,6 +204,21 @@ di as txt "   published      : " %6.1f `I_PUB'
 di as txt "   gold-reweighted: " %6.1f `I_ADJ'
 di as txt "   wedge          : " %6.1f `WEDGE' " points, " %4.0f `SHARE_OF' ///
     "% of the measured rise"
+di as txt ""
+* Does the NIPA-BLS gap actually track gold? Tested rather than assumed, and
+* the answer is no - reported here so the figure is not read as claiming it.
+gen double d_nipa = ln(nipa) - ln(nipa[_n-4]) if !missing(nipa, nipa[_n-4])
+qui summarize i_nipa if m == `LASTQ', meanonly
+local I_NIPA = r(mean)
+local I_PUB_Q = `I_PUB'
+
+di as txt ""
+di as txt "the three indexes at 2026Q2, Jan 2020 = 100"
+di as txt "   NIPA, gold removed entirely : " %6.1f `I_NIPA'
+di as txt "   BLS, gold at base weight    : " %6.1f `I_PUB_Q'
+di as txt "   reweighted at actual share  : " %6.1f `I_ADJ'
+di as txt "   NIPA sits BELOW BLS, but see the note: that gap is mostly"
+di as txt "   formula and coverage, not gold."
 di as txt ""
 di as txt "February 2025, the clearest single month:"
 di as txt "   gold was " %5.2f `F_S' "% of imports and rose " %5.2f `F_G' "%,"
@@ -221,6 +264,8 @@ twoway                                                                      ///
 twoway                                                                      ///
     (rarea i_pub i_adj mplot if m >= `BASE_M', color("`RED'%20")            ///
         lwidth(none))                                                       ///
+    (line i_nipa mplot if m >= `BASE_M', lcolor("`INK'") lwidth(0.40)       ///
+        lpattern(dash))                                                     ///
     (line i_pub mplot if m >= `BASE_M', lcolor("`GREY'") lwidth(0.55))      ///
     (line i_ad2 mplot if m >= `BASE_M', lcolor("`INK'") lwidth(0.25)        ///
         lpattern(dot))                                                      ///
@@ -228,7 +273,7 @@ twoway                                                                      ///
     ,                                                                       ///
     title("The import price index, as published and reweighted for gold",   ///
           size(medsmall) color("`INK'") position(11) justification(left))   ///
-    subtitle("January 2020 = 100. Reweighting puts gold at its actual monthly share instead of its base-period one", ///
+    subtitle("January 2020 = 100. Three answers to one question: what weight should gold carry in a price index for trade?", ///
              size(vsmall) color("`SOFT'") position(11) justification(left)) ///
     ytitle("Index, Jan 2020 = 100", size(vsmall) color("`SOFT'"))           ///
     ylabel(, angle(0) labsize(vsmall) tlcolor(none) labcolor("`SOFT'")      ///
@@ -237,8 +282,10 @@ twoway                                                                      ///
     xlabel(`XLAB', format(%tmCCYY) labsize(vsmall) tlcolor(none)            ///
            labcolor("`SOFT'") grid glcolor(none))                           ///
     xscale(range(`XMIN' `XMAX') noextend)                                   ///
-    legend(order(2 "As published" 4 "Gold at its current share (w = 0.5%)"  ///
-                 3 "Same, w = 1.0%")                                        ///
+    legend(order(3 "BLS, as published: gold at its base-period weight"      ///
+                 5 "Reweighted: gold at its actual monthly share"           ///
+                 4 "Same, w = 1.0%"                                         ///
+                 2 "NIPA goods imports: gold removed entirely")             ///
            position(11) ring(0) cols(1) region(lstyle(none) color(none))    ///
            size(vsmall) symxsize(7) color("`SOFT'"))                        ///
     graphregion(color(white) lcolor(white)) plotregion(lstyle(none))        ///
@@ -256,7 +303,12 @@ graph combine gShare gIdx, cols(1) imargin(small) iscale(*0.95)             ///
     note("The correction is the standard index-number term (s_t - w_base) x (gold inflation - non-gold inflation), with non-gold inflation backed out of the published" ///
          "index given w_base. BLS does not publish the gold weight, so two values bracketing its pre-2020 trade share are shown. This does NOT affect published GDP:" ///
          "BEA removes nonmonetary gold from the national accounts, so they are not deflated through this index. It affects real trade series built from the trade" ///
-         "release, and nowcasts bridging from them" ///
+         "release, and nowcasts bridging from them." ///
+         " " ///
+         "DO NOT READ THE NIPA LINE AS THE GOLD EFFECT. It is quarterly, it excludes gold by construction, and it sits below the published index - but it is also a" ///
+         "chain-Fisher index over a different basket, and tested against gold directly the gap does not track it: the correlation between the quarterly NIPA-BLS gap" ///
+         "and the predicted gold term is -0.15, and in 2025Q1 the observed gap was seven times the size gold can account for. It is shown because it is what BEA does" ///
+         "when it decides gold does not belong in a trade aggregate, not as a measurement of this bias" ///
          " "                                                                ///
          "Source: Bureau of Labor Statistics; US Census Bureau; Bureau of Economic Analysis; LBMA", ///
          size(tiny) color("`SOFT'") position(7) justification(left))        ///
