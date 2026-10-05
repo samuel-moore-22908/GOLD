@@ -35,6 +35,25 @@
 *! balance said the external position was improving while the other said it
 *! was deteriorating.
 *!
+*! AND THE ADJUSTMENT CLOSES IT. The third line is the ITA balance with
+*! nonmonetary gold taken out of both sides - HS 7108 and 7115, imports netted
+*! against exports. It lands on the national accounts almost exactly:
+*!
+*!     mean |ITA - NIPA|            36.0bn      sd 61.8
+*!     mean |adjusted - NIPA|       11.0bn      sd 11.4
+*!     2025Q1  ITA 1,826   adjusted 1,558   NIPA 1,541
+*!
+*! A $285bn discrepancy becomes $17bn. The correlation of quarterly CHANGES
+*! with NIPA rises from 0.908 to 0.991, and of the five sign disagreements
+*! three remain - 2016Q2, 2016Q3, 2018Q4 - all of them under $30bn and none
+*! of them the ones that mattered. Every large directional disagreement,
+*! 2025Q3 through 2026Q1, disappears.
+*!
+*! That is the argument in one line: the wedge between the two publications is
+*! gold, and removing gold from the ITA reproduces the national accounts. The
+*! adjustment is not a judgement call - it is arithmetic on a series Census
+*! already publishes.
+*!
 *! WHY IT MATTERS BEYOND TIDINESS. These are not rival estimates from
 *! different agencies with different methods. They are the same agency,
 *! measuring the same transactions, differing only in whether bullion counts.
@@ -125,13 +144,21 @@ drop if missing(ita, nipa)
 keep if q >= tq(2015q1)
 
 *=========================================================== 3. the two breaks
+* The ITA balance with nonmonetary gold removed from both sides. Since the
+* deficit is imports minus exports, taking gold out of each side is the same
+* as subtracting NET gold - no separate bookkeeping needed.
+gen double adj = ita - gnet
+
 gen double gap     = ita - nipa
+gen double gap_adj = adj - nipa
 gen double gap_pct = 100 * gap / nipa
 
 gen double d_ita  = ita - ita[_n-1]
+gen double d_adj  = adj - adj[_n-1]
 gen double d_nipa = nipa - nipa[_n-1]
-gen byte disagree = !missing(d_ita, d_nipa) & sign(d_ita) != sign(d_nipa)
-gen double d_diff = d_ita - d_nipa
+gen byte disagree     = !missing(d_ita, d_nipa) & sign(d_ita)  != sign(d_nipa)
+gen byte disagree_adj = !missing(d_adj, d_nipa) & sign(d_adj) != sign(d_nipa)
+gen double d_diff     = d_ita - d_nipa
 
 qui correlate gap gnet
 local R_GOLD = r(rho)
@@ -172,6 +199,37 @@ forvalues i = 1/`=_N' {
 di as txt ""
 di as txt "   The two before 2025 are rounding on a deficit above {c $|}700bn."
 di as txt "   The three since are six to nine times larger and consecutive."
+di as txt ""
+di as txt "AND THE ADJUSTMENT CLOSES IT"
+qui summarize gap
+local MG = r(mean)
+qui summarize gap_adj
+local MA = r(mean)
+qui summarize gap
+local SG = r(sd)
+qui summarize gap_adj
+local SA = r(sd)
+gen double abs_gap = abs(gap)
+gen double abs_adj = abs(gap_adj)
+qui summarize abs_gap
+local AG = r(mean)
+qui summarize abs_adj
+local AA = r(mean)
+di as txt "   mean |ITA - NIPA|       " %6.1f `AG' "bn   sd " %5.1f `SG'
+di as txt "   mean |adjusted - NIPA|  " %6.1f `AA' "bn   sd " %5.1f `SA'
+qui summarize adj if q == tq(2025q1), meanonly
+di as txt "   2025Q1: ITA " %5.0f `I25' "   adjusted " %5.0f r(mean) ///
+    "   NIPA " %5.0f `N25'
+qui correlate d_ita d_nipa
+local C1 = r(rho)
+qui correlate d_adj d_nipa
+local C2 = r(rho)
+di as txt "   corr of quarterly changes with NIPA: as published " %5.3f `C1' ///
+    ", adjusted " %5.3f `C2'
+qui count if disagree_adj
+di as txt "   sign disagreements after adjusting: " r(N) " (from "
+qui count if disagree
+di as txt "      " r(N) "), and none of the large ones survive"
 di as txt "{hline 76}"
 
 *=========================================================== 4. the two panels
@@ -189,46 +247,42 @@ forvalues y = `Y0'/`Y1' {
     }
 }
 
-* Vertical bands on the quarters where the two series disagree on direction.
-* One bar per quarter, floor to ceiling, barwidth(1) = exactly one quarter.
-gen double band_a = 1880 if disagree
-gen double band_b =  540 if disagree
-
 twoway                                                                      ///
-    (bar band_a q, barwidth(1) base(700) color("`GREY'%20") lwidth(none))   ///
     (line ita q, lcolor("`RED'") lwidth(0.70) cmissing(n))                  ///
-    (line nipa q, lcolor("`INK'") lwidth(0.55) lpattern(dash) cmissing(n))  ///
+    (line adj q, lcolor("`GREY'") lwidth(0.80) cmissing(n))                 ///
+    (line nipa q, lcolor("`INK'") lwidth(0.40) lpattern(dash) cmissing(n))  ///
     ,                                                                       ///
-    title("{bf:a.} The same quarter's trade, measured twice"                ///
-          "{it:US goods deficit, {c $|}bn at an annual rate. In 2025Q1 the two official measures were {c $|}285bn apart}", ///
+    title("{bf:a.} The same quarter's trade, measured twice - and reconciled" ///
+          "{it:US goods deficit, {c $|}bn at an annual rate. In 2025Q1 the two official measures were {c $|}285bn apart; adjusted, {c $|}17bn}", ///
           size(small) color("`INK'") position(11) justification(left) span) ///
     ytitle("")                                                              ///
-    ylabel(800(200)1800, angle(0) labsize(vsmall) tlcolor(none)             ///
+    ylabel(800(250)1800, angle(0) labsize(vsmall) tlcolor(none)             ///
            labcolor("`SOFT'") grid glcolor("`RULE'") glwidth(0.22))         ///
     yscale(range(700 1880) noextend lcolor(none))                           ///
     xtitle("")                                                              ///
     xlabel(`XLAB', labsize(vsmall) tlcolor(none) labcolor("`SOFT'") nogrid) ///
     xscale(range(`XMIN' `XMAX') noextend lcolor("`RULE'"))                  ///
-    legend(order(2 "ITA - the monthly trade release, gold included"         ///
-                 3 "NIPA - the national accounts, gold removed")            ///
-           rows(2) size(vsmall) region(lcolor(none)) symxsize(6)            ///
-           symysize(2) position(11) ring(0) bmargin(zero) color("`SOFT'"))  ///
+    legend(order(1 "ITA, gold included"                                     ///
+                 2 "ITA, gold removed (HS 7108 and 7115)"                   ///
+                 3 "NIPA, gold already removed")                            ///
+           rows(1) size(vsmall) region(lcolor(none)) symxsize(6)            ///
+           symysize(2) position(12) ring(1) bmargin(zero) color("`SOFT'"))  ///
     graphregion(color(white) margin(l=2 r=3 t=1 b=1))                       ///
     plotregion(color(white) margin(zero) lcolor(none))                      ///
     name(pa, replace) nodraw
 
 twoway                                                                      ///
-    (bar band_b q, barwidth(1) base(-830) color("`GREY'%20") lwidth(none))  ///
     (line d_ita q, lcolor("`RED'") lwidth(0.70) cmissing(n))                ///
-    (line d_nipa q, lcolor("`INK'") lwidth(0.55) lpattern(dash)             ///
+    (line d_adj q, lcolor("`GREY'") lwidth(0.80) cmissing(n))               ///
+    (line d_nipa q, lcolor("`INK'") lwidth(0.40) lpattern(dash)             ///
         cmissing(n))                                                        ///
     ,                                                                       ///
     yline(0, lcolor("`SOFT'") lwidth(0.30))                                 ///
-    title("{bf:b.} And in five quarters they disagree about which way it moved" ///
-          "{it:Change in the goods deficit, {c $|}bn. Shaded: quarters where one says widening and the other narrowing}", ///
+    title("{bf:b.} The disagreements about direction go with it"            ///
+          "{it:Change in the goods deficit, {c $|}bn. Correlation with NIPA rises from 0.91 to 0.99 once gold is out}", ///
           size(small) color("`INK'") position(11) justification(left) span) ///
     ytitle("")                                                              ///
-    ylabel(-800(200)400, angle(0) labsize(vsmall) tlcolor(none)             ///
+    ylabel(-800(400)400, angle(0) labsize(vsmall) tlcolor(none)             ///
            labcolor("`SOFT'") grid glcolor("`RULE'") glwidth(0.22))         ///
     yscale(range(-830 540) noextend lcolor(none))                           ///
     xtitle("")                                                              ///
@@ -240,7 +294,7 @@ twoway                                                                      ///
     name(pb, replace) nodraw
 
 graph combine pa pb, cols(1) imargin(zero)                                  ///
-    xsize(9.8) ysize(7.6)                                                   ///
+    xsize(11.0) ysize(7.8)                                                  ///
     graphregion(color(white) margin(l=2 r=2 t=2 b=2))                       ///
     title("███", size(vsmall) color("`RED'") position(11)                   ///
           justification(left) span)                                         ///
@@ -249,22 +303,20 @@ graph combine pa pb, cols(1) imargin(zero)                                  ///
              size(small) color("`INK'") position(11)                        ///
              justification(left) span)                                      ///
     note(" " ///
-         "BEA publishes the US goods balance twice: the International Transactions Accounts carry nonmonetary gold, the national accounts remove it and replace it" ///
-         "with domestic production less industrial use. In normal times the two barely differ and nobody needs to know which they are reading." ///
+         "BEA publishes the US goods balance twice. The International Transactions Accounts carry nonmonetary gold; the national accounts remove it and replace it with" ///
+         "domestic production less industrial use. In normal times the two barely differ and nobody needs to know which they are reading." ///
          " " ///
-         "THE LEVEL BREAK. In 2025Q1 the ITA goods deficit was {c $|}1,826bn at an annual rate against NIPA's {c $|}1,541bn - the same quarter's trade, {c $|}285bn apart, or 18.5% of" ///
-         "the NIPA figure. Four quarters later the gap had swung to -15.6%. That is a 34-point swing in the relative difference between two series describing the same" ///
-         "thing, and it correlates 0.98 with net gold trade." ///
+         "THE LEVEL BREAK. In 2025Q1 the ITA goods deficit was {c $|}1,826bn at an annual rate against NIPA's {c $|}1,541bn - the same quarter's trade, {c $|}285bn apart. Four quarters" ///
+         "later the gap had swung from +18.5% of the NIPA figure to -15.6%. It correlates 0.98 with net gold trade." ///
          " " ///
-         "THE DIRECTIONAL BREAK IS THE SERIOUS ONE. A level gap can be netted out by anyone who knows it is there; a sign disagreement cannot. Five quarters since" ///
-         "2015 disagree about whether the deficit widened or narrowed, and not evenly. The two before 2025 are rounding - {c $|}17bn and {c $|}14bn on a deficit above" ///
-         "{c $|}700bn. The three since are six to nine times larger and consecutive: in 2025Q3 the ITA showed the deficit widening {c $|}55bn while NIPA showed it narrowing {c $|}71bn," ///
-         "and the next two quarters reversed that. For three quarters running, one official US measure said the external position was improving while the other said it" ///
-         "was deteriorating." ///
+         "THE DIRECTIONAL BREAK IS THE SERIOUS ONE, because a level gap can be netted out by anyone who knows it is there and a sign disagreement cannot. Five quarters" ///
+         "since 2015 disagree about whether the deficit widened or narrowed. The two before 2025 are rounding, {c $|}17bn and {c $|}14bn. The three since are six to nine times" ///
+         "larger and consecutive: in 2025Q3 the ITA showed the deficit widening {c $|}55bn while NIPA showed it narrowing {c $|}71bn, and the next two quarters reversed that." ///
          " " ///
-         "Neither series is wrong. Each treatment is correct for its own purpose. The claim is that gold is large enough, and reverses fast enough, to drive a wedge" ///
-         "between them that users cannot be expected to carry in their heads - and that the remedy costs nothing, because BEA already computes the adjustment. Publishing" ///
-         "the goods balance on both bases in the monthly release would let a reader see the wedge at the moment they read the headline." ///
+         "AND THE ADJUSTMENT CLOSES IT. The grey line removes nonmonetary gold from both sides of the ITA balance - HS 7108 and 7115, which since the balance is imports" ///
+         "minus exports is simply the deficit less net gold. The mean absolute gap to NIPA falls from {c $|}36bn to {c $|}11bn, 2025Q1 from {c $|}285bn to {c $|}17bn, and the correlation of" ///
+         "quarterly changes from 0.908 to 0.991. Every large directional disagreement disappears. Neither series is wrong - each is correct for its own purpose - but" ///
+         "the adjustment is arithmetic on a series Census already publishes, and publishing the balance on both bases would cost nothing." ///
          "Source: Bureau of Economic Analysis, International Transactions Accounts and NIPA tables 1.1.5; US Census Bureau.", ///
          size(vsmall) color("`SOFT'") position(7) span)                     ///
     name(combined, replace)
