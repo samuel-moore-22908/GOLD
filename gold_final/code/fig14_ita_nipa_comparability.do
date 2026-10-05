@@ -246,45 +246,45 @@ forvalues y = `Y0'/`Y1' {
 }
 
 twoway                                                                      ///
-    (line ita q, lcolor("`RED'") lwidth(0.70) cmissing(n))                  ///
-    (line adj q, lcolor("`GREY'") lwidth(0.80) cmissing(n))                 ///
-    (line nipa q, lcolor("`INK'") lwidth(0.40) lpattern(dash) cmissing(n))  ///
+    (line ita q, lcolor("`RED'") lwidth(1.00) cmissing(n))                  ///
+    (line adj q, lcolor("`GREY'") lwidth(1.25) cmissing(n))                 ///
+    (line nipa q, lcolor("`INK'") lwidth(0.55) lpattern(dash) cmissing(n))  ///
     ,                                                                       ///
     title("{bf:a.} The same quarter's trade, measured twice - and reconciled" ///
           "{it:US goods deficit, {c $|}bn at an annual rate. In 2025Q1 the two official measures were {c $|}285bn apart; adjusted, {c $|}17bn}", ///
-          size(small) color("`INK'") position(11) justification(left) span) ///
+          size(medsmall) color("`INK'") position(11) justification(left) span) ///
     ytitle("")                                                              ///
-    ylabel(800(250)1800, angle(0) labsize(vsmall) tlcolor(none)             ///
+    ylabel(800(200)1800, angle(0) labsize(small) tlcolor(none)              ///
            labcolor("`SOFT'") grid glcolor("`RULE'") glwidth(0.22))         ///
     yscale(range(700 1880) noextend lcolor(none))                           ///
     xtitle("")                                                              ///
-    xlabel(`XLAB', labsize(vsmall) tlcolor(none) labcolor("`SOFT'") nogrid) ///
+    xlabel(`XLAB', labsize(small) tlcolor(none) labcolor("`SOFT'") nogrid) ///
     xscale(range(`XMIN' `XMAX') noextend lcolor("`RULE'"))                  ///
     legend(order(1 "ITA, gold included"                                     ///
                  2 "ITA, gold removed (HS 7108 and 7115)"                   ///
                  3 "NIPA, gold already removed")                            ///
-           rows(1) size(vsmall) region(lcolor(none)) symxsize(6)            ///
+           rows(1) size(small) region(lcolor(none)) symxsize(8)             ///
            symysize(2) position(12) ring(1) bmargin(zero) color("`SOFT'"))  ///
     graphregion(color(white) margin(l=2 r=3 t=1 b=1))                       ///
     plotregion(color(white) margin(zero) lcolor(none))                      ///
     name(pa, replace) nodraw
 
 twoway                                                                      ///
-    (line d_ita q, lcolor("`RED'") lwidth(0.70) cmissing(n))                ///
-    (line d_adj q, lcolor("`GREY'") lwidth(0.80) cmissing(n))               ///
-    (line d_nipa q, lcolor("`INK'") lwidth(0.40) lpattern(dash)             ///
+    (line d_ita q, lcolor("`RED'") lwidth(1.00) cmissing(n))                ///
+    (line d_adj q, lcolor("`GREY'") lwidth(1.25) cmissing(n))               ///
+    (line d_nipa q, lcolor("`INK'") lwidth(0.55) lpattern(dash)             ///
         cmissing(n))                                                        ///
     ,                                                                       ///
     yline(0, lcolor("`SOFT'") lwidth(0.30))                                 ///
     title("{bf:b.} The disagreements about direction go with it"            ///
           "{it:Change in the goods deficit, {c $|}bn. Three sign disagreements as published, none once gold is out}", ///
-          size(small) color("`INK'") position(11) justification(left) span) ///
+          size(medsmall) color("`INK'") position(11) justification(left) span) ///
     ytitle("")                                                              ///
-    ylabel(-800(400)400, angle(0) labsize(vsmall) tlcolor(none)             ///
+    ylabel(-800(200)400, angle(0) labsize(small) tlcolor(none)              ///
            labcolor("`SOFT'") grid glcolor("`RULE'") glwidth(0.22))         ///
     yscale(range(-830 540) noextend lcolor(none))                           ///
     xtitle("")                                                              ///
-    xlabel(`XLAB', labsize(vsmall) tlcolor(none) labcolor("`SOFT'") nogrid) ///
+    xlabel(`XLAB', labsize(small) tlcolor(none) labcolor("`SOFT'") nogrid) ///
     xscale(range(`XMIN' `XMAX') noextend lcolor("`RULE'"))                  ///
     legend(off)                                                             ///
     graphregion(color(white) margin(l=2 r=3 t=1 b=1))                       ///
@@ -292,7 +292,7 @@ twoway                                                                      ///
     name(pb, replace) nodraw
 
 graph combine pa pb, cols(1) imargin(zero)                                  ///
-    xsize(11.0) ysize(7.8)                                                  ///
+    xsize(10.5) ysize(6.4)                                                  ///
     graphregion(color(white) margin(l=2 r=2 t=2 b=2))                       ///
     title("███", size(vsmall) color("`RED'") position(11)                   ///
           justification(left) span)                                         ///
@@ -300,24 +300,6 @@ graph combine pa pb, cols(1) imargin(zero)                                  ///
              "Same agency, same transactions. The only difference is whether bullion counts as trade", ///
              size(small) color("`INK'") position(11)                        ///
              justification(left) span)                                      ///
-    note(" " ///
-         "BEA publishes the US goods balance twice. The International Transactions Accounts carry nonmonetary gold; the national accounts remove it and replace it with" ///
-         "domestic production less industrial use. The window starts in 2020 because that is when it begins to matter - for most of the preceding decade gold was under" ///
-         "1% of US goods trade and the two series were effectively indistinguishable." ///
-         " " ///
-         "THE LEVEL BREAK. In 2025Q1 the ITA goods deficit was {c $|}1,826bn at an annual rate against NIPA's {c $|}1,541bn - the same quarter's trade, {c $|}285bn apart. Four quarters" ///
-         "later the gap had swung from +18.5% of the NIPA figure to -15.6%. Across the window it correlates 0.99 with net gold trade." ///
-         " " ///
-         "THE DIRECTIONAL BREAK IS THE SERIOUS ONE, because a level gap can be netted out by anyone who knows it is there and a sign disagreement cannot. In the 25" ///
-         "quarterly changes since 2020 the two measures disagree about whether the deficit widened or narrowed exactly three times, and all three are consecutive: in" ///
-         "2025Q3 the ITA showed the deficit widening {c $|}55bn while NIPA showed it narrowing {c $|}71bn, and the next two quarters reversed that. They agree in all 22 others." ///
-         " " ///
-         "AND THE ADJUSTMENT CLOSES IT. The grey line removes nonmonetary gold from both sides of the ITA balance - HS 7108 and 7115, which since the balance is imports" ///
-         "minus exports is simply the deficit less net gold. The mean absolute gap to NIPA falls from {c $|}48bn to {c $|}9bn, 2025Q1 from {c $|}285bn to {c $|}17bn, the correlation of quarterly" ///
-         "changes from 0.918 to 0.992, and the three directional disagreements to none. Neither series is wrong - each is correct for its own purpose - but the" ///
-         "adjustment is arithmetic on a series Census already publishes, and publishing the balance on both bases would cost nothing." ///
-         "Source: Bureau of Economic Analysis, International Transactions Accounts and NIPA tables 1.1.5; US Census Bureau.", ///
-         size(vsmall) color("`SOFT'") position(7) span)                     ///
     name(combined, replace)
 
 graph export "$FIG/ita_nipa_comparability.pdf", replace
