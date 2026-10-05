@@ -23,44 +23,42 @@
 *!
 *! THE BENCHMARK IS SCALED BY THE SHARE THE UNITED STATES SUPPLIES. Comparing
 *! US exports to a country against that country's FULL gold demand is apples
-*! to oranges: every one of these places sources gold from many suppliers. The
-*! relevant benchmark is the part of their demand the United States could
-*! plausibly be serving.
+*! to oranges: all of these places buy gold from many suppliers. The relevant
+*! benchmark is the part of their demand the United States could plausibly be
+*! serving. Shares come from each destination's own statistics, computed by
+*! prep_us_import_shares.py:
 *!
-*! INDIA IS WHERE THIS BITES. On a 2015 window India is the fourth largest
-*! destination by volume, and also a consumption market on a scale none of the
+*!     United Kingdom   15.8%   HMRC Overseas Trade Statistics API,
+*!                              2015-2026, range 8.5-24.5%
+*!     Switzerland      13.3%   BAZG open data, gold imports by country,
+*!                              tariff 7108.12, 2021-2026, range 7.8-17.7%
+*!     India             4.2%   Metals Focus / WGC gross bullion imports
+*!                              against Census exports, 2015-2025, 2.3-6.3%
+*!     Hong Kong           --   no source found, left unscaled
+*!     Singapore           --   no source found, left unscaled
+*!
+*! INDIA IS WHY THIS MATTERS. On a 2015 window India is the fourth largest
+*! destination by volume and also a consumption market on a scale none of the
 *! others approach - 180 tonnes a quarter against the other four's 30
 *! combined. Unscaled, India alone would supply 86% of the group's benchmark
-*! while receiving 7% of the group's metal, the demand line would sit ABOVE
-*! the bars for most of the window, and the panel would appear to say the
-*! opposite of what it is for.
+*! while receiving 7% of its metal, the demand line would sit ABOVE the bars
+*! for most of the window, and the panel would appear to say the opposite of
+*! what it is for. At its actual 4% share the benchmark becomes about 7 tonnes
+*! a quarter, against US exports to India averaging 8. India is exactly what
+*! it looks like: an ordinary destination for the small quantity of American
+*! gold it receives.
 *!
-*! The scaling fixes that with a computed figure rather than an assumption.
-*! WGC and Metals Focus publish India's GROSS BULLION IMPORTS, and the Census
-*! partner data gives US exports to India, so the US share of India's gold
-*! imports falls straight out: a median of 4.2% over 2015-2025, ranging from
-*! 2.3% to 6.3%. India's demand is scaled by its own year's share, which turns
-*! 180 tonnes a quarter into about 7.5 - against US exports to India averaging
-*! 8. India is exactly what it looks like: an ordinary destination for the
-*! small quantity of American gold it receives.
+*! THE TWO UNSOURCED DESTINATIONS ARE LEFT AT 100%, WHICH IS CONSERVATIVE.
+*! Hong Kong's Census and Statistics API needs a table ID this project does
+*! not have and SingStat's Table Builder returns 403 without credentials.
+*! Scaling a benchmark DOWN can only raise the ratio of flow to demand, so an
+*! unscaled destination understates the mismatch rather than overstating it.
+*! Their combined demand is about 11 tonnes a quarter, so the aggregate moves
+*! little either way.
 *!
-*! THE OTHER FOUR ARE LEFT UNSCALED, DELIBERATELY. Their total gold imports
-*! are not in this repo, and neither Comtrade nor WITS serves them without a
-*! key, so no sourced share is available. Leaving them at 100% is the
-*! conservative choice rather than a gap: scaling a benchmark DOWN can only
-*! raise the ratio of flow to demand, so an unscaled hub understates the
-*! mismatch. Whatever share the United States really supplies to Switzerland
-*! or London, the true ratio exceeds the one drawn here. Those four are the
-*! world's refining and vaulting centres - Switzerland refines, London, Hong
-*! Kong and Singapore vault - which is what the metal was going there for.
-*!
-*! THE COMPARATOR IS DELIBERATELY GENEROUS. Jewellery plus bar and coin is
-*! wider than fabrication: bar and coin is investment, not fabrication at all,
-*! and including it makes the benchmark larger and the comparison harder for
-*! this figure to win. Technology demand - electronics, dental - would add
-*! little: it is about 330 tonnes a year for the ENTIRE WORLD, and WGC does not
-*! publish it by country. If the flows still dwarf the generous measure, they
-*! dwarf the strict one.
+*! On these shares the five absorb about 21 tonnes a quarter between them,
+*! against peak quarterly exports of 310 tonnes - a ratio of 22.9 at its
+*! widest, in 2025Q2.
 *!
 *! A NOTE ON THE FIFTH PLACE. An earlier draft of this file hardcoded the five
 *! as Switzerland, the UK, Hong Kong, Singapore and India. On a 2022 window
@@ -202,37 +200,26 @@ qui summarize t, meanonly
 local TALL = r(sum)
 local SHARE5 = 100 * `T5' / `TALL'
 
-*============================== 4a. the share of India's gold the US supplies
-* India sources its gold overwhelmingly from elsewhere, so its full demand is
-* the wrong benchmark for American metal. Scale it by the US share of India's
-* gross bullion imports, computed year by year from WGC/Metals Focus supply
-* data and the Census partner series.
-tempfile indshare indsh
-import delimited using "$RAW/wgc_india_supply_annual.csv", varnames(1) clear
-destring year gross_bullion_imports_t, replace force
-rename gross_bullion_imports_t ind_imports_t
-keep year ind_imports_t
-save `indshare'
+*===================== 4a. the share of each destination's gold the US supplies
+* Comparing US exports to a country against its FULL gold demand is apples to
+* oranges - all of these places buy gold from many suppliers. Scale each
+* destination's demand by the share of its gold imports the United States
+* supplies. Shares are computed by prep_us_import_shares.py from each
+* country's own statistics; see that file for sources and coverage.
+tempfile shares
+import delimited using "$RAW/us_import_shares.csv", varnames(1) clear
+destring year us_import_share, replace force
+drop if missing(us_import_share) | year < 0
+* A median per country, to carry years outside each source's coverage.
+bysort country: egen double share_med = median(us_import_share)
+keep country year us_import_share share_med
+save `shares'
 
-import delimited using "$RAW/us_gold_partner_monthly.csv", varnames(1) clear
-destring value_usd, replace force
-keep if flow == "exports"
-tostring cty_code, replace force
-keep if cty_code == "5330"
-gen double m = mofd(date(date, "YMD"))
-format m %tm
-merge m:1 m using `px', keep(match) nogen
-gen double t = value_usd / (px * `OZ_PER_T')
-gen int year = year(dofm(m))
-collapse (sum) us_to_ind_t = t, by(year)
-merge 1:1 year using `indshare', keep(match) nogen
-gen double ind_us_share = us_to_ind_t / ind_imports_t
-qui summarize ind_us_share, detail
-local IND_MED = r(p50)
-di as txt "US share of India's gold imports: median " %5.2f 100*`IND_MED' ///
-    "%, min " %5.2f 100*r(min) "%, max " %5.2f 100*r(max) "%"
-keep year ind_us_share
-save `indsh'
+preserve
+    collapse (first) share_med, by(country)
+    tempfile shmed
+    save `shmed'
+restore
 
 *=========================================================== 4. WGC demand
 import delimited using "$RAW/wgc_demand_quarterly.csv", varnames(1) clear
@@ -248,11 +235,29 @@ gen double use_t = cond(missing(jewellery_t), 0, jewellery_t) ///
 * supplies. Only India has a sourced share; the others stay at 1, which is
 * conservative - scaling down can only raise the flow-to-demand ratio.
 gen int year = year(dofq(q))
-merge m:1 year using `indsh', keep(master match) nogen
+merge m:1 country year using `shares', keep(master match) nogen
+merge m:1 country using `shmed', keep(master match) nogen update
+* Sourced share for the year where it exists, that country's median where the
+* source does not reach, and 1 where no source exists at all. Leaving a
+* destination unscaled is the conservative choice: scaling a benchmark down
+* can only raise the ratio of flow to demand.
 gen double us_share = 1
-replace us_share = ind_us_share if country == "india" & !missing(ind_us_share)
-replace us_share = `IND_MED' if country == "india" & missing(ind_us_share)
+replace us_share = share_med      if !missing(share_med)
+replace us_share = us_import_share if !missing(us_import_share)
 replace use_t = use_t * us_share
+
+* Report what was applied, so the figure never hides an unscaled destination.
+preserve
+    collapse (mean) us_share, by(country)
+    gsort -us_share
+    di as txt "{hline 60}"
+    di as txt "US-supplied share applied to each destination's demand"
+    forvalues i = 1/`=_N' {
+        di as txt "   " country[`i'] _col(22) %6.1f 100*us_share[`i'] "%" ///
+            cond(us_share[`i'] == 1, "   (no source - left unscaled)", "")
+    }
+    di as txt "{hline 60}"
+restore
 preserve
     keep if country == "united_states"
     collapse (sum) us_use_t = use_t, by(q)
@@ -375,7 +380,7 @@ twoway                                                                      ///
     (line p5_use_t q, lcolor("`INK'") lwidth(1.10))                         ///
     ,                                                                       ///
     title("{bf:b.} US gold exports against the demand of the five places that take them" ///
-          "{it:Tonnes a quarter. `SH'% of US gold exports. Demand scaled by the share of each destination's gold the US supplies - 4.2% for India}", ///
+          "{it:Tonnes a quarter. `SH'% of US gold exports. Demand scaled by the US-supplied share of each destination's gold imports}", ///
           size(medsmall) color("`INK'") position(11) justification(left) span) ///
     ytitle("")                                                              ///
     ylabel(0(200)800, angle(0) labsize(small) tlcolor(none)                 ///
