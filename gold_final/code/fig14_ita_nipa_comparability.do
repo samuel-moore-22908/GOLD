@@ -9,9 +9,11 @@
 *! In normal times the two differ by very little and nobody has to care which
 *! one they are reading. Gold is what makes it matter.
 *!
-*! THE WINDOW. 2020 onward, which is where this is worth looking: gold's share
-*! of US goods trade was under 1% for most of the preceding decade and the two
-*! series were effectively indistinguishable.
+*! THE WINDOW. 2015 onward. The first five years carry almost nothing - gold
+*! was around 1% of US goods trade and the two series are indistinguishable -
+*! but they establish the baseline against which 2020 and 2025 read as breaks,
+*! and they supply the two trivial sign disagreements that show what a
+*! disagreement looks like when it is only rounding.
 *!
 *! THE LEVEL BREAK. In 2025Q1 the ITA goods deficit was $1,826bn at an annual
 *! rate and the NIPA goods deficit was $1,541bn. The two official measures of
@@ -19,35 +21,37 @@
 *! quarters later the gap had swung the other way to -15.6%. That is a
 *! 34-point swing in the relative difference between two series that are
 *! supposed to be describing the same thing, and over this window the gap
-*! correlates +0.99 with net gold trade.
+*! correlates +0.98 with net gold trade.
 *!
 *! THE DIRECTIONAL BREAK, WHICH IS THE SERIOUS ONE. A level gap can be netted
-*! out by anyone who knows it is there. A sign disagreement cannot. In the 25
-*! quarterly changes since 2020 the two measures disagree about whether the
-*! deficit widened or narrowed exactly three times, and all three are
-*! consecutive:
+*! out by anyone who knows it is there. A sign disagreement cannot. In the 45
+*! quarterly changes since 2015 the two measures disagree about whether the
+*! deficit widened or narrowed five times, and they are not evenly spread:
 *!
+*!     2016Q2   ITA   +11   NIPA    -6     gap    +17bn
+*!     2018Q4   ITA   +12   NIPA    -1     gap    +14bn
 *!     2025Q3   ITA   +55   NIPA   -71     gap   +126bn
 *!     2025Q4   ITA   -77   NIPA   +19     gap    -96bn
 *!     2026Q1   ITA   -34   NIPA   +49     gap    -83bn
 *!
-*! For three quarters running, one official US measure of the goods balance
-*! said the external position was improving while the other said it was
-*! deteriorating. Nothing comparable happens anywhere else in the window - the
-*! two series agree on direction in all 22 other quarters.
+*! The two before 2025 are rounding - $17bn and $14bn on a deficit above
+*! $700bn, the kind of thing that happens when a series is flat. The three
+*! since are six to nine times larger and consecutive. For three quarters
+*! running, one official US measure of the goods balance said the external
+*! position was improving while the other said it was deteriorating.
 *!
 *! AND THE ADJUSTMENT CLOSES IT. The third line is the ITA balance with
 *! nonmonetary gold taken out of both sides - HS 7108 and 7115, imports netted
 *! against exports. It lands on the national accounts almost exactly:
 *!
-*!     mean |ITA - NIPA|            48.1bn      sd 82.0
-*!     mean |adjusted - NIPA|        8.5bn      sd 10.9
+*!     mean |ITA - NIPA|            36.0bn      sd 61.8
+*!     mean |adjusted - NIPA|       11.0bn      sd 11.4
 *!     2025Q1  ITA 1,826   adjusted 1,558   NIPA 1,541
 *!
 *! A $285bn discrepancy becomes $17bn. The correlation of quarterly CHANGES
-*! with NIPA rises from 0.918 to 0.992, and the three sign disagreements fall
-*! to NONE. On this window the adjusted series never once disagrees with the
-*! national accounts about which way the deficit moved.
+*! with NIPA rises from 0.908 to 0.991, and of the five sign disagreements
+*! three remain - 2016Q2, 2016Q3 and 2018Q4 - every one of them under $30bn.
+*! All three of the large ones, 2025Q3 through 2026Q1, disappear.
 *!
 *! That is the argument in one line: the wedge between the two publications is
 *! gold, and removing gold from the ITA reproduces the national accounts. The
@@ -141,7 +145,7 @@ restore
 use `qq', clear
 sort q
 drop if missing(ita, nipa)
-keep if q >= tq(2020q1)
+keep if q >= tq(2015q1)
 
 *=========================================================== 3. the two breaks
 * The ITA balance with nonmonetary gold removed from both sides. Since the
@@ -187,7 +191,7 @@ di as txt "   corr(gap, net gold trade) = " %5.3f `R_GOLD'
 di as txt ""
 di as txt "THE DIRECTIONAL BREAK - quarters where the two DISAGREE on the sign"
 qui count if disagree
-di as txt "   " r(N) " of " _N " quarters since 2020"
+di as txt "   " r(N) " of " _N " quarters since 2015"
 di as txt "   " _col(12) "ITA" _col(22) "NIPA" _col(33) "gap"
 forvalues i = 1/`=_N' {
     if disagree[`i'] {
@@ -197,8 +201,8 @@ forvalues i = 1/`=_N' {
     }
 }
 di as txt ""
-di as txt "   All three are consecutive. The two series agree on direction in"
-di as txt "   every one of the other 22 quarters in the window."
+di as txt "   The two before 2025 are rounding on a deficit above {c $|}700bn."
+di as txt "   The three since are six to nine times larger and consecutive."
 di as txt ""
 di as txt "AND THE ADJUSTMENT CLOSES IT"
 qui summarize gap
@@ -242,7 +246,9 @@ local Y0 = year(dofq(`Q0'))
 local Y1 = year(dofq(`Q1'))
 local XLAB ""
 forvalues y = `Y0'/`Y1' {
-    local XLAB `XLAB' `=tq(`y'q1)' "`y'"
+    if mod(`y', 2) == 1 {
+        local XLAB `XLAB' `=tq(`y'q1)' "`y'"
+    }
 }
 
 twoway                                                                      ///
@@ -277,7 +283,7 @@ twoway                                                                      ///
     ,                                                                       ///
     yline(0, lcolor("`SOFT'") lwidth(0.30))                                 ///
     title("{bf:b.} The disagreements about direction go with it"            ///
-          "{it:Change in the goods deficit, {c $|}bn. Three sign disagreements as published, none once gold is out}", ///
+          "{it:Change in the goods deficit, {c $|}bn. Five sign disagreements as published; every large one goes once gold is out}", ///
           size(medsmall) color("`INK'") position(11) justification(left) span) ///
     ytitle("")                                                              ///
     ylabel(-800(200)400, angle(0) labsize(small) tlcolor(none)              ///

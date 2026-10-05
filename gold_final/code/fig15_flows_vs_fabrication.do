@@ -43,7 +43,7 @@
 *! dwarf the strict one.
 *!
 *! A NOTE ON THE FIFTH PLACE. An earlier draft of this file hardcoded the five
-*! as Switzerland, the UK, Hong Kong, Singapore and India. On the 2022 window
+*! as Switzerland, the UK, Hong Kong, Singapore and India. On a 2022 window
 *! Canada displaces India, so the file now picks the five from the Census data
 *! and warns if any of them has no WGC counterpart. The hardcoded guess would
 *! have weakened the figure badly, because including India put 184 tonnes a
@@ -52,9 +52,8 @@
 *! TWO THINGS THE FIGURE DOES NOT HIDE. WGC does not break out Swiss jewellery
 *! demand, which sits inside "Other Europe", so Switzerland contributes bar and
 *! coin only and the partner total is slightly understated - by a few tonnes a
-*! quarter against partner totals in the hundreds. And the window starts in
-*! 2022 because that is where the Census partner detail in this repo starts,
-*! not because anything happened then.
+*! quarter against partner totals in the hundreds. The window runs from 2015,
+*! which required re-pulling the Census partner detail back to January 2015.
 *!
 *! UNITS. Tonnes throughout, converted at the boundary from the Census dollar
 *! values using the LBMA PM monthly average and 32,150.7 troy ounces to the
@@ -91,7 +90,7 @@ local RULE "224 228 231"
 local SOFT "112 112 112"
 
 local OZ_PER_T = 32150.7       // troy ounces in a tonne
-local Q0 = tq(2022q1)
+local Q0 = tq(2015q1)
 
 tempfile px gold partner demand
 
@@ -254,6 +253,13 @@ qui summarize p5_use_t
 di as txt "   their combined demand averages " %6.0f r(mean) "t a quarter"
 di as txt "   peak ratio " %5.1f `RE_MAX' "x in `RE_Q'"
 di as txt ""
+di as txt "   COMPOSITION CHECK - does one destination carry the benchmark?"
+qui summarize p5_use_t, meanonly
+local P5U = r(mean)
+di as txt "   combined demand of the five " %6.1f `P5U' "t a quarter"
+di as txt "   (if one of them is a consumption market its demand will swamp"
+di as txt "    the rest and the aggregate ratio will understate the others)"
+di as txt ""
 di as txt "   Gold is not consumed on these timescales. A country that imports"
 di as txt "   eighteen quarters of its own demand in one quarter is not"
 di as txt "   consuming it, and metal shipped to refining and vaulting centres"
@@ -270,7 +276,9 @@ local Y0 = year(dofq(`QA'))
 local Y1 = year(dofq(`QB'))
 local XLAB ""
 forvalues y = `Y0'/`Y1' {
-    local XLAB `XLAB' `=tq(`y'q1)' "`y'"
+    if mod(`y', 2) == 1 {
+        local XLAB `XLAB' `=tq(`y'q1)' "`y'"
+    }
 }
 
 local R25 : display %3.0f `IMP25'/`USE25'
