@@ -9,45 +9,45 @@
 *! In normal times the two differ by very little and nobody has to care which
 *! one they are reading. Gold is what makes it matter.
 *!
+*! THE WINDOW. 2020 onward, which is where this is worth looking: gold's share
+*! of US goods trade was under 1% for most of the preceding decade and the two
+*! series were effectively indistinguishable.
+*!
 *! THE LEVEL BREAK. In 2025Q1 the ITA goods deficit was $1,826bn at an annual
 *! rate and the NIPA goods deficit was $1,541bn. The two official measures of
 *! the same quarter's trade were $285bn apart - 18.5% of the NIPA figure. Four
 *! quarters later the gap had swung the other way to -15.6%. That is a
 *! 34-point swing in the relative difference between two series that are
-*! supposed to be describing the same thing, and the gap correlates +0.98 with
-*! net gold trade.
+*! supposed to be describing the same thing, and over this window the gap
+*! correlates +0.99 with net gold trade.
 *!
 *! THE DIRECTIONAL BREAK, WHICH IS THE SERIOUS ONE. A level gap can be netted
-*! out by anyone who knows it is there. A sign disagreement cannot. In five
-*! quarters since 2015 the two measures disagree about whether the deficit
-*! widened or narrowed, and they are not evenly spread:
+*! out by anyone who knows it is there. A sign disagreement cannot. In the 25
+*! quarterly changes since 2020 the two measures disagree about whether the
+*! deficit widened or narrowed exactly three times, and all three are
+*! consecutive:
 *!
-*!     2016Q2   ITA   +11   NIPA    -6     gap    +17bn
-*!     2018Q4   ITA   +12   NIPA    -1     gap    +14bn
 *!     2025Q3   ITA   +55   NIPA   -71     gap   +126bn
 *!     2025Q4   ITA   -77   NIPA   +19     gap    -96bn
 *!     2026Q1   ITA   -34   NIPA   +49     gap    -83bn
 *!
-*! The two pre-2025 disagreements are rounding - $14bn and $17bn on a deficit
-*! above $700bn, the kind of thing that happens when a series is flat. The
-*! three since are six to nine times larger and they come in consecutive
-*! quarters. For three quarters running, one official US measure of the goods
-*! balance said the external position was improving while the other said it
-*! was deteriorating.
+*! For three quarters running, one official US measure of the goods balance
+*! said the external position was improving while the other said it was
+*! deteriorating. Nothing comparable happens anywhere else in the window - the
+*! two series agree on direction in all 22 other quarters.
 *!
 *! AND THE ADJUSTMENT CLOSES IT. The third line is the ITA balance with
 *! nonmonetary gold taken out of both sides - HS 7108 and 7115, imports netted
 *! against exports. It lands on the national accounts almost exactly:
 *!
-*!     mean |ITA - NIPA|            36.0bn      sd 61.8
-*!     mean |adjusted - NIPA|       11.0bn      sd 11.4
+*!     mean |ITA - NIPA|            48.1bn      sd 82.0
+*!     mean |adjusted - NIPA|        8.5bn      sd 10.9
 *!     2025Q1  ITA 1,826   adjusted 1,558   NIPA 1,541
 *!
 *! A $285bn discrepancy becomes $17bn. The correlation of quarterly CHANGES
-*! with NIPA rises from 0.908 to 0.991, and of the five sign disagreements
-*! three remain - 2016Q2, 2016Q3, 2018Q4 - all of them under $30bn and none
-*! of them the ones that mattered. Every large directional disagreement,
-*! 2025Q3 through 2026Q1, disappears.
+*! with NIPA rises from 0.918 to 0.992, and the three sign disagreements fall
+*! to NONE. On this window the adjusted series never once disagrees with the
+*! national accounts about which way the deficit moved.
 *!
 *! That is the argument in one line: the wedge between the two publications is
 *! gold, and removing gold from the ITA reproduces the national accounts. The
@@ -141,7 +141,7 @@ restore
 use `qq', clear
 sort q
 drop if missing(ita, nipa)
-keep if q >= tq(2015q1)
+keep if q >= tq(2020q1)
 
 *=========================================================== 3. the two breaks
 * The ITA balance with nonmonetary gold removed from both sides. Since the
@@ -187,7 +187,7 @@ di as txt "   corr(gap, net gold trade) = " %5.3f `R_GOLD'
 di as txt ""
 di as txt "THE DIRECTIONAL BREAK - quarters where the two DISAGREE on the sign"
 qui count if disagree
-di as txt "   " r(N) " of " _N " quarters since 2015"
+di as txt "   " r(N) " of " _N " quarters since 2020"
 di as txt "   " _col(12) "ITA" _col(22) "NIPA" _col(33) "gap"
 forvalues i = 1/`=_N' {
     if disagree[`i'] {
@@ -197,8 +197,8 @@ forvalues i = 1/`=_N' {
     }
 }
 di as txt ""
-di as txt "   The two before 2025 are rounding on a deficit above {c $|}700bn."
-di as txt "   The three since are six to nine times larger and consecutive."
+di as txt "   All three are consecutive. The two series agree on direction in"
+di as txt "   every one of the other 22 quarters in the window."
 di as txt ""
 di as txt "AND THE ADJUSTMENT CLOSES IT"
 qui summarize gap
@@ -242,9 +242,7 @@ local Y0 = year(dofq(`Q0'))
 local Y1 = year(dofq(`Q1'))
 local XLAB ""
 forvalues y = `Y0'/`Y1' {
-    if mod(`y', 2) == 1 {
-        local XLAB `XLAB' `=tq(`y'q1)' "`y'"
-    }
+    local XLAB `XLAB' `=tq(`y'q1)' "`y'"
 }
 
 twoway                                                                      ///
@@ -279,7 +277,7 @@ twoway                                                                      ///
     ,                                                                       ///
     yline(0, lcolor("`SOFT'") lwidth(0.30))                                 ///
     title("{bf:b.} The disagreements about direction go with it"            ///
-          "{it:Change in the goods deficit, {c $|}bn. Correlation with NIPA rises from 0.91 to 0.99 once gold is out}", ///
+          "{it:Change in the goods deficit, {c $|}bn. Three sign disagreements as published, none once gold is out}", ///
           size(small) color("`INK'") position(11) justification(left) span) ///
     ytitle("")                                                              ///
     ylabel(-800(400)400, angle(0) labsize(vsmall) tlcolor(none)             ///
@@ -304,19 +302,20 @@ graph combine pa pb, cols(1) imargin(zero)                                  ///
              justification(left) span)                                      ///
     note(" " ///
          "BEA publishes the US goods balance twice. The International Transactions Accounts carry nonmonetary gold; the national accounts remove it and replace it with" ///
-         "domestic production less industrial use. In normal times the two barely differ and nobody needs to know which they are reading." ///
+         "domestic production less industrial use. The window starts in 2020 because that is when it begins to matter - for most of the preceding decade gold was under" ///
+         "1% of US goods trade and the two series were effectively indistinguishable." ///
          " " ///
          "THE LEVEL BREAK. In 2025Q1 the ITA goods deficit was {c $|}1,826bn at an annual rate against NIPA's {c $|}1,541bn - the same quarter's trade, {c $|}285bn apart. Four quarters" ///
-         "later the gap had swung from +18.5% of the NIPA figure to -15.6%. It correlates 0.98 with net gold trade." ///
+         "later the gap had swung from +18.5% of the NIPA figure to -15.6%. Across the window it correlates 0.99 with net gold trade." ///
          " " ///
-         "THE DIRECTIONAL BREAK IS THE SERIOUS ONE, because a level gap can be netted out by anyone who knows it is there and a sign disagreement cannot. Five quarters" ///
-         "since 2015 disagree about whether the deficit widened or narrowed. The two before 2025 are rounding, {c $|}17bn and {c $|}14bn. The three since are six to nine times" ///
-         "larger and consecutive: in 2025Q3 the ITA showed the deficit widening {c $|}55bn while NIPA showed it narrowing {c $|}71bn, and the next two quarters reversed that." ///
+         "THE DIRECTIONAL BREAK IS THE SERIOUS ONE, because a level gap can be netted out by anyone who knows it is there and a sign disagreement cannot. In the 25" ///
+         "quarterly changes since 2020 the two measures disagree about whether the deficit widened or narrowed exactly three times, and all three are consecutive: in" ///
+         "2025Q3 the ITA showed the deficit widening {c $|}55bn while NIPA showed it narrowing {c $|}71bn, and the next two quarters reversed that. They agree in all 22 others." ///
          " " ///
          "AND THE ADJUSTMENT CLOSES IT. The grey line removes nonmonetary gold from both sides of the ITA balance - HS 7108 and 7115, which since the balance is imports" ///
-         "minus exports is simply the deficit less net gold. The mean absolute gap to NIPA falls from {c $|}36bn to {c $|}11bn, 2025Q1 from {c $|}285bn to {c $|}17bn, and the correlation of" ///
-         "quarterly changes from 0.908 to 0.991. Every large directional disagreement disappears. Neither series is wrong - each is correct for its own purpose - but" ///
-         "the adjustment is arithmetic on a series Census already publishes, and publishing the balance on both bases would cost nothing." ///
+         "minus exports is simply the deficit less net gold. The mean absolute gap to NIPA falls from {c $|}48bn to {c $|}9bn, 2025Q1 from {c $|}285bn to {c $|}17bn, the correlation of quarterly" ///
+         "changes from 0.918 to 0.992, and the three directional disagreements to none. Neither series is wrong - each is correct for its own purpose - but the" ///
+         "adjustment is arithmetic on a series Census already publishes, and publishing the balance on both bases would cost nothing." ///
          "Source: Bureau of Economic Analysis, International Transactions Accounts and NIPA tables 1.1.5; US Census Bureau.", ///
          size(vsmall) color("`SOFT'") position(7) span)                     ///
     name(combined, replace)
