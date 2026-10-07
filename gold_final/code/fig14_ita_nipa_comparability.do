@@ -188,6 +188,129 @@ foreach s in imp exp {
     di as txt ""
 }
 
+*=========================== 3b. the balance, which the panels deliberately
+*                                 do NOT plot
+* The figure shows the two flows separately because a net balance lets an
+* import error and an export error of the same sign cancel - exactly the case
+* the figure exists to rule out. But the balance is what a reader of the
+* monthly trade release actually sees, so its diagnostics are reported here
+* even though no panel draws them. Everything below comes from the same three
+* series the panels use, so the numbers are reproducible from this file alone.
+gen double bal_ita  = ita_imp - ita_exp        // deficit, positive
+gen double bal_nipa = nipa_imp - nipa_exp
+gen double bal_adj  = adj_imp - adj_exp
+gen double net_gold = gold_imp - gold_exp
+gen double bgap     = bal_ita - bal_nipa
+gen double bgapadj  = bal_adj - bal_nipa
+gen double bgappct  = 100 * bgap / bal_nipa
+gen double abgap    = abs(bgap)
+gen double abgapadj = abs(bgapadj)
+
+tsset q
+gen double d_ita  = D.bal_ita
+gen double d_nipa = D.bal_nipa
+gen double d_adj  = D.bal_adj
+* A directional disagreement: the two measures say the deficit moved opposite
+* ways in the same quarter. A level gap can be netted out by a reader who
+* knows it is there; this cannot.
+gen byte disagree    = (sign(d_ita) != sign(d_nipa)) if !missing(d_ita, d_nipa)
+gen byte disagreeadj = (sign(d_adj) != sign(d_nipa)) if !missing(d_adj, d_nipa)
+
+di as txt "{hline 78}"
+di as txt "THE BALANCE ({c $|}bn at an annual rate, deficit positive, 2015Q1 onward)"
+di as txt "  not plotted - reported here because it is what the monthly release shows"
+di as txt "{hline 78}"
+qui summarize bgappct
+local PMAX = r(max)
+local PMIN = r(min)
+gsort -bgappct
+local PMAXQ : display %tqCCYY!Qq q[1]
+gsort bgappct
+local PMINQ : display %tqCCYY!Qq q[1]
+sort q
+qui summarize bal_ita if q == tq(2025q1), meanonly
+local BI = r(mean)
+qui summarize bal_nipa if q == tq(2025q1), meanonly
+local BN = r(mean)
+qui summarize bgapadj if q == tq(2025q1), meanonly
+local BA = r(mean)
+di as txt "   2025Q1  ITA deficit " %7.0f `BI' "   NIPA deficit " %7.0f `BN'
+di as txt "           gap " %7.0f `BI'-`BN' "  = " %5.1f 100*(`BI'-`BN')/`BN' ///
+    "% of NIPA;  after adjustment " %6.0f `BA'
+di as txt "   widest gap  " %6.1f `PMAX' "% in " trim("`PMAXQ'") ///
+    "    most negative " %6.1f `PMIN' "% in " trim("`PMINQ'")
+qui correlate bgap net_gold
+di as txt "   corr(gap, net gold) = " %6.3f r(rho)
+* The MEAN OF THE ABSOLUTE gap, not the absolute value of the mean gap - the
+* latter nets a positive quarter against a negative one and understates badly.
+qui summarize abgap
+local M1 = r(mean)
+qui summarize abgapadj
+di as txt "   mean |gap| raw vs adjusted: " %6.1f `M1' " -> " %6.1f r(mean)
+qui correlate d_ita d_nipa
+local C1 = r(rho)
+qui correlate d_adj d_nipa
+di as txt "   corr of quarterly CHANGES, raw " %5.3f `C1' " -> adjusted " %5.3f r(rho)
+qui count if disagree == 1
+local ND = r(N)
+qui count if disagreeadj == 1
+local NA = r(N)
+qui count if !missing(disagree)
+di as txt "   directional disagreements: " %2.0f `ND' " of " %3.0f r(N) ///
+    " quarterly changes; after adjustment " %2.0f `NA'
+* Name them, and say which survive the adjustment. The adjustment is not
+* claimed to fix every disagreement - only the ones gold caused - so the
+* survivors are the honest part of this diagnostic.
+foreach v in disagree disagreeadj {
+    local WHICH = cond("`v'" == "disagree", "raw     ", "adjusted")
+    qui count if `v' == 1
+    if r(N) > 0 {
+        levelsof q if `v' == 1, local(DQ)
+        di as txt "     `WHICH':" _continue
+        foreach x of local DQ {
+            local LBL : display %tqCCYY!Qq `x'
+            di as txt " " trim("`LBL'") _continue
+        }
+        di as txt ""
+    }
+}
+* Gold's weight in the quarters that disagree, because the recommendation in
+* the memo is conditional on it: an adjustment made when gold is a rounding
+* error can only add noise, and 2016 is where that shows.
+gen double gshare = 100 * gold_imp / ita_imp
+* A LEVEL share is the wrong trigger and this is where that becomes visible.
+* What flips the direction of the balance is the CHANGE in net gold, not its
+* level, so the diagnostic that matters is how much of the quarter's change in
+* the deficit is net gold moving.
+gen double d_gold = D.net_gold
+gen double gcontrib = 100 * abs(d_gold) / abs(d_ita)
+di as txt "   the disagreeing quarters, with gold's weight two ways:"
+di as txt "     quarter   gold as % of    net gold change as    survives"
+di as txt "               goods imports   % of deficit change   adjustment?"
+forvalues i = 1/`=_N' {
+    if disagree[`i'] == 1 | disagreeadj[`i'] == 1 {
+        local LBL : display %tqCCYY!Qq q[`i']
+        local TAG = cond(disagree[`i'] != 1, "created BY it", ///
+                    cond(disagreeadj[`i'] == 1, "yes, survives", "no, removed "))
+        di as txt "     " trim("`LBL'") _col(26) %5.1f gshare[`i'] "%" ///
+            _col(44) %7.0f gcontrib[`i'] "%" _col(60) "   `TAG'"
+    }
+}
+
+* And the ones gold explains: present raw, gone after adjustment.
+qui count if disagree == 1 & disagreeadj == 0
+if r(N) > 0 {
+    levelsof q if disagree == 1 & disagreeadj == 0, local(DQ)
+    di as txt "     gold explains:" _continue
+    foreach x of local DQ {
+        local LBL : display %tqCCYY!Qq `x'
+        di as txt " " trim("`LBL'") _continue
+    }
+    di as txt ""
+}
+di as txt "{hline 78}"
+di as txt ""
+
 *=========================================================== 4. the two panels
 qui summarize q, meanonly
 local Q0 = r(min)

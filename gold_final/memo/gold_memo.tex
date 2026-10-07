@@ -44,6 +44,14 @@
 \captionsetup[figure]{labelformat=empty, justification=raggedright,
   singlelinecheck=false, font={sf,small}, skip=6pt}
 
+% Let a figure share a page with text instead of claiming one to itself. The
+% defaults reserve 20% of every float page for nothing, which with four
+% full-width figures costs the better part of a page.
+\renewcommand{\topfraction}{0.92}
+\renewcommand{\bottomfraction}{0.75}
+\renewcommand{\textfraction}{0.06}
+\renewcommand{\floatpagefraction}{0.80}
+
 \setlength{\parskip}{6pt}
 \setlength{\parindent}{0pt}
 \renewcommand{\baselinestretch}{1.05}
@@ -96,10 +104,12 @@ accounts, and safe to apply as the occasion demands.\par}
 \section{An outlier among traded goods}
 
 Between November 2024 and March 2025 something unusual happened to one line of
-the U.S.\ trade accounts. Gold imports, which had run between one and three
-billion dollars a month for a decade, reached \$34.2 billion in January 2025
-alone --- 10.5\% of all U.S.\ goods imports in a single month, from a commodity
-that normally accounts for about one percent.
+the U.S.\ trade accounts. Gold imports, which ran between \$0.6 and \$2.6
+billion a month through the second half of the 2010s, reached \$34.2 billion in
+January 2025 alone --- 10.5\% of all U.S.\ goods imports in a single month, from
+a commodity that averaged 0.6\% of them over 2015--2019. It had happened once
+before, smaller: gold reached 7.2\% and 8.8\% of goods imports in April and May
+2020.
 
 Then it reversed. Figure 1 places gold against the hundred most-traded U.S.\
 commodity headings on the balance plane: exports on one axis, imports on the
@@ -122,9 +132,12 @@ November 2025.}{U.S.\ Census Bureau, monthly HS4 trade.}
 The round trip is the first clue that this was not trade in the ordinary sense.
 Cumulative net gold imports ran to \$80.0 billion by March 2025 and were back
 through zero eleven months later, standing at \$47.6 billion \emph{negative} by
-mid-2026: more metal left than had arrived. Across the whole period since 2015,
-\$791 billion of gold crossed the U.S.\ border gross against a net of
-\$-64 billion. Only 8\% of the metal that crossed stayed.
+mid-2026: more metal left than had arrived.\endnote{Cumulated from November
+2024, the surge's first month. Net flows since 2015 are \$64 billion negative,
+so the direction is the same on a longer reckoning.} Across the whole period
+since 2015, \$791 billion of gold crossed the U.S.\ border gross against a net
+of \$-64 billion --- an imbalance of 8\%, pointing \emph{outward}. Ninety-two
+percent of the recorded trade was metal going one way and coming back.
 
 Goods that are bought get consumed, installed or worn. They do not come back.
 
@@ -143,34 +156,51 @@ demand --- electronics, dental, industrial --- would add little. It runs at
 roughly 330 tonnes a year for the entire world, and the World Gold Council does
 not publish it by country.} In 2025Q1 the United States imported 870 tonnes
 against demand of 39 tonnes: twenty-two times a quarter's consumption, in one
-quarter. U.S.\ demand averages 53 tonnes a quarter over this window and has
-never exceeded 75.
+quarter. U.S.\ demand averages 49 tonnes a quarter over this window and has
+never exceeded 83.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{../figures/flows_vs_fabrication.pdf}
+\includegraphics[width=0.93\textwidth]{../figures/flows_vs_fabrication.pdf}
 \caption{\textbf{2. The flows against what the metal is actually used for}}
 \fignote{Tonnes a quarter, converted from Census dollar values at the LBMA PM
 monthly average and 32,150.7 troy ounces to the tonne. Demand is jewellery plus
-bar and coin. The five destinations are chosen from the trade data, not
-assumed. The World Gold Council does not break out Swiss jewellery demand, which
+bar and coin. The five destinations are read off the trade data, not assumed,
+and their membership is not stable: Canada is fifth on a window beginning in
+2022. Partner demand is scaled by the U.S.-supplied share of each destination's
+gold imports, set at the highest figure any source reports in any year. The
+World Gold Council does not break out Swiss jewellery demand, which
 sits inside a regional aggregate, so Switzerland contributes bar and coin only
-and the partner benchmark is marginally understated.}{U.S.\ Census Bureau; World
+and the partner benchmark is marginally understated.}{U.S.\ Census Bureau; UN
+Comtrade; HMRC; Swiss Federal Office for Customs and Border Security; World
 Gold Council, \textit{Gold Demand Trends}; LBMA.}
 \end{figure}
 
 The lower panel does the same for exports, against the demand of the five
-destinations that take them. Those five --- Canada, Hong Kong, Singapore,
-Switzerland and the United Kingdom --- account for 86.6\% of U.S.\ gold exports
-to identified countries. Their \emph{combined} gold demand is about 32 tonnes a
-quarter. Peak quarterly exports to them were 327 tonnes.
+destinations that take them: Hong Kong, India, Singapore, Switzerland and the
+United Kingdom, together 85.8\% of U.S.\ gold exports to identified countries.
+All five buy gold from many suppliers, so setting U.S.\ exports against their
+\emph{entire} demand would overstate what the United States could plausibly be
+supplying. Each destination's demand is therefore scaled by the share of its
+gold imports the United States provides --- set, in every case, at the largest
+figure any source reports in any year, which makes the benchmark larger and this
+comparison harder to win.\endnote{United Kingdom 26\%, Switzerland 25\%, Hong
+Kong and Singapore 12\%, India 10\%: each the maximum across UN Comtrade on both
+a mass and a value basis and, where an independent national compiler exists,
+HMRC (peak 24.5\%), the Swiss customs administration (17.7\%) and Metals Focus
+via the World Gold Council (6.3\%). The sources agree closely where they
+overlap, and applying one year's peak flat across eleven years is generous again
+on top of taking the maximum.} So scaled, the five's reachable demand averages
+24 tonnes a quarter. Peak quarterly exports to them were 310 tonnes.
 
-The composition is sharper than the ratio. India consumes 184 tonnes a quarter,
-more than those five put together, and is not among the destinations at all.
-The United States ships its gold to the five places that barely use any, and
-not to the one place that uses more than all of them combined. What the five do
-have in common is infrastructure: Switzerland refines, and London, Hong Kong
-and Singapore vault.
+The composition cuts against the argument before it cuts for it. India is in the
+set and is a genuine consumption market --- 184 tonnes a quarter of jewellery
+and retail bar, more than the other four together --- and at its 10\% share it
+supplies 18 of the benchmark's 24 tonnes. Yet India takes only 391 of the 5,372
+tonnes shipped to the five over this window, seven percent, while Switzerland
+and the United Kingdom take 77\% and account for four tonnes a quarter of demand
+between them. The metal goes to the refineries and the vaults, not to where the
+jewellery is made.
 
 So something moved 870 tonnes of metal that nobody at either end had any use
 for, and then moved most of it back. What?
@@ -248,42 +278,44 @@ reading.
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{../figures/ita_nipa_comparability.pdf}
+\includegraphics[width=0.93\textwidth]{../figures/ita_nipa_comparability.pdf}
 \caption{\textbf{4. The same quarter's trade, measured twice}}
 \fignote{Quarterly, at annual rates. The adjusted series removes nonmonetary
-gold (HS 7108 and 7115) from both sides of the ITA balance, which because the
-balance is imports less exports is the deficit less net gold.}{Bureau of
-Economic Analysis, International Transactions Accounts and NIPA table 1.1.5;
-U.S.\ Census Bureau.}
+gold (HS 7108 and 7115) from each side separately. The flows are shown apart
+rather than netted because an import error and an export error of the same sign
+cancel in a balance, which is what this figure exists to rule out. The balance
+statistics quoted in the text come from the same three series.}{Bureau of Economic Analysis, International Transactions Accounts and
+NIPA table 1.1.5; U.S.\ Census Bureau.}
 \end{figure}
 
 In 2025Q1 they differed by \$285 billion at an annual rate --- the ITA goods
 deficit at \$1,826 billion against the national accounts' \$1,541 billion, a
 gap of 18.5\% of the latter. Four quarters later the gap had swung to
-\textit{minus} 15.6\%. Across the window it correlates 0.99 with net gold
+\textit{minus} 15.6\%. Across the window it correlates 0.98 with net gold
 trade.
 
 A level gap can be netted out by anyone who knows it is there. A disagreement
-about direction cannot, and that is what happened next. In the twenty-five
-quarterly changes since 2020 the two measures disagree about whether the
-deficit widened or narrowed exactly three times --- and all three are
-consecutive. In 2025Q3 the trade release showed the deficit widening by \$55
-billion while the national accounts showed it narrowing by \$71 billion; the
-next two quarters reversed that. For three quarters running, one official U.S.\
-measure of the external position said it was improving while the other said it
-was deteriorating.
+about direction cannot, and that is what happened next. In the forty-five
+quarterly changes since 2015 the two measures disagree about whether the deficit
+widened or narrowed five times. Two of the five are old and isolated, in 2016Q2
+and 2018Q4, when gold was well under one percent of goods imports. The other
+three are recent and consecutive: in 2025Q3 the trade release showed the deficit
+widening by \$55 billion while the national accounts showed it narrowing by
+\$71 billion, and the next two quarters reversed that. For three quarters
+running, one official U.S.\ measure of the external position said it was
+improving while the other said it was deteriorating.
 
-The claim is not that either series is wrong. Each treatment is correct for its
-own purpose. The claim is that a correct series stopped being informative about
-what its readers use it for, and did so without warning them.
+The claim is not that either series is wrong; each treatment is correct for its
+own purpose. It is that a correct series stopped being informative about what
+its readers use it for, and did so without warning them.
 
 % ====================================================================
 \section{Adjust it yourself, and check your work}
 
-The practical conclusion is a modest one: when gold is moving, take it out of
-the monthly trade balance before reading anything into the number. The
-adjustment is arithmetic, the inputs are published, and --- unusually for an
-ad-hoc correction --- you can verify that you have done it right.
+The practical conclusion is modest: when gold is moving, take it out of the
+monthly trade balance before reading anything into the number. The adjustment is
+arithmetic, the inputs are published, and --- unusually for an ad-hoc correction
+--- you can check that you did it right.
 
 The arithmetic is one line. Because the balance is imports less exports, taking
 nonmonetary gold out of both sides is the same as subtracting net gold:
@@ -298,34 +330,46 @@ articles of precious metal, under which a large share of the 2025 bar inflow
 was entered. Using 7108 alone would miss most of the episode.}
 
 What makes this safe rather than merely convenient is that it can be checked.
-Figure 4's third line is exactly that calculation, and it lands on the national
-accounts: the mean absolute gap falls from \$48 billion to \$9 billion, the
-2025Q1 discrepancy from \$285 billion to \$17 billion, the correlation of
-quarterly changes rises from 0.918 to 0.992, and all three directional
-disagreements vanish. The adjusted series does not merely look tidier --- it
-reproduces an independently constructed official aggregate that was built to a
-different standard by a different part of the same agency. An ad-hoc
-correction with an external benchmark is not really ad hoc; it is a replication.
+The middle line in each panel of Figure 4 is exactly that calculation, and it
+lands on the national accounts. On the balance, the mean absolute gap falls from
+\$36 billion to \$11 billion, the 2025Q1 discrepancy from \$285 billion to \$17
+billion, the correlation of quarterly changes rises from 0.908 to 0.991, and all
+three of the consecutive directional disagreements vanish. The adjusted series
+does not merely look tidier --- it reproduces an independently constructed
+official aggregate, built to a different standard by a different part of the
+same agency. An ad-hoc correction with an external benchmark is not really ad
+hoc; it is a replication.
 
-A reasonable trigger is gold's share of goods trade. Below about one percent,
-which is where it sat for most of the decade before 2020, the adjustment
-changes nothing and can be ignored. Above a few percent it is worth making, and
-in months like January 2025, when gold reached 10.5\% of goods imports, reading
-the headline without it is reading mostly bullion.
+Two things it does not do. It leaves the two pre-2020 disagreements untouched,
+as it should --- they are not gold's doing --- and in 2016Q3 it \emph{creates}
+one: the deficit barely moved that quarter, so the change in net gold came to
+seventeen times the change being adjusted, and subtracting a large number from a
+small one is how a sign gets flipped. The adjustment earns its keep when gold
+moves the balance and costs something when it does not, which argues for a
+trigger rather than against the method.
+
+What should that trigger be? Not gold's share of goods trade, which is a
+correction to our own earlier framing: the three consecutive disagreements
+occurred at 1.9\%, 1.0\% and 0.7\% of goods imports, and 0.7\% would pass any
+level threshold anyone would think to set. What flips a balance's direction is
+the \emph{change} in net gold relative to the change in the balance, and there
+the three are unmistakable --- 217\%, 131\% and 139\% of the quarterly change in
+the deficit. So: compare the quarter-on-quarter change in net gold with the
+change in the balance you are about to read, and adjust if the former is a large
+fraction of the latter. The level share still works as a coarse screen --- at
+10.5\% of goods imports, January 2025's headline is mostly bullion --- but not
+on its own.
 
 The agencies could make this easier by publishing the goods balance on both
-bases --- as reported, and excluding nonmonetary gold. The underlying series
-are already collected and the adjustment is already computed for the national
-accounts, so the cost is close to zero. But nobody needs to wait for that. The
-data to do it is published every month.
+bases, as reported and excluding nonmonetary gold: the series are already
+collected and the adjustment already computed for the national accounts. But
+nobody needs to wait for that. The data is published every month.
 
-Gold will do this again. The structure that produced the 2025 episode is
-permanent: two venues, two bar standards, a transfer cost small enough that any
-material dislocation pays for moving metal, and a stock of above-ground bullion
-large enough that the quantities which clear it dwarf anything the metal is
-used for. The next dislocation will move the same kind of volume through the
-same accounts. Readers who understand why the metal moves, and who adjust for
-it when it does, will not be misled by the headline.
+Gold will do this again. The structure behind the 2025 episode is permanent:
+two venues, two bar standards, a transfer cost small enough that any material
+dislocation pays for moving metal, and an above-ground stock whose clearing
+quantities dwarf anything the metal is used for. Readers who understand why it
+moves, and adjust when it does, will not be misled.
 
 \clearpage
 \theendnotes
