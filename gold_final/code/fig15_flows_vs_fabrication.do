@@ -13,8 +13,8 @@
 *! which is every ounce Americans buy as jewellery or hold as retail
 *! investment. In 2025Q1 the United States imported 870 tonnes against demand
 *! of 39 tonnes: TWENTY-TWO TIMES a quarter's worth of its own consumption, in
-*! one quarter. US demand averages 53 tonnes a quarter over this window and
-*! has never exceeded 75. Gold does not get eaten.
+*! one quarter. US demand averages 49 tonnes a quarter over this window and
+*! has never exceeded 83. Gold does not get eaten.
 *!
 *! PANEL B. US gold exports against the demand of the five destinations that
 *! take them. The five are chosen from the data rather than assumed, and they
@@ -56,15 +56,30 @@
 *! previously left unscaled at 100% for want of a source; at their real ~12%
 *! their benchmark falls roughly eightfold, which is more accurate but less
 *! generous. India moves the other way and further, from 4% to 10%. The net
-*! is a benchmark about 9% larger than before - 24 tonnes a quarter against
-*! peak quarterly exports of 310, a ratio of 12.9 at its widest.
+*! is a benchmark about 9% larger than before: 24 tonnes a quarter on average
+*! against peak quarterly exports of 310 tonnes. Those two peaks give 12.9x;
+*! the largest ratio in any single quarter is 17.4x, in 2025Q2, because that
+*! quarter's demand was below the window average. The figure reports both,
+*! since one number cannot mean both things.
 *!
-*! A NOTE ON THE FIFTH PLACE.*! A NOTE ON THE FIFTH PLACE. An earlier draft of this file hardcoded the five
-*! as Switzerland, the UK, Hong Kong, Singapore and India. On a 2022 window
-*! Canada displaces India, so the file now picks the five from the Census data
-*! and warns if any of them has no WGC counterpart. The hardcoded guess would
-*! have weakened the figure badly, because including India put 184 tonnes a
-*! quarter of genuine consumption into a benchmark meant to show its absence.
+*! WHICH FIVE, AND WHY THE FILE PICKS THEM RATHER THAN ASSUMING THEM. The
+*! membership of the top five is not stable across windows: on a 2022 window
+*! Canada is fifth, on this 2015 window India is. So the file reads the five
+*! off the Census data and warns if any of them has no WGC counterpart,
+*! because a hardcoded list was wrong twice. On the window as it now stands
+*! the five are Hong Kong, India, Singapore, Switzerland and the United
+*! Kingdom, taking 85.8% of US gold exports to identified countries.
+*!
+*! INDIA BEING IN THE SET MAKES THE FIGURE HARDER, NOT EASIER, and it is worth
+*! being explicit that this cuts against the result. India is a genuine
+*! consumption market - 184 tonnes a quarter of jewellery and retail bar - so
+*! admitting it puts real absorption into a benchmark built to show absorption
+*! is absent. At the generous 10% US-supplied share it contributes about 18 of
+*! the benchmark's 24 tonnes a quarter: most of the line in panel b is India.
+*! The flows still exceed it by an order of magnitude, and the composition
+*! check below prints each destination's exports beside its demand so the
+*! reader can see that the metal goes to the vaults and the refineries rather
+*! than to the one place that uses it.
 *!
 *! TWO THINGS THE FIGURE DOES NOT HIDE. WGC does not break out Swiss jewellery
 *! demand, which sits inside "Other Europe", so Switzerland contributes bar and
@@ -109,7 +124,7 @@ local SOFT "112 112 112"
 local OZ_PER_T = 32150.7       // troy ounces in a tonne
 local Q0 = tq(2015q1)
 
-tempfile px gold partner demand
+tempfile px gold partner demand compexp compdem
 
 *============================================================== 1. the price
 import delimited using "$RAW/lbma_pm.csv", varnames(1) clear
@@ -190,6 +205,14 @@ preserve
     format q %tq
     save `partner'
 restore
+* Per-destination exports for the composition check, over the figure's own
+* window so the table and the panel describe the same sample.
+preserve
+    keep if top5 & q >= `Q0'
+    collapse (sum) exp_t = t, by(slug)
+    rename slug country
+    save `compexp'
+restore
 * How much of identified-country exports the five account for, reported not
 * asserted.
 collapse (sum) t, by(top5)
@@ -229,11 +252,13 @@ gen double use_t = cond(missing(jewellery_t), 0, jewellery_t) ///
                  + cond(missing(barcoin_t), 0, barcoin_t)
 
 * Scale each destination's demand by the share of its gold the United States
-* supplies. Only India has a sourced share; the others stay at 1, which is
-* conservative - scaling down can only raise the flow-to-demand ratio.
+* supplies. All five of the destinations in this window have a sourced share.
+* Anything else in the WGC file - including Canada, which is fifth on a 2022
+* window - stays at 1, i.e. its entire demand counts as reachable. That is
+* the generous direction, so an unscaled destination can only make this
+* figure harder to win, never easier. The table printed below says which is
+* which, so an unscaled destination can never pass unnoticed.
 merge m:1 country using `shares', keep(master match) nogen
-* Anything without a sourced share stays at 1. That is conservative in the
-* other direction, but every destination used here has one.
 gen double us_share = cond(missing(generous_share), 1, generous_share)
 replace use_t = use_t * us_share
 
@@ -259,6 +284,11 @@ foreach sl of local TOP5SLUGS {
     replace inp5 = 1 if country == "`sl'"
 }
 keep if inp5
+preserve
+    keep if q >= `Q0'
+    collapse (mean) dem_t = use_t (firstnm) us_share, by(country)
+    save `compdem'
+restore
 collapse (sum) p5_use_t = use_t, by(q)
 merge 1:1 q using `demand', nogen
 sort q
@@ -311,12 +341,33 @@ qui summarize p5_use_t
 di as txt "   their combined demand averages " %6.0f r(mean) "t a quarter"
 di as txt "   peak ratio " %5.1f `RE_MAX' "x in `RE_Q'"
 di as txt ""
-di as txt "   COMPOSITION CHECK - does one destination carry the benchmark?"
 qui summarize p5_use_t, meanonly
 local P5U = r(mean)
-di as txt "   combined demand of the five " %6.1f `P5U' "t a quarter"
-di as txt "   (if one of them is a consumption market its demand will swamp"
-di as txt "    the rest and the aggregate ratio will understate the others)"
+qui summarize exp5_t
+di as txt "   ratio of the two peaks " %5.1f r(max)/`P5U' "x" ///
+    "   (peak exports over mean demand - a different quantity)"
+di as txt ""
+di as txt "   COMPOSITION CHECK - does one destination carry the benchmark?"
+di as txt "   Exports are window totals; demand is the window mean after"
+di as txt "   scaling by the US-supplied share."
+preserve
+    use `compdem', clear
+    merge 1:1 country using `compexp', nogen
+    gsort -exp_t
+    di as txt "      destination        exports    share   demand"
+    di as txt "                          (total t)         (mean t/q)"
+    forvalues i = 1/`=_N' {
+        di as txt "      " country[`i'] _col(25) %8.0f exp_t[`i'] ///
+            _col(35) %5.0f 100*us_share[`i'] "%" _col(45) %7.1f dem_t[`i']
+    }
+    qui summarize dem_t, meanonly
+    local TOTD = r(sum)
+    gsort -dem_t
+    di as txt "   the benchmark's largest single contributor is " country[1] ///
+        " at " %4.1f 100*dem_t[1]/`TOTD' "% of it"
+    gsort -exp_t
+    di as txt "   the largest single destination for the metal is " country[1]
+restore
 di as txt ""
 di as txt "   Gold is not consumed on these timescales. A country that imports"
 di as txt "   eighteen quarters of its own demand in one quarter is not"
