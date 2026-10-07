@@ -1,0 +1,131 @@
+
+========================================================================
+COVERAGE
+========================================================================
+gold months        : 2015-01 to 2026-07  (139 months)
+LBMA PM daily obs  : 2939
+
+========================================================================
+FIGURE 1  gold came in, then went back out
+========================================================================
+gold imports, 2015-2019: min $0.56bn  max $2.65bn  mean $1.07bn a month
+gold share of BOP goods imports, 2015-2019 mean : 0.55%
+largest monthly shares:
+   2025-01   10.5%   ($34.2bn)
+   2020-05    8.8%   ($14.8bn)
+   2025-02    8.4%   ($27.2bn)
+   2020-04    7.2%   ($12.2bn)
+   2025-03    5.2%   ($17.8bn)
+
+phase means, $bn a month:
+   baseline  imports   1.95   exports   2.46
+   surge     imports  19.41   exports   3.40
+   reversal  imports   3.10   exports  10.87
+
+since 2015: gross $791bn, net $-64bn (8% of gross, pointing outward)
+cumulative net from Nov 2024: peak $+80.0bn (2025-03), $-47.6bn by 2026-07
+crosses zero in 2026-02
+
+Switzerland's share of identified gold trade, by phase:
+   baseline    27% of imports     32% of exports
+   surge       57% of imports     27% of exports
+   reversal    41% of imports     57% of exports
+
+Switzerland, whole window: 38% of identified imports, 41% of identified exports
+
+========================================================================
+FIGURE 2  the flows against what the metal is used for
+========================================================================
+UPPER PANEL - imports against US demand (jewellery plus bar and coin)
+   US demand   : mean 16.6 t a month, max 27.7, min 9.7
+   US imports  : mean 40.7 t a month
+   imports exceed demand in 131 of 139 months
+   Jan 2025    : 393 t imported against 13.0 t of demand -> 30x
+   Nov24-Mar25 : 1080 t against 83 t -> 13x
+   quarterly US demand since 2015: mean 49.5 t, max 83.1 t; 2025Q1 39.1 t against 870 t imported -> 22x
+   whole window: 5657 t imported against 2251 t of demand
+
+LOWER PANEL - exports against reachable foreign demand
+   the five take 86.5% of US gold exports to identified countries
+      SWITZERLAND       47.5% of the five's tonnage, share applied 25%
+      UNITED KINGDOM    31.3% of the five's tonnage, share applied 26%
+      HONG KONG         10.5% of the five's tonnage, share applied 12%
+      INDIA              5.7% of the five's tonnage, share applied 10%
+      SINGAPORE          5.1% of the five's tonnage, share applied 12%
+   benchmark   : mean 7.9 t a month, max 13.8
+      India contributes 6.0 t of it (77% of the benchmark)
+   US exports  : mean 45.1 t a month -> 5.7x the benchmark
+   exports exceed the benchmark in 139 of 139 months
+   peak        : 183 t in 2025-04 against 5.9 t -> 31x
+   whole window: 6262 t exported against 1094 t reachable
+
+========================================================================
+FIGURE 3  the spread and the metal that followed it
+========================================================================
+Curve-fit diagnostics are not recomputed here; they are printed by
+gold_final/code/fig2_spread_vs_hurdle.do into gold_final/data/fig2.log:
+   2,862 days in the fit, 2,851 re-timed to the London auction
+   re-timing cuts the premium's sd from 0.499% to 0.235%
+   851 days clear the band westward (29.7%), 1,287 eastward (45.0%)
+The hurdle, $0.75 an ounce each way, is built up in gold_final/letter:
+   $0.35 COMEX depository delivery-out + $0.20 air freight + $0.20 recasting
+The episode cost, $243m [$85m, $520m] over 1,632 tonne-legs carrying
+$174bn of metal - 0.14% of the value moved - is from the same source.
+
+Lower panel, recomputed here (derived tonnage, both headings):
+   139 months with flow, 105 of them net eastward
+   Dec 2024 - Mar 2025 : +867 t net west
+   Apr 2025 - Aug 2025 : -281 t net
+   largest single month: +373 t (2025-01), -159 t (2025-04)
+
+========================================================================
+FIGURE 4  the same quarter's trade, measured twice
+========================================================================
+46 quarters, 2015q01 to 2026q04, $bn at annual rates
+
+IMPORTS
+   mean |ITA - NIPA|   22.7   largest  328.5 in 2025Q1
+   mean |adj - NIPA|   18.5   largest   35.7
+   sd of the gap       53.8  ->     9.5
+   signed mean        +13.8  ->   -17.6   (the adjusted line sits slightly below NIPA: removing all of 7108+7115
+                              overshoots what NIPA nets out)
+   corr(gap, gold on this side) = 0.988
+
+EXPORTS
+   mean |ITA - NIPA|   27.7   largest  202.3 in 2026Q1
+   mean |adj - NIPA|   10.1   largest   24.2
+   sd of the gap       38.6  ->     6.6
+   signed mean        +27.7  ->    -9.1   (the adjusted line sits slightly below NIPA: removing all of 7108+7115
+                              overshoots what NIPA nets out)
+   corr(gap, gold on this side) = 0.986
+
+THE BALANCE (not plotted; the panels show the flows apart so that an
+import error and an export error of the same sign cannot cancel)
+   mean |ITA - NIPA| 36.0  ->  adjusted 11.0
+   2025Q1 gap 285  ->  17   (ITA deficit 1826 against NIPA 1541)
+   2025Q1 gap as a share of the NIPA balance: +18.5%
+   2026Q1, four quarters later:              -15.6%
+   corr(gap, net gold) = 0.983
+
+   45 quarterly changes; the two measures disagree about direction 5 times
+   raw       : ['2016Q2', '2018Q4', '2025Q3', '2025Q4', '2026Q1']
+   adjusted  : ['2016Q2', '2016Q3', '2018Q4']
+   corr of quarterly changes 0.908  ->  0.991
+
+   each disagreement, with the two candidate triggers:
+      quarter   dITA   dNIPA   d(net gold)   |dgold/dITA|   gold's level share
+      2016Q2      +11      -6           +9            84%              1.0%
+      2018Q4      +12      -1           +7            61%              0.4%
+      2025Q3      +55     -71         +119           217%              1.9%
+      2025Q4      -77     +19         -102           131%              1.0%
+      2026Q1      -34     +49          -47           139%              0.7%
+
+========================================================================
+SECTION 5  the adjustment on the monthly headline
+========================================================================
+   Jan 2025: reported deficit $124.7bn, $92.2bn without the gold (net gold $+32.5bn)
+   Mar 2025: reported deficit $133.0bn, $120.8bn without the gold (net gold $+12.2bn)
+   Oct 2025: reported deficit $37.4bn, $52.6bn without the gold (net gold $-15.2bn)
+   rolling twelve-month deficit overstated by $79.5bn at its peak, Mar 2025
+   (this balance is goods and services, the headline of the monthly release;
+    figure 4 is goods only, which is the basis NIPA table 1.1.5 reports)
