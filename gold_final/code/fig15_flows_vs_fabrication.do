@@ -21,29 +21,46 @@
 *! are Canada, Hong Kong, Singapore, Switzerland and the United Kingdom -
 *! 86.6% of US gold exports to identified countries.
 *!
-*! THE COMPOSITION IS THE ARGUMENT, and it is sharper than the ratio. Those
-*! five places have a COMBINED gold demand of about 32 tonnes a quarter -
-*! Switzerland 7.6, the UK 8.0, Hong Kong 7.0, Canada 5.8, Singapore 3.6.
-*! Peak quarterly exports to them were 327 tonnes, twelve times the lot.
+*! THE BENCHMARK IS SCALED BY THE SHARE THE UNITED STATES SUPPLIES. Comparing
+*! US exports to a country against that country's FULL gold demand is apples
+*! to oranges: all of these places buy gold from many suppliers. The relevant
+*! benchmark is the part of their demand the United States could plausibly be
+*! serving.
 *!
-*! Meanwhile India, which consumes 184 tonnes a quarter and is the largest
-*! gold market on earth, is not in the top five at all. The United States
-*! ships its gold to the five places that barely use any, and not to the one
-*! place that uses more than all of them put together. Those five are the
-*! world's refining and vaulting centres - Switzerland refines, London and
-*! Hong Kong and Singapore vault - which is what the metal was going there
-*! for.
+*! ONE GENEROUS SHARE PER COUNTRY, CHOSEN TO OVERSTATE FOREIGN DEMAND. The
+*! benchmark is demand x share, so a LARGER share makes the benchmark LARGER
+*! and this figure harder to win. Each share is therefore the HIGHEST any
+*! source reports in any year, rounded up:
 *!
-*! THE COMPARATOR IS DELIBERATELY GENEROUS. Jewellery plus bar and coin is
-*! wider than fabrication: bar and coin is investment, not fabrication at all,
-*! and including it makes the benchmark larger and the comparison harder for
-*! this figure to win. Technology demand - electronics, dental - would add
-*! little: it is about 330 tonnes a year for the ENTIRE WORLD, and WGC does not
-*! publish it by country. If the flows still dwarf the generous measure, they
-*! dwarf the strict one.
+*!                    comtrade  comtrade   national        used
+*!                       value      mass      check
+*!     United Kingdom    25.2%     25.3%      24.5% HMRC    26%
+*!     Switzerland       24.2%     15.9%      17.7% BAZG    25%
+*!     Hong Kong         11.3%     11.2%          --        12%
+*!     Singapore         11.1%      8.5%          --        12%
+*!     India              7.3%      9.0%       6.3% WGC     10%
 *!
-*! A NOTE ON THE FIFTH PLACE. An earlier draft of this file hardcoded the five
-*! as Switzerland, the UK, Hong Kong, Singapore and India. On the 2022 window
+*! Applying a single-episode peak flat across eleven years of ordinary
+*! quarters is generous again on top of taking the maximum.
+*!
+*! WHY BOTH BASES. Many reporters file value without net weight, which left
+*! Switzerland with only two usable years on mass. Value has complete
+*! coverage, and where both exist they agree to 0.72 percentage points on
+*! average across 42 country-years, so value carries the series and mass
+*! checks it. Comtrade and the national offices are independently compiled
+*! and agree closely where they overlap, and taking the maximum across them
+*! genuinely binds - India's Comtrade mass figure is half again the
+*! WGC-derived one, and Switzerland's Comtrade value peak exceeds BAZG's.
+*!
+*! WHAT THIS CHANGED, in both directions. Hong Kong and Singapore were
+*! previously left unscaled at 100% for want of a source; at their real ~12%
+*! their benchmark falls roughly eightfold, which is more accurate but less
+*! generous. India moves the other way and further, from 4% to 10%. The net
+*! is a benchmark about 9% larger than before - 24 tonnes a quarter against
+*! peak quarterly exports of 310, a ratio of 12.9 at its widest.
+*!
+*! A NOTE ON THE FIFTH PLACE.*! A NOTE ON THE FIFTH PLACE. An earlier draft of this file hardcoded the five
+*! as Switzerland, the UK, Hong Kong, Singapore and India. On a 2022 window
 *! Canada displaces India, so the file now picks the five from the Census data
 *! and warns if any of them has no WGC counterpart. The hardcoded guess would
 *! have weakened the figure badly, because including India put 184 tonnes a
@@ -52,9 +69,8 @@
 *! TWO THINGS THE FIGURE DOES NOT HIDE. WGC does not break out Swiss jewellery
 *! demand, which sits inside "Other Europe", so Switzerland contributes bar and
 *! coin only and the partner total is slightly understated - by a few tonnes a
-*! quarter against partner totals in the hundreds. And the window starts in
-*! 2022 because that is where the Census partner detail in this repo starts,
-*! not because anything happened then.
+*! quarter against partner totals in the hundreds. The window runs from 2015,
+*! which required re-pulling the Census partner detail back to January 2015.
 *!
 *! UNITS. Tonnes throughout, converted at the boundary from the Census dollar
 *! values using the LBMA PM monthly average and 32,150.7 troy ounces to the
@@ -91,7 +107,7 @@ local RULE "224 228 231"
 local SOFT "112 112 112"
 
 local OZ_PER_T = 32150.7       // troy ounces in a tonne
-local Q0 = tq(2022q1)
+local Q0 = tq(2015q1)
 
 tempfile px gold partner demand
 
@@ -183,6 +199,25 @@ qui summarize t, meanonly
 local TALL = r(sum)
 local SHARE5 = 100 * `T5' / `TALL'
 
+*===================== 4a. the share of each destination's gold the US supplies
+* Comparing US exports to a country against its FULL gold demand is apples to
+* oranges - all of these places buy gold from many suppliers. Scale each
+* destination's demand by the share of its gold imports the United States
+* supplies.
+*
+* ONE GENEROUS SHARE PER COUNTRY, not a time series. The benchmark is
+* demand x share, so a LARGER share makes the benchmark LARGER and the
+* comparison harder to win. prep_us_import_shares.py therefore takes the
+* HIGHEST share any source reports in any year - UN Comtrade on both a mass
+* and a value basis, cross-checked against HMRC for the UK, BAZG for
+* Switzerland and Metals Focus for India - and rounds up. Applying a
+* single-episode peak flat across eleven years is generous again on top.
+tempfile shares
+import delimited using "$RAW/us_import_shares.csv", varnames(1) clear
+destring generous_share, replace force
+keep country generous_share
+save `shares'
+
 *=========================================================== 4. WGC demand
 import delimited using "$RAW/wgc_demand_quarterly.csv", varnames(1) clear
 destring jewellery_t barcoin_t, replace force
@@ -192,6 +227,28 @@ format q %tq
 * which understates the benchmark slightly and so works against this figure.
 gen double use_t = cond(missing(jewellery_t), 0, jewellery_t) ///
                  + cond(missing(barcoin_t), 0, barcoin_t)
+
+* Scale each destination's demand by the share of its gold the United States
+* supplies. Only India has a sourced share; the others stay at 1, which is
+* conservative - scaling down can only raise the flow-to-demand ratio.
+merge m:1 country using `shares', keep(master match) nogen
+* Anything without a sourced share stays at 1. That is conservative in the
+* other direction, but every destination used here has one.
+gen double us_share = cond(missing(generous_share), 1, generous_share)
+replace use_t = use_t * us_share
+
+* Report what was applied, so the figure never hides an unscaled destination.
+preserve
+    collapse (mean) us_share, by(country)
+    gsort -us_share
+    di as txt "{hline 60}"
+    di as txt "US-supplied share applied to each destination's demand"
+    forvalues i = 1/`=_N' {
+        di as txt "   " country[`i'] _col(22) %6.1f 100*us_share[`i'] "%" ///
+            cond(us_share[`i'] == 1, "   (no source - left unscaled)", "")
+    }
+    di as txt "{hline 60}"
+restore
 preserve
     keep if country == "united_states"
     collapse (sum) us_use_t = use_t, by(q)
@@ -254,6 +311,13 @@ qui summarize p5_use_t
 di as txt "   their combined demand averages " %6.0f r(mean) "t a quarter"
 di as txt "   peak ratio " %5.1f `RE_MAX' "x in `RE_Q'"
 di as txt ""
+di as txt "   COMPOSITION CHECK - does one destination carry the benchmark?"
+qui summarize p5_use_t, meanonly
+local P5U = r(mean)
+di as txt "   combined demand of the five " %6.1f `P5U' "t a quarter"
+di as txt "   (if one of them is a consumption market its demand will swamp"
+di as txt "    the rest and the aggregate ratio will understate the others)"
+di as txt ""
 di as txt "   Gold is not consumed on these timescales. A country that imports"
 di as txt "   eighteen quarters of its own demand in one quarter is not"
 di as txt "   consuming it, and metal shipped to refining and vaulting centres"
@@ -270,7 +334,9 @@ local Y0 = year(dofq(`QA'))
 local Y1 = year(dofq(`QB'))
 local XLAB ""
 forvalues y = `Y0'/`Y1' {
-    local XLAB `XLAB' `=tq(`y'q1)' "`y'"
+    if mod(`y', 2) == 1 {
+        local XLAB `XLAB' `=tq(`y'q1)' "`y'"
+    }
 }
 
 local R25 : display %3.0f `IMP25'/`USE25'
@@ -305,7 +371,7 @@ twoway                                                                      ///
     (line p5_use_t q, lcolor("`INK'") lwidth(1.10))                         ///
     ,                                                                       ///
     title("{bf:b.} US gold exports against the demand of the five places that take them" ///
-          "{it:Tonnes a quarter. `SH'% of US gold exports. Their combined demand is about 32t; India, which consumes 184t, is not among them}", ///
+          "{it:Tonnes a quarter. `SH'% of US gold exports. Demand scaled by the US-supplied share of each destination's gold imports}", ///
           size(medsmall) color("`INK'") position(11) justification(left) span) ///
     ytitle("")                                                              ///
     ylabel(0(200)800, angle(0) labsize(small) tlcolor(none)                 ///
@@ -315,7 +381,7 @@ twoway                                                                      ///
     xlabel(`XLAB', labsize(small) tlcolor(none) labcolor("`SOFT'") nogrid)  ///
     xscale(range(`XMIN' `XMAX') noextend lcolor("`RULE'"))                  ///
     legend(order(1 "US gold exports to the five"                            ///
-                 2 "Their combined demand: jewellery plus bar and coin")    ///
+                 2 "Their demand, scaled to the US-supplied share")        ///
            rows(1) size(small) region(lcolor(none)) symxsize(8)             ///
            symysize(2) position(12) ring(1) bmargin(zero) color("`SOFT'"))  ///
     graphregion(color(white) margin(l=2 r=3 t=1 b=1))                       ///

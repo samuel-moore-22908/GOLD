@@ -56,7 +56,7 @@ HS_GOLD = ("7108", "7115")
 # partner split only cover the tariff window, because that is all figure 1 uses
 # and the payload is 50x larger.
 GOLD_FROM, GOLD_TO = "2013-01", None        # None = as recent as Census has
-WINDOW_FROM, WINDOW_TO = "2022-01", None
+WINDOW_FROM, WINDOW_TO = "2015-01", None
 
 CHUNK_MONTHS = 24          # months per request; the API takes a range
 REQUEST_SPACING_S = 2.0    # deliberate, not maximal

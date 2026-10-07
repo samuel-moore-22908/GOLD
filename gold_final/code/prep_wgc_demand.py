@@ -129,6 +129,30 @@ def main() -> None:
     print(f"   wrote {out.relative_to(ROOT)}  ({len(wide):,} rows, "
           f"{wide.date.min()} to {wide.date.max()})")
 
+    # India's GROSS BULLION IMPORTS, needed to scale its demand by the share
+    # the United States actually supplies. India is the only destination among
+    # the five where this matters: it is a large consumption market that
+    # sources its gold overwhelmingly from elsewhere, so comparing US exports
+    # to its FULL demand is apples to oranges.
+    ind = pd.read_excel(book, sheet_name="India Supply", header=None)
+    hdr = ind.iloc[4]
+    yrs = {i: int(h) for i, h in hdr.items()
+           if isinstance(h, (int, float)) and not pd.isna(h) and 2000 < h < 2100}
+    lab = ind.iloc[:, 1].astype(str).str.strip()
+    hits = ind.index[lab.str.startswith("Gross Bullion Imports")]
+    if len(hits) and yrs:
+        r = hits[0]
+        rows = [{"year": y,
+                 "gross_bullion_imports_t": pd.to_numeric(ind.iat[r, i],
+                                                          errors="coerce")}
+                for i, y in sorted(yrs.items(), key=lambda kv: kv[1])]
+        out2 = ROOT / OUT_DIR / "wgc_india_supply_annual.csv"
+        pd.DataFrame(rows).to_csv(out2, index=False)
+        print(f"   wrote {out2.relative_to(ROOT)}  ({len(rows)} years)")
+    else:
+        print("   WARNING: could not find India gross bullion imports; "
+              "the India scaling in fig15 will fall back to unscaled")
+
     miss = wide[wide.jewellery_t.isna()].country.unique()
     if len(miss):
         print(f"   note: no jewellery series for {', '.join(miss)} "
