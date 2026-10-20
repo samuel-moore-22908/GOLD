@@ -46,10 +46,16 @@ claude/gold-panel/gold_panel_run.log
 claude/gold-panel/probe/
 claude/*/[a-z_]*_run.log
 
-# gold_final: logs and data regenerate from the two pull scripts. The figures
-# are committed because they are the deliverable.
+# gold_final: logs and data regenerate from the pull scripts. The figures
+# are committed because they are the deliverable. The exception is the raw
+# HS10 customs pull, committed so the manual tonnage work rests on a fixed
+# vintage of Census data.
 gold_final/**/*.log
-gold_final/data/
+gold_final/data/*
+!gold_final/data/raw/
+gold_final/data/raw/*
+!gold_final/data/raw/us_gold_hs10_imports_monthly.csv
+!gold_final/data/raw/us_gold_hs10_exports_monthly.csv
 
 # LaTeX build artefacts - the .tex and the .pdf are the record
 *.aux
